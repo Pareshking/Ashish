@@ -77,13 +77,15 @@ def parse_list(html: str, index: str) -> pd.DataFrame:
         sub = _col(cols, "sub-industry", "sub industry", "subindustry", "industry")
         name = _col(cols, "security", "company", "name")
         cik = _col(cols, "cik")
-        if not (sym and sector and sub) or len(t) < 100:
+        # Sub-industry is optional: the Dec 2009 S&P 500 page lists the GICS
+        # sector only, and the sector is what the strategy's cap uses.
+        if not (sym and sector) or len(t) < 100:
             continue
         out = pd.DataFrame({
             "Symbol": t[sym].astype(str).str.strip().str.upper(),
             "Company": t[name].astype(str).str.strip() if name else t[sym].astype(str),
             "Sector": t[sector].astype(str).str.strip(),
-            "Industry": t[sub].astype(str).str.strip(),
+            "Industry": t[sub].astype(str).str.strip() if sub else "",
         })
         # The SEC's company number: it survives a rename, unlike the ticker or
         # the name (Anthem -> Elevance, Alliance Data -> Bread Financial).

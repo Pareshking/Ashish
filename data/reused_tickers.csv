@@ -1,0 +1,6 @@
+Symbol,Until,StoredAs,Company,Evidence
+CPWR,2014-12-31,CPWR-201412,Compuware,"Yahoo's CPWR history runs 2008-2026 and is another security: daily-return correlation -0.02 over the 2010-2011 S&P 500 spell with github:Johnbrick123/sp500-data (Quandl WIKI rows); checked 10 Nov 2026"
+EP,2012-05-31,EP-201205,El Paso Corp,"Yahoo's EP history is another security: correlation 0.01 over the 2010-2012 spell with the CRSP-checked dataset; El Paso was acquired by Kinder Morgan in May 2012 (from memory); checked 10 Nov 2026"
+GENZ,2011-04-30,GENZ-201104,Genzyme,"Yahoo's GENZ history is another security: correlation 0.27 over the 2010-2011 spell; Genzyme was acquired by Sanofi in Apr 2011 (from memory); checked 10 Nov 2026"
+KG,2011-02-28,KG-201102,King Pharmaceuticals,"Yahoo's KG history is another security: correlation 0.18 over the 2010 spell; King was acquired by Pfizer in early 2011 (from memory); checked 10 Nov 2026"
+LSI,2014-05-31,LSI-201405,LSI Corp,"LSI Corp left the S&P 500 in May 2014 (acquired by Avago, from memory); the ticker later passed to Life Storage (S&P 400 2019-2023), whose history Yahoo and Stonks/tickers serve back to 1995: correlation 0.42 over LSI Corp's spell; checked 10 Nov 2026"

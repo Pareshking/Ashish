@@ -1,0 +1,102 @@
+{
+ "description": "S2 forward shadow (docs/MOMENTUM_PREREG.md): recorded, not traded",
+ "rule": "w = min(1, 12% / UMD 126-session realised vol to month m-1); rest SPY with dividends; 10 bps on |dw|",
+ "months": {
+  "2026-01": {
+   "weight": 0.7708,
+   "strategy": 0.15725,
+   "benchmark": 0.012881,
+   "shadow": 0.124039,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  },
+  "2026-02": {
+   "weight": 0.7837,
+   "strategy": 0.064508,
+   "benchmark": -0.008642,
+   "shadow": 0.048675,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  },
+  "2026-03": {
+   "weight": 0.8331,
+   "strategy": -0.067054,
+   "benchmark": -0.04938,
+   "shadow": -0.064154,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  },
+  "2026-04": {
+   "weight": 0.7944,
+   "strategy": 0.135547,
+   "benchmark": 0.105053,
+   "shadow": 0.129238,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  },
+  "2026-05": {
+   "weight": 0.7001,
+   "strategy": 0.039162,
+   "benchmark": 0.052626,
+   "shadow": 0.043106,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  },
+  "2026-06": {
+   "weight": 0.6776,
+   "strategy": 0.040406,
+   "benchmark": -0.010293,
+   "shadow": 0.024036,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  },
+  "2026-07": {
+   "weight": 0.6458,
+   "strategy": -0.11125,
+   "benchmark": 0.000348,
+   "shadow": -0.071751,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  },
+  "2026-08": {
+   "weight": 0.5664,
+   "strategy": 0.018332,
+   "benchmark": 0.026799,
+   "shadow": 0.021924,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  },
+  "2026-09": {
+   "weight": 0.4981,
+   "strategy": 0.021298,
+   "benchmark": -0.003293,
+   "shadow": 0.008889,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  },
+  "2026-10": {
+   "weight": 0.5036,
+   "strategy": -0.021851,
+   "benchmark": -0.009061,
+   "shadow": -0.015507,
+   "french_vintage": "202609",
+   "note": "",
+   "recorded_on": "2026-11-10"
+  }
+ },
+ "log": [],
+ "totals": {
+  "strategy": 0.275705,
+  "shadow": 0.253704,
+  "benchmark": 0.114835
+ }
+}

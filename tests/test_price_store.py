@@ -52,13 +52,43 @@ def test_replace_symbol_rewrites_everywhere(tmp_path):
     assert back[back.Symbol == "BBB"]["Close"].tolist() == [100]
 
 
-def test_adjusted_close_matches_yahoo_method():
+def test_adjusted_close_total_return_convention():
     idx = pd.to_datetime(["2026-01-02", "2026-01-05", "2026-01-06", "2026-01-07"])
     close = pd.DataFrame({"AAA": [100.0, 100.0, 98.0, 99.0]}, index=idx)
     acts = pd.DataFrame({"Date": [pd.Timestamp("2026-01-06")], "Symbol": ["AAA"], "Dividend": [2.0], "Split": [0.0]})
     adj = ps.adjusted_close(close, acts)["AAA"]
-    f = 1 - 2.0 / 100.0
+    f = 98.0 / (98.0 + 2.0)          # ex-day return (98 + 2) / 100 - 1 = 0
     assert adj.tolist() == pytest.approx([100 * f, 100 * f, 98.0, 99.0])
+    assert adj.iloc[2] / adj.iloc[1] - 1 == pytest.approx(0.0)
+
+
+def test_large_special_dividend_is_paid_not_compounded():
+    # KDP, 10 Jul 2018: $103.75 cash, close 123.66 -> 22.19; the holder made +1.8%.
+    idx = pd.to_datetime(["2018-07-09", "2018-07-10"])
+    close = pd.DataFrame({"KDP": [123.66, 22.19]}, index=idx)
+    acts = pd.DataFrame({"Date": [idx[1]], "Symbol": ["KDP"], "Dividend": [103.75], "Split": [0.0]})
+    adj = ps.adjusted_close(close, acts)["KDP"]
+    assert adj.iloc[1] / adj.iloc[0] - 1 == pytest.approx((22.19 + 103.75) / 123.66 - 1)
+
+
+def test_spin_off_written_as_split_and_dividend_counts_once():
+    # DHR, 5 Jul 2016: Yahoo writes Fortive as split 1.319 AND dividend 24.56;
+    # its split-adjusted close is already continuous (68.77 -> 71.28).
+    idx = pd.to_datetime(["2016-07-01", "2016-07-05"])
+    close = pd.DataFrame({"DHR": [68.77, 71.28]}, index=idx)
+    acts = pd.DataFrame({"Date": [idx[1]], "Symbol": ["DHR"], "Dividend": [24.56], "Split": [1.319]})
+    adj = ps.adjusted_close(close, acts)["DHR"]
+    assert adj.iloc[1] / adj.iloc[0] - 1 == pytest.approx(71.28 / 68.77 - 1)
+    # A real split ratio beside a dividend is two events: both apply.
+    acts2 = acts.assign(Split=[2.0])
+    assert ps.adjusted_close(close, acts2)["DHR"].iloc[0] < 68.77
+
+
+def test_clean_ratios():
+    for r in (2.0, 0.5, 1.5, 0.1, 3.0, 4 / 3, 1.25, 0.05, 20.0):
+        assert ps.is_clean_ratio(r)
+    for r in (1.319, 0.8757, 2.545, 1.0241, 1.193):
+        assert not ps.is_clean_ratio(r)
 
 
 def test_adjusted_close_without_actions_is_close():

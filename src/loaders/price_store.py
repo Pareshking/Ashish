@@ -279,28 +279,66 @@ def wide(long: pd.DataFrame, column: str) -> pd.DataFrame:
     return w.sort_index()
 
 
+def is_clean_ratio(ratio: float) -> bool:
+    """A split ratio a board would declare (2, 3/2, 1/10 ...). Yahoo writes a
+    spin-off as a split by the price drop (DHR 1.319 for Fortive, 5 Jul 2016)."""
+    if not np.isfinite(ratio) or ratio <= 0:
+        return False
+    return any(abs(r * k - round(r * k)) < 1e-3 and 1 <= round(r * k) <= 100
+               for r in (ratio, 1.0 / ratio) for k in range(1, 11))
+
+
+def spin_dividends(actions: pd.DataFrame) -> pd.Series:
+    """Rows whose dividend is a spin-off Yahoo has ALSO written as a split on the
+    same day: a dividend at least SPIN_YIELD of the price beside a split whose
+    ratio no board would declare. The split already keeps the series continuous,
+    so applying the dividend too books the spin-off twice (DHR +61% on 5 Jul 2016
+    while the close moved +3.6%; checked against the CRSP-checked dataset
+    Johnbrick123/sp500-data, 10 Nov 2026). Returns a boolean mask on ``actions``;
+    the yield test is applied in adjusted_close, where the price is known."""
+    split = actions["Split"].fillna(0).astype("float64")
+    odd = (split > 0) & ~split.map(is_clean_ratio)
+    return odd & (actions["Dividend"].fillna(0) > 0)
+
+
+SPIN_YIELD = 0.02
+
+
 def adjusted_close(close: pd.DataFrame, actions: pd.DataFrame) -> pd.DataFrame:
     """Total-return close: split-adjusted close scaled back by every later
-    dividend, Yahoo's method (factor 1 - D / previous close on each ex-date).
+    dividend, by the CRSP and S&P convention: the ex-date return is
+    (close + dividend) / previous close - 1, so the factor on the ex-date is
+    close / (close + dividend).
+
+    Yahoo's factor, 1 - dividend / previous close, agrees for an ordinary
+    dividend but not for a large one: KDP's $103.75 special on 10 Jul 2018
+    (close 123.66 -> 22.19) is +1.8% for the holder and +11.5% by Yahoo's
+    factor. Changed 10 Nov 2026 (docs/DATA_CORRECTNESS.md).
 
     A dividend whose ex-date is not a row of ``close`` is applied at the next
-    row; one on the first row (no previous close) is ignored.
+    row; one on the first row (no previous close) is ignored, and so is a
+    spin-off Yahoo also wrote as a split (spin_dividends).
     """
     close = close.astype("float64")
     if actions is None or actions.empty:
         return close.copy()
-    div = actions[(actions["Dividend"] > 0) & actions["Symbol"].isin(close.columns)]
+    acts = actions[actions["Symbol"].isin(close.columns)]
+    spin = spin_dividends(acts) if "Split" in acts else pd.Series(False, index=acts.index)
+    div = acts[acts["Dividend"] > 0]
+    spin = spin.loc[div.index].to_numpy()
     idx = close.index
     pos = idx.searchsorted(pd.to_datetime(div["Date"]).values)
     col = close.columns.get_indexer(div["Symbol"])
     ok = (pos > 0) & (pos < len(idx))
-    pos, col, amount = pos[ok], col[ok], div["Dividend"].to_numpy(dtype="float64")[ok]
-    prev = close.ffill().shift(1).to_numpy()
-    p = prev[pos, col]
-    good = np.isfinite(p) & (p > 0) & (amount < p)
+    pos, col, spin = pos[ok], col[ok], spin[ok]
+    amount = div["Dividend"].to_numpy(dtype="float64")[ok]
+    filled = close.ffill().to_numpy()
+    prev, now = filled[pos - 1, col], filled[pos, col]
+    good = np.isfinite(prev) & (prev > 0) & np.isfinite(now) & (now > 0) & (amount < prev)
+    good &= ~(spin & (amount >= SPIN_YIELD * prev))
     f = np.ones(close.shape, dtype="float64")
     # Two dividends landing on one row multiply (np.multiply.at is unbuffered).
-    np.multiply.at(f, (pos[good], col[good]), 1.0 - amount[good] / p[good])
+    np.multiply.at(f, (pos[good], col[good]), now[good] / (now[good] + amount[good]))
     factors = pd.DataFrame(f, index=idx, columns=close.columns)
     # Each row is scaled by the product of the factors strictly AFTER it.
     after = factors[::-1].cumprod()[::-1].shift(-1).fillna(1.0)

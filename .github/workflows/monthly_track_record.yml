@@ -35,11 +35,14 @@ jobs:
       # momentum factor (the Dashboard's reading) refreshed and re-checked.
       - name: Momentum health
         run: python scripts/build_momentum_health.py --check-french || echo "::warning::momentum health not rebuilt; the committed files stand."
+      # S2 forward shadow beside the book (owner, 10 Nov 2026; recorded, not traded).
+      - name: S2 shadow
+        run: python scripts/update_shadow_s2.py || echo "::warning::S2 shadow not updated; the committed file stands."
       - name: Commit the ledger
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/track_record.json data/momentum_health.csv data/momentum_health_latest.json data/momentum_health_check.json data/french_umd.csv
+          git add data/track_record.json data/shadow_s2.json data/momentum_health.csv data/momentum_health_latest.json data/momentum_health_check.json data/french_umd.csv
           if git diff --staged --quiet; then echo "No new month."; exit 0; fi
           git commit -m "chore(data): freeze the closed month into the track record [skip ci]"
           for attempt in 1 2 3; do git push && exit 0; git pull --rebase origin "${GITHUB_REF_NAME}"; sleep 5; done

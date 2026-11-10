@@ -104,14 +104,17 @@ def month_ends(start: str, end: pd.Timestamp) -> list[pd.Timestamp]:
     return list(pd.Series(sess, index=sess).groupby(sess.to_period("M")).max())
 
 
-def build(start: str) -> tuple[pd.DataFrame, list[str]]:
+def build(start: str, start_500: str | None = None) -> tuple[pd.DataFrame, list[str]]:
     s = requests.Session()
     today = pd.Timestamp.today().normalize()
     ends = [d for d in month_ends(start, today) if d < today.to_period("M").start_time]
     out, notes = [], []
     skipped: dict[str, list] = {}
     for index, title in TITLES.items():
-        revs = revisions(title, start, s)
+        # The main book's index can reach further back than the other two.
+        first = start_500 if (index == "S&P 500" and start_500) else start
+        ends = [d for d in month_ends(first, today) if d < today.to_period("M").start_time]
+        revs = revisions(title, first, s)
         lo, hi = EXPECTED[index]
         for d in ends:
             # The page as it stood at the close (16:00 New York) of the month-end.
@@ -219,11 +222,13 @@ def aliases(monthly: pd.DataFrame, current: pd.DataFrame) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--start", default="2019-12")
+    ap.add_argument("--start-500", default="2009-12",
+                    help="first month-end for the S&P 500 only (the main book; owner, 10 Nov 2026)")
     args = ap.parse_args(argv)
     from scripts.sync_universe import combine
     from src.engine import membership as mem
 
-    monthly, notes = build(args.start + "-01")
+    monthly, notes = build(args.start + "-01", args.start_500 + "-01")
     for n in notes:
         print("  note:", n)
     rows = []
@@ -239,7 +244,11 @@ def main(argv=None) -> int:
 
     current = pd.read_csv(os.path.join(ROOT, "data", "universe.csv"), dtype=str, keep_default_na=False)
     hist = mem.empty_history("S&P 1500")
-    for d in sorted(m["Date"].unique()):
+    # The combined S&P 1500 timeline starts where all three indices have lists;
+    # the S&P 500's own timeline (under "indices") reaches further back.
+    all_three = m.groupby("Date")["Index"].nunique()
+    combined_from = all_three[all_three == 3].index.min()
+    for d in sorted(d for d in m["Date"].unique() if d >= combined_from):
         hist, _ = mem.record_snapshot(hist, pd.Timestamp(d).date(), m[m["Date"] == d]["Yahoo"])
     as_of = current["AsOf"].iloc[0]
     if pd.Timestamp(as_of) > pd.Timestamp(m["Date"].max()):
