@@ -16,3 +16,10 @@
 - Removed, as India-specific: FII/DII and NSDL flows, F&O list, results
   calendar, NSE sector indices, Kite upload and basket, CSV order export, the
   Indian financial-year column, rupee and crore formats.
+- Research only (owner, 10 Nov 2026): additional momentum filters (frog in the
+  pan, 52-week high, residual momentum gate, volatility, market trend and
+  absolute momentum, seasonality, short-term reversal, MAX, Clenow's gap and
+  trend quality, sector momentum) in `src/engine/filters.py`, wired into
+  `run_backtest` as keywords that are off by default (results unchanged), and
+  tested by `scripts/research_filters.py`; findings in
+  `docs/RESEARCH_FILTERS.md`. No page, record or ranking uses them.

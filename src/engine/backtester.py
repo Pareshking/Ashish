@@ -1022,6 +1022,12 @@ def run_backtest(
     hold_cap_from: str | None = None,
     buy_size: float | None = None,
     weight_reset_months: tuple[int, ...] | None = None,
+    research_label: str | None = None,
+    _research_gate: pd.DataFrame | pd.Series | None = None,
+    research_gate_on: str = "buy",
+    _research_values: pd.DataFrame | None = None,
+    research_drop: float | None = None,
+    research_pool: int | None = None,
 ) -> dict[str, Any] | None:
     """
     Executes a walk-forward momentum backtest with zero look-ahead bias and friction modeling.
@@ -1053,7 +1059,39 @@ def run_backtest(
     weight, and the buy amount becomes ``buy_size`` of the account then;
     between resets the ``buy_size`` rule applies. None keeps the yearly
     31 March base of ``buy_size`` alone.
+
+    Research filters (owner, 10 Nov 2026; src/engine/filters.py,
+    docs/RESEARCH_FILTERS.md). All off by default, and off they leave every
+    result byte-identical (tests/test_research_filters_plumbing.py). They act
+    on the qualified list, never on the score:
+    ``_research_gate``: booleans, True = may hold. A frame (sessions x
+    symbols; a symbol it lacks passes) or a series (the market: False on a
+    row fails every name). Read at the signal row, carried forward from the
+    last row on or before it.
+    ``_research_values`` with ``research_drop``: at each signal, of the names
+    that passed every other rule, the worst ``research_drop`` share by these
+    values (higher is better; a missing value counts as worst) fails.
+    ``research_gate_on``: whom both of those apply to: "buy" (names not held:
+    a holding is kept on the live rules), "keep" (holdings only) or "both".
+    ``research_pool``, with ``_research_values``: the first ``research_pool``
+    names of the ranking are reordered by the values (a tie-break among the
+    leaders, Gray & Vogel's second sort); the rest keep the score's order.
+    ``research_label`` names the filter in the Streamlit cache key, which
+    ignores the underscored frames: a caller passing a frame must pass a
+    label that changes with it.
     """
+    _research_on = any(v is not None for v in (_research_gate, research_drop, research_pool))
+    if _research_on:
+        if research_gate_on not in ("buy", "keep", "both"):
+            raise ValueError(f"research_gate_on must be 'buy', 'keep' or 'both', not {research_gate_on!r}")
+        if (research_drop is not None or research_pool is not None) and _research_values is None:
+            raise ValueError("research_drop and research_pool need _research_values")
+        if research_drop is not None and not (0.0 <= float(research_drop) < 1.0):
+            raise ValueError(f"research_drop must be in [0, 1), not {research_drop!r}")
+        if research_pool is not None and int(research_pool) < 1:
+            raise ValueError(f"research_pool must be at least 1, not {research_pool!r}")
+        if not research_label:
+            raise ValueError("a research filter needs a research_label (the cache key)")
     if score_method not in ("sharpe", "return"):
         raise ValueError(f"score_method must be 'sharpe' or 'return', not {score_method!r}")
     if ath_pct is not None and not (0.0 < float(ath_pct) <= 1.0):
@@ -1196,6 +1234,48 @@ def run_backtest(
         _high_at_cache[idx] = high
         return high
 
+    if _research_on:
+        _rgate = None if _research_gate is None else _research_gate.reindex(
+            prices.index, method="ffill")
+        _rvals = None if _research_values is None else _research_values.reindex(
+            prices.index, method="ffill").reindex(columns=prices.columns)
+
+    def _research_valid(valid: pd.Series, idx: int, held: Sequence[str]) -> pd.Series:
+        """The research gate and drop at signal row ``idx``, among ``valid``
+        (the names that passed every other rule and have a score)."""
+        if not _research_on:
+            return valid
+        ok = pd.Series(True, index=prices.columns)
+        if _rgate is not None:
+            row = _rgate.iloc[idx]
+            if isinstance(row, pd.Series):
+                ok &= row.reindex(prices.columns).astype("boolean").fillna(True).astype(bool)
+            elif pd.notna(row) and not bool(row):
+                ok[:] = False
+        if research_drop is not None and float(research_drop) > 0:
+            vals = _rvals.iloc[idx]
+            cand = valid[valid].index
+            n_drop = int(np.floor(len(cand) * float(research_drop)))
+            if n_drop > 0:
+                worst = vals.reindex(cand).fillna(-np.inf).sort_values(kind="mergesort").index[:n_drop]
+                ok[worst] = False
+        is_held = pd.Series(prices.columns.isin(list(held)), index=prices.columns)
+        if research_gate_on == "buy":
+            ok |= is_held
+        elif research_gate_on == "keep":
+            ok |= ~is_held
+        return valid & ok
+
+    def _research_order(ranked: pd.Series, idx: int) -> pd.Series:
+        """The leaders reordered by the research values; ``ranked`` unchanged when off."""
+        if not _research_on or research_pool is None or ranked.empty:
+            return ranked
+        k = min(int(research_pool), len(ranked))
+        head = ranked.iloc[:k]
+        vals = _rvals.iloc[idx].reindex(head.index).fillna(-np.inf)
+        order = vals.sort_values(ascending=False, kind="mergesort").index
+        return pd.concat([head.reindex(order), ranked.iloc[k:]])
+
     start_offset = max_lb + ema_period
     _schedule = _build_rebalance_schedule(
         prices, start_offset, rebal_freq, backtest_months,
@@ -1308,6 +1388,8 @@ def run_backtest(
             anchor=prices_anchor, metric=score_method, members=idx_mask,
             on=dates[start_idx], members_from=members_only_scoring_from,
         )
+        valid = _research_valid(valid & composite_score.notna(), start_idx, prev_holdings) \
+            if _research_on else valid
         score = composite_score[valid & composite_score.notna()]
 
         # An empty ranking (nothing passes the trend and 52-week-high filters,
@@ -1315,7 +1397,7 @@ def run_backtest(
         # It used to skip the period, which left every prior holding on the
         # blotter as still open, charged nothing for leaving it, and earned 0%
         # as though it had been sold.
-        full_ranked = score.sort_values(ascending=False)
+        full_ranked = _research_order(score.sort_values(ascending=False), start_idx)
 
         # ── Buffer Zone Selection (Turnover Reduction) ───────────────────────
         holdings = _select_holdings(
@@ -1744,7 +1826,10 @@ def run_backtest(
             anchor=prices_anchor, metric=score_method, members=p_idx_mask,
             on=prices.index[rebal_idx], members_from=members_only_scoring_from,
         )
-        p_ranked = p_score[p_valid & p_score.notna()].sort_values(ascending=False)
+        if _research_on:
+            p_valid = _research_valid(p_valid & p_score.notna(), rebal_idx, prev_holdings)
+        p_ranked = _research_order(
+            p_score[p_valid & p_score.notna()].sort_values(ascending=False), rebal_idx)
         live_ranks = {s: p_ranked.index.get_loc(s) + 1 for s in p_ranked.index}
 
         # An empty ranking is a rebalance to cash, as in the loop above (audit,
