@@ -1,0 +1,80 @@
+name: Nightly prices (New York close)
+
+# NYSE closes 16:00 ET: 21:00 UTC in winter (EST), 20:00 UTC in summer (EDT);
+# early closes at 13:00 ET. GitHub's cron is UTC, ignores daylight saving, and
+# often starts a scheduled job late. So the job is scheduled twice and the
+# script decides (src/core/market_time.py, XNYS calendar): it fetches only
+# sessions that have settled (close + 90 min) and exits "up to date" when the
+# store already holds them. Holidays and weekends cost one short run.
+#   22:45 UTC Mon-Fri = 17:45 EST / 18:45 EDT, the same evening
+#   01:15 UTC Tue-Sat = 20:15 EST / 21:15 EDT, the backup if the first was late or thin
+on:
+  schedule:
+    - cron: '45 22 * * 1-5'
+    - cron: '15 1 * * 2-6'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-prices
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Index membership (Wikipedia S&P 500 / 400 / 600)
+        run: python scripts/sync_universe.py
+      - name: Prices (Yahoo, NYSE sessions only)
+        run: python scripts/sync_prices.py
+      - name: Market caps (Nasdaq screener, Yahoo fallback)
+        run: python scripts/sync_market_caps.py || echo "::warning::Market caps not refreshed; the committed file is used."
+      - name: All-time highs carried forward
+        run: python scripts/build_ath.py
+      - name: Price audit
+        id: audit
+        continue-on-error: true
+        run: python scripts/audit_prices.py
+      - name: Commit data
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -A data/
+          if git diff --staged --quiet; then
+            echo "No data changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(data): nightly US prices [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push; then echo "Pushed on attempt $attempt."; exit 0; fi
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}" || { git checkout --theirs -- data/ 2>/dev/null || true; git add -A data/; GIT_EDITOR=true git rebase --continue || git rebase --abort; }
+            sleep $((attempt * 3))
+          done
+          echo "::error::Could not push the nightly data after 5 attempts."
+          exit 1
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-audit
+          path: reports/
+          if-no-files-found: ignore
+      # Last, after the data is committed: an audit finding fails the run so the
+      # failure alert opens an issue.
+      - name: Fail on audit findings
+        if: steps.audit.outcome == 'failure'
+        run: |
+          echo "::error::The price audit found unexplained findings; see the price-audit artifact."
+          exit 1

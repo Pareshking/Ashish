@@ -94,15 +94,39 @@ def to_long(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def fetch(tickers: list[str], start: str | None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Every chunk of ``tickers``. A chunk of a few tickers that Yahoo answers
+    empty (a delisted or unserved symbol) is reported and skipped; the run
+    fails only when a large chunk is empty, which means Yahoo refused us."""
     px, ac = [], []
     for i in range(0, len(tickers), CHUNK):
         part = tickers[i:i + CHUNK]
         log(f"  fetching {i + 1}-{i + len(part)} of {len(tickers)} from {start}")
-        p, a = to_long(_download(part, start))
+        try:
+            raw = _download(part, start)
+        except RuntimeError:
+            if len(part) <= 10:
+                log(f"::warning::Yahoo served nothing for {' '.join(part)}")
+                continue
+            raise
+        p, a = to_long(raw)
         px.append(p)
         ac.append(a)
+    if not px:
+        return ps.normalise(None), pd.DataFrame(columns=ps.ACTION_COLS)
     return (ps.normalise(pd.concat(px, ignore_index=True)),
             pd.concat(ac, ignore_index=True) if ac else pd.DataFrame(columns=ps.ACTION_COLS))
+
+
+LAST_LAG = 5
+
+
+def _stale(stored: pd.DataFrame, sym: str, target) -> bool:
+    """No stored row for ``sym`` in the last LAST_LAG sessions before ``target``."""
+    rows = stored[stored["Symbol"] == sym]
+    if rows.empty:
+        return True
+    recent = mt.recent_trading_days(LAST_LAG + 1, as_of=pd.Timestamp(target).date())
+    return pd.Timestamp(rows["Date"].max()).date() < min(recent)
 
 
 def settled_only(long: pd.DataFrame, target) -> pd.DataFrame:
@@ -168,9 +192,14 @@ def run(backfill: bool = False, now=None) -> int:
     latest = stored["Date"].max() if len(stored) else None
 
     if not backfill and latest is not None and pd.Timestamp(latest) >= pd.Timestamp(target):
-        all_present = set(syms) <= set(ps.read_long(start=str(target))["Symbol"])
-        if all_present:
-            log(f"up to date: store holds {pd.Timestamp(latest).date()}, last settled session {target}")
+        # Members with no row for LAST_LAG sessions (acquired or delisted while
+        # still listed, or never served by Yahoo) cannot make the store current
+        # and must not make every run a full refetch.
+        on_target = set(ps.read_long(start=str(target))["Symbol"])
+        live = {s for s in syms if s in have and not _stale(stored, s, target)}
+        if live <= on_target:
+            log(f"up to date: store holds {pd.Timestamp(latest).date()}, last settled session {target}"
+                f" ({len(set(syms) - live)} member(s) without recent prices not counted)")
             return 0
 
     actions_all = ps.read_actions()
@@ -184,6 +213,8 @@ def run(backfill: bool = False, now=None) -> int:
         if missing:
             log(f"no Yahoo history for {len(missing)}: {' '.join(missing[:30])}")
     else:
+        # A member never stored is fetched in full once; one Yahoo has stopped
+        # serving (stale) is not asked again every night.
         new_syms = sorted(set(syms) - have)
         old_syms = sorted(set(syms) & have)
         start = str((pd.Timestamp(target) - pd.tseries.offsets.BDay(OVERLAP_SESSIONS + 5)).date())
