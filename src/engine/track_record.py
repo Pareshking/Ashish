@@ -36,11 +36,11 @@ from src.core.logger import logger
 # Nothing before this month is ever recorded. The strategy's live history
 # starts here; earlier "returns" would be pure hindsight simulation presented
 # beside real ones.
-# US (10 Nov 2026): November 2026, the first book formed at the 30 Oct close
-# and filled on 2 Nov, seven sessions before the first membership snapshot.
-# Proposed to the owner; docs/TODO.md B10 (an earlier month could only be
-# replayed on today's list).
-INCEPTION = pd.Period("2026-11", freq="M")
+# US (owner, 10 Nov 2026: "2026 start"): January 2026, as Paresh's record.
+# January to October 2026 were struck on 10 Nov 2026 by replay, on today's
+# S&P 1500 list (membership history begins 10 Nov 2026), so they carry
+# survivorship bias; the ledger records this ("replayed").
+INCEPTION = pd.Period("2026-01", freq="M")
 
 # Repo-root anchored: see the note on LOG_PATH in corporate_actions.py. A
 # missing ledger reads as an empty track record rather than an error.
@@ -66,7 +66,7 @@ TRACK_RECORD_CONFIG: dict[str, Any] = {
     "high_pct": 0.80,
     "weight_method": "Equal Weight",
     "config_weights": [0.10, 0.30, 0.30, 0.20, 0.10],
-    "cost_bps": 30.0,
+    "cost_bps": 10.0,  # US round trip (owner, 10 Nov 2026); config.DEFAULT_TRANSACTION_COST_BPS
     "buffer_n": 40,
     # From this signal the model scores the day's index members only, as the
     # Screener does (owner, 7 Nov 2026; backtester.MEMBERS_ONLY_SCORING_FROM).

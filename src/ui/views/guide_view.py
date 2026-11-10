@@ -176,8 +176,9 @@ filters. The book and the buffer use the qualified rank.</dd>
 <dd>No. The header's "S&P 1500 ... % above its 200D EMA" (or below) compares the index with its 200-day EMA for context.
 The model holds {top_n} stocks in every market and keeps no cash target.</dd>
 <dt>What do the costs cover?</dt>
-<dd>{cost:.0f} basis points a round trip, meant to cover brokerage, exchange and SEBI fees, GST on them,
-stamp duty, STT and the bid-ask spread. Capital-gains tax is not included.</dd>
+<dd>{cost:.0f} basis points a round trip, an estimate of what a US trade costs: no commission at
+most brokers, the bid-ask spread, the SEC and FINRA fees on sales and some market impact. Capital-gains
+tax is not included.</dd>
 </dl>
 </div>
 """

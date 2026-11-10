@@ -43,8 +43,8 @@ INDICES_LOCAL: Final[dict[str, str]] = {k: UNIVERSE_FILE for k in INDICES_URLS}
 SHORT_FORMS: Final[dict[str, str]] = {"S&P 500": "SP500", "S&P 400": "SP400", "S&P 600": "SP600", "S&P 1500": ""}
 UNIVERSE_NAME: Final[str] = "S&P 1500"
 # The site's name in the header, the tab title and the footer. Paresh's site
-# carried its owner's name; this one's owner has not chosen yet (TODO B13).
-SITE_NAME: Final[str] = os.getenv("SITE_NAME", "US Momentum Terminal")
+# carried its owner's name; so does this one.
+SITE_NAME: Final[str] = os.getenv("SITE_NAME", "Ashish Patel")  # owner, 10 Nov 2026
 
 HTTP_HEADERS: Final[dict[str, str]] = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
@@ -73,14 +73,18 @@ DEFAULT_STOCK_CAP: Final[float] = 0.05
 DEFAULT_TARGET_VOL: Final[float] = 0.25
 HIGH_52W_MIN_OBSERVATIONS: Final[int] = 126
 
-# ── US market facts (owner decisions open, docs/TODO.md B11) ─────────────────
-# Kept at Paresh's 30 bps a side until the owner decides: US commissions are
-# ~0 and spreads on the S&P 1500 a few bps, so this is conservative.
-DEFAULT_TRANSACTION_COST_BPS: Final[float] = 30.0
+# ── US market facts (owner, 10 Nov 2026) ─────────────────────────────────────
+# Trading cost, basis points a ROUND TRIP (buy and later sell), owner: "take
+# US rate". US brokers charge no commission on listed stocks; what is left is
+# the bid-ask spread (about 1-3 bps for the S&P 500, 5-20 bps for the S&P
+# 600), regulatory fees on sales (SEC fee and FINRA TAF, well under 1 bp) and
+# market impact. 10 bps a round trip is an estimate for a $1M book, not a
+# measured figure.
+DEFAULT_TRANSACTION_COST_BPS: Final[float] = 10.0
 # Model book (owner, 10 Nov 2026: $1M).
 MODEL_BOOK_CAPITAL: Final[float] = 1_000_000.0
 # Excess-return hurdle for Sharpe and Sortino: roughly the 3-month US T-bill
-# yield. An assumption, stated where assumptions live.
+# yield (owner, 10 Nov 2026: 4.0%). An assumption, stated where assumptions live.
 RISK_FREE_RATE: Final[float] = 0.04
 
 # ── Published ranking (GitHub release asset, not git history) ────────────────

@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "inception": "2026-01",
+  "benchmark": "SPTM_TR",
+  "months": {
+    "2026-01": {
+      "strategy": 0.087243,
+      "benchmark": 0.01415,
+      "alpha": 0.073093,
+      "origin": "backfill",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-02": {
+      "strategy": 0.069867,
+      "benchmark": -0.00465,
+      "alpha": 0.074518,
+      "origin": "backfill",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-03": {
+      "strategy": -0.047438,
+      "benchmark": -0.050005,
+      "alpha": 0.002567,
+      "origin": "backfill",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-04": {
+      "strategy": 0.147689,
+      "benchmark": 0.103591,
+      "alpha": 0.044098,
+      "origin": "backfill",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-05": {
+      "strategy": 0.024827,
+      "benchmark": 0.050201,
+      "alpha": -0.025374,
+      "origin": "backfill",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-06": {
+      "strategy": 0.118517,
+      "benchmark": -0.006435,
+      "alpha": 0.124951,
+      "origin": "backfill",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-07": {
+      "strategy": -0.173918,
+      "benchmark": -0.000662,
+      "alpha": -0.173257,
+      "origin": "backfill",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-08": {
+      "strategy": -0.022959,
+      "benchmark": 0.024138,
+      "alpha": -0.047096,
+      "origin": "backfill",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-09": {
+      "strategy": -0.017981,
+      "benchmark": -0.006674,
+      "alpha": -0.011307,
+      "origin": "backfill",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-10": {
+      "strategy": -0.019287,
+      "benchmark": -0.005866,
+      "alpha": -0.013421,
+      "origin": "recorded",
+      "universe": "current",
+      "finalized_on": "2026-11-10",
+      "config": "632835551a4e",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    }
+  },
+  "price_basis": "yahoo_split_adjusted_dividends_from_actions"
+}

@@ -316,6 +316,14 @@ def render_record_sections(
     parts.append("Yahoo Finance closes with dividends reinvested, as in the benchmark "
                  "(SPTM, the S&P 1500 ETF, total return)")
     kit.caption(" · ".join(parts) + ".")
+    replayed = sorted(k for k, m in (ledger.get("months") or {}).items() if m.get("replayed"))
+    if replayed:
+        first, last = pd.Period(replayed[0], freq="M"), pd.Period(replayed[-1], freq="M")
+        struck = (ledger["months"][replayed[-1]].get("struck_on") or "")
+        kit.caption(f"{first.strftime('%b %Y')} to {last.strftime('%b %Y')} were replayed{f' on {struck}' if struck else ''}, "
+                    "not recorded as they happened, and scored on today's S&P 1500 list (membership "
+                    "history begins 10 Nov 2026). Stocks added to an index tend to be recent winners, "
+                    "so those months are likely flattered.")
 
     # How much of this record is EVIDENCE and how much is reconstruction.
     _backfilled = int(stats.get("backfilled", 0) or 0)

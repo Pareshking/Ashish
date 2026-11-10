@@ -244,8 +244,8 @@ def _settings_form(weights: tuple[float, ...], liquidity_floor_cr: float,
             cost = st.number_input(
                 "Trading cost (bps a round trip)", min_value=0.0, max_value=300.0,
                 value=float(DEFAULT_TRANSACTION_COST_BPS), step=1.0, key="bt_cost",
-                help="Round-trip cost (STT + stamp duty + brokerage + slippage). "
-                     "US large and mid caps trade at a few bps of spread with no commission; 30 bps is conservative.")
+                help="Round-trip cost: the bid-ask spread, SEC/FINRA fees on sales and market impact; "
+                     "US brokers charge no commission. 10 bps is the record's estimate.")
 
             st.markdown("**Rules** · to buy, a stock must pass every buy rule; a holding is "
                         "kept while it passes every keep rule (blank = same as buy)")
