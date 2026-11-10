@@ -93,6 +93,20 @@ their events left out and listed: 306 and 56 in the window). Whole ten years:
 O, ZWS..., reported, not failing). Not checked: the other ~1,350 symbols
 (a sample rotates daily once the workflow runs).
 
+## Momentum health and survivorship (10 Nov 2026)
+
+`scripts/build_momentum_health.py --check-french`: this site's top-minus-bottom
+fifth spread, scored each month-end since 2010 on TODAY's S&P 1500 list,
+against Kenneth French's US momentum factor (UMD, Tuck data library, built on
+CRSP with delisted stocks): 200 months, correlation 0.54 monthly (0.59 over 12
+months), same sign 78%; mean -0.76 pts a month against UMD's +0.31. Paresh's
+equivalent check (IIMA, point-in-time lists) was 0.83. The sign of the mean is
+the survivorship bias, measured: the past losers in today's list are the ones
+that came back. Decision: the Dashboard shows UMD, not our spread, until
+point-in-time membership can carry it. The same bias is in the replayed record
+months (Jan-Oct 2026, ten months, much less exposed than 16 years) and the
+Backtest's History mode, and both say so.
+
 ## Decisions
 
 - **Universe: S&P 1500, one system** (owner, 10 Nov 2026).

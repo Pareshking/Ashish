@@ -1,0 +1,11 @@
+{
+ "months": 200,
+ "first": "2010-02",
+ "last": "2026-09",
+ "corr_monthly": 0.537,
+ "corr_12m": 0.59,
+ "same_sign": 0.775,
+ "mean_spread": -0.764,
+ "mean_umd": 0.31,
+ "source": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_CSV.zip"
+}

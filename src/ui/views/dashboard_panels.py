@@ -18,6 +18,8 @@ from src.ui.tokens import C
 
 ROOT = Path(__file__).resolve().parents[3]
 MOMENTUM_FILE = ROOT / "data" / "momentum_health.csv"
+UMD_FILE = ROOT / "data" / "french_umd.csv"
+CHECK_FILE = ROOT / "data" / "momentum_health_check.json"
 # The newest month-end's qualified share. The spreads can only carry a
 # month once its return is in, so the card read September on a 9 Nov
 # page (audit U-M8); this is the same reading, a month earlier.
@@ -101,12 +103,12 @@ def momentum_health_html(spreads: pd.DataFrame | None) -> str | None:
     word = percentile_word(h["percentile"])
     lede = (f"Over the last 12 months the top 100 of our ranking beat the bottom 100 by "
             f"{fmt.signed(t12)} pts: {word} ({ordinal(round(h['percentile']))} percentile since 2010). "
-            f"{month:%B}: {fmt.signed(last)} pts.")
+            f"{month.strftime('%B')}: {fmt.signed(last)} pts.")
     if t12 < 0:
         lede = (f"Over the last 12 months the top 100 of our ranking trailed the bottom 100 by "
                 f"{fmt.signed(abs(t12), plus=False)} pts: {word} ({ordinal(round(h['percentile']))} percentile "
-                f"since 2010). {month:%B}: {fmt.signed(last)} pts.")
-    crash = (f'<p class="db-flag">{month:%B} was in the worst 10% of months since 2010: momentum '
+                f"since 2010). {month.strftime('%B')}: {fmt.signed(last)} pts.")
+    crash = (f'<p class="db-flag">{month.strftime('%B')} was in the worst 10% of months since 2010: momentum '
              "stocks fell well behind the laggards.</p>") if h["crash"] else ""
     recent = spreads.tail(24)["spread"].astype(float).tolist()
     img = _bars_svg(recent)
@@ -116,6 +118,48 @@ def momentum_health_html(spreads: pd.DataFrame | None) -> str | None:
     return (f'<div class="db-mh"><div class="db-big {tone}">{fmt.signed(t12)}<span> pts, 12 months</span></div>'
             f'<p class="db-lede">{html.escape(lede)}</p>{crash}'
             f'<img src="{img}" alt="{html.escape(alt)}" width="300" height="64" style="max-width:100%"></div>')
+
+
+def umd_html(umd: pd.DataFrame | None) -> str | None:
+    """Momentum health from Kenneth French's US momentum factor (UMD):
+    winners minus losers across US stocks, built on CRSP (no survivorship)."""
+    if umd is None or umd.empty:
+        return None
+    h = health(umd.rename(columns={"UMD": "spread"}))
+    if h is None:
+        return None
+    month = pd.Period(h["month"], freq="M")
+    t12, last = h["trailing_12m"], h["month_spread"]
+    word = percentile_word(h["percentile"])
+    verb = "beat" if t12 >= 0 else "trailed"
+    lede = (f"Over the 12 months to {month.strftime('%B %Y')}, US momentum winners {verb} the losers by "
+            f"{fmt.signed(abs(t12), plus=False)} pts: {word} ({ordinal(round(h['percentile']))} percentile "
+            f"since 2010). {month.strftime('%B')}: {fmt.signed(last)} pts.")
+    crash = (f'<p class="db-flag">{month.strftime('%B')} was in the worst 10% of months since 2010: momentum '
+             "stocks fell well behind the laggards.</p>") if h["crash"] else ""
+    recent = umd.tail(24)["UMD"].astype(float).tolist()
+    img = _bars_svg(recent)
+    alt = (f"Monthly momentum factor, last {len(recent)} months: from {fmt.signed(min(recent))} "
+           f"to {fmt.signed(max(recent))} pts.")
+    tone = "up" if t12 > 0 else "down" if t12 < 0 else ""
+    return (f'<div class="db-mh"><div class="db-big {tone}">{fmt.signed(t12)}<span> pts, 12 months</span></div>'
+            f'<p class="db-lede">{html.escape(lede)}</p>{crash}'
+            f'<img src="{img}" alt="{html.escape(alt)}" width="300" height="64" style="max-width:100%"></div>')
+
+
+def _own_check() -> str:
+    """Why our own spread is not shown, from the last build's measurement."""
+    import json
+
+    try:
+        c = json.loads(CHECK_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    return (f" This site's own top-minus-bottom spread is not shown: scored on today's S&P 1500 list "
+            f"(no membership history before 10 Nov 2026) it averaged {fmt.signed(c['mean_spread'], 2)} pts a "
+            f"month against the factor's {fmt.signed(c['mean_umd'], 2)} ({c['first']} to {c['last']}, "
+            f"correlation {c['corr_monthly']:.2f}), the mark of survivorship bias: the losers of 2010 that "
+            "are still in the index are the ones that recovered.")
 
 
 def long_only_html(spreads: pd.DataFrame | None) -> str | None:
@@ -131,7 +175,7 @@ def long_only_html(spreads: pd.DataFrame | None) -> str | None:
             f"{fmt.signed(lo['top_12m'])}% against the S&P 1500's {fmt.signed(lo['index_12m'])}%: "
             f"{abs(t12):.1f} pts {'ahead' if t12 >= 0 else 'behind'}, {word} "
             f"({ordinal(round(lo['percentile']))} percentile since {lo['since']}). "
-            f"{month:%B}: {fmt.signed(lo['month_lead'])} pts.")
+            f"{month.strftime('%B')}: {fmt.signed(lo['month_lead'])} pts.")
     rows = []
 
     def row(label: str, v: float | None) -> None:
@@ -260,27 +304,21 @@ def render(kit, left, right) -> None:
     """Momentum health on the left, the qualified share on the right. (Paresh's
     third card, India's FII/DII flows, is not carried over.)"""
     spreads = _load(MOMENTUM_FILE)
-    lo_out = long_only_html(spreads)
-    with left, kit.card("Momentum health", "db_mh",
-                        "top 100 against the S&P 1500" if lo_out else "top 100 minus bottom 100"):
-        out = lo_out or momentum_health_html(spreads)
+    # US (10 Nov 2026): the reading is Kenneth French's survivorship-free US
+    # momentum factor, not this site's own spread, until point-in-time
+    # membership has accrued (scripts/build_momentum_health.py measures why).
+    umd = _load(UMD_FILE)
+    with left, kit.card("Momentum health", "db_mh", "US momentum factor, winners minus losers"):
+        out = umd_html(umd)
         if out is None:
-            kit.caption("Momentum health is not available right now: its monthly file is missing or "
+            kit.caption("Momentum health is not available right now: the factor file is missing or "
                         "shorter than two years.")
-        elif lo_out:
-            st.html(out)
-            kit.caption("Each month-end the S&P 1500's members are ranked by this site's score and the "
-                        "top 100 are held, equal weight, for the next month: what a long-only momentum "
-                        "book earns. The figure is that book's 12-month return less the S&P 1500's, in "
-                        "percentage points. The top 100 is equal weight and the index is not, so part of "
-                        f"the lead is the small-stock effect. Winners minus losers {FACTOR_CHECK}. "
-                        "A reading, not a forecast.")
         else:
             st.html(out)
-            kit.caption("Each month-end the S&P 1500's members are ranked by this site's score; the "
-                        "spread is the next month's return of the top 100 minus the bottom 100. "
-                        f"Bars: the last 24 months. Checked {FACTOR_CHECK}. How momentum has been "
-                        "paying, not a forecast.")
+            kit.caption("Kenneth French's US momentum factor (UMD, Tuck School data library): each month "
+                        "the return of US stocks with the highest prior 2-12 month returns minus those with "
+                        "the lowest, from CRSP, so delisted stocks are counted. Bars: the last 24 months. "
+                        "How momentum has been paying, not a forecast." + _own_check())
     with right, kit.card("How many stocks qualify?", "db_qual", "the strategy's own filters, month-ends"):
         out = qualified_html(spreads)
         if out is None:
