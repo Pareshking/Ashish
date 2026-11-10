@@ -59,6 +59,20 @@ def reused() -> pd.DataFrame:
     return pd.read_csv(REUSED, parse_dates=["Until"])
 
 
+EXTRA_ALIASES = os.path.join(ROOT, "data", "ticker_aliases_extra.csv")
+
+
+def extra_aliases(have: dict) -> dict:
+    """Renames the Wikipedia-based alias builder did not reach (the dataset's
+    pre-2019 tickers), each with its evidence in data/ticker_aliases_extra.csv.
+    An alias already built from CIK or name is kept."""
+    out = dict(have)
+    if os.path.exists(EXTRA_ALIASES):
+        for r in pd.read_csv(EXTRA_ALIASES).itertuples():
+            out.setdefault(r.Symbol, {"new_symbol": r.NewSymbol, "matched_on": r.Evidence})
+    return out
+
+
 def epoch(symbols: list[str], when: pd.Timestamp, table: pd.DataFrame) -> list[str]:
     swap = {r.Symbol: r.StoredAs for r in table.itertuples() if when <= r.Until}
     return sorted(swap.get(s, s) for s in symbols)
@@ -113,6 +127,7 @@ def main(argv=None) -> int:
     lists, sha = read_dataset(args.csv)
     today = pd.Timestamp(mem.coverage(ours)[1])
     sub, report = build(lists, ours, args.start, today)
+    full["aliases"] = extra_aliases(full.get("aliases") or {})
     full.setdefault("indices", {})["sp500"] = {"baseline": sub["baseline"], "changes": sub["changes"]}
     full["sp500_source"] = (f"github:fja05680/sp500 month-end lists {args.start} .. {lists.index.max().date()} "
                             f"(file sha256 {sha[:12]}); Wikipedia revisions and nightly snapshots after; "

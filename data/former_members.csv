@@ -1,97 +1,125 @@
 Symbol,FirstMember,LastMember,Yahoo,Status,FirstPrice,LastPrice,Detail,Source
+AABA,2009-12-31,2017-04-30,AABA,no_data,,,neither Yahoo nor Stonks/tickers,
 AAN,2019-12-31,2023-08-31,AAN,reused_ticker,,,Stonks/tickers starts 2020-02-24 too: another company,
 AAOI,2019-12-31,2021-10-29,AAOI,priced,,,already in the store,yahoo
 AAWW,2019-12-31,2023-02-28,AAWW,priced,2005-11-09,2023-03-17,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AAXN,2019-12-31,2021-02-26,AXON,renamed_member,,,in today's list,yahoo (today's ticker)
-ABC,2019-12-31,2023-08-31,ABC,priced,1995-04-04,2023-08-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-ABMD,2019-12-31,2022-11-30,ABMD,priced,1987-07-30,2022-12-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ABC,2009-12-31,2023-08-31,ABC,priced,1995-04-04,2023-08-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ABMD,2018-05-31,2022-11-30,ABMD,priced,1987-07-30,2022-12-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ABTX,2019-12-31,2022-09-30,ABTX,priced,2015-10-08,2022-09-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ACC,2019-12-31,2022-07-29,ACC,priced,2004-08-16,2022-08-09,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ACOR,2019-12-31,2020-04-30,ACOR,priced,2006-02-10,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-ADS,2019-12-31,2022-03-31,BFH,renamed_member,,,in today's list,yahoo (today's ticker)
+ACS,2009-12-31,2010-01-31,ACS,no_data,,,neither Yahoo nor Stonks/tickers,
+ADS,2013-12-31,2022-03-31,BFH,renamed_member,,,in today's list,yahoo (today's ticker)
 ADTN,2019-12-31,2024-06-28,ADTN,priced,,,already in the store,yahoo
 AEGN,2019-12-31,2021-04-30,AEGN,no_data,,,neither Yahoo nor Stonks/tickers,
 AEL,2019-12-31,2024-04-30,AEL,short,2003-12-04,2023-10-10,"covered to 2023-10-10, member to 2024-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-AGN,2019-12-31,2020-04-30,AGN,no_data,,,neither Yahoo nor Stonks/tickers,
+AET,2009-12-31,2018-10-31,AET,no_data,,,neither Yahoo nor Stonks/tickers,
+AGN,2009-12-31,2020-04-30,AGN,no_data,,,neither Yahoo nor Stonks/tickers,
 AGTI,2022-12-30,2024-04-30,AGTI,short,2021-04-23,2023-10-10,"covered to 2023-10-10, member to 2024-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AHH,2019-12-31,2026-02-27,AHH,short,2013-05-08,2023-10-10,"covered to 2023-10-10, member to 2026-02-27","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AIRC,2020-12-31,2024-06-28,AIRC,short,2020-12-15,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-AIV,2019-12-31,2020-11-30,AIV,priced,,,already in the store,yahoo
+AIV,2009-12-31,2020-11-30,AIV,priced,,,already in the store,yahoo
 AJRD,2019-12-31,2023-07-31,AJRD,priced,1981-02-02,2023-07-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AKRX,2019-12-31,2020-11-30,AKRX,no_data,,,neither Yahoo nor Stonks/tickers,
+AKS,2009-12-31,2011-11-30,AKS,no_data,,,neither Yahoo nor Stonks/tickers,
 AL,2024-03-28,2026-03-31,AL,short,2011-04-19,2023-10-10,"covered to 2023-10-10, member to 2026-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ALE,2019-12-31,2025-11-28,ALE,short,1973-05-03,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ALEX,2019-12-31,2026-02-27,ALEX,short,2012-06-14,2023-10-10,"covered to 2023-10-10, member to 2026-02-27","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ALTM,2024-01-31,2025-02-28,ALTM,short,2017-05-02,2022-02-22,"covered to 2022-02-22, member to 2025-02-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-ALTR,2024-06-28,2025-02-28,ALTR,short,2017-11-01,2023-10-10,"covered to 2023-10-10, member to 2025-02-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-ALXN,2019-12-31,2021-06-30,ALXN,priced,1996-02-28,2021-07-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ALTR,2009-12-31,2025-02-28,ALTR,short,2017-11-01,2023-10-10,"covered to 2023-10-10, member to 2025-02-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ALXN,2012-05-31,2021-06-30,ALXN,priced,1996-02-28,2021-07-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AMAG,2019-12-31,2020-10-30,AMAG,no_data,,,neither Yahoo nor Stonks/tickers,
 AMBC,2019-12-31,2025-02-28,AMBC,short,2013-05-01,2023-10-10,"covered to 2023-10-10, member to 2025-02-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AMCX,2019-12-31,2024-08-30,AMCX,priced,,,already in the store,yahoo
 AMED,2019-12-31,2025-07-31,AMED,short,1994-08-18,2023-10-10,"covered to 2023-10-10, member to 2025-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AMEH,2021-06-30,2024-04-30,ASTH,renamed_member,,,in today's list,yahoo (today's ticker)
 AMWD,2019-12-31,2026-05-29,AMWD,short,1986-07-21,2023-10-10,"covered to 2023-10-10, member to 2026-05-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ANDV,2009-12-31,2018-09-30,ANDV,no_data,,,neither Yahoo nor Stonks/tickers,
 ANGI,2025-04-30,2026-02-27,ANGI,priced,,,already in the store,yahoo
 ANGO,2019-12-31,2023-08-31,ANGO,priced,,,already in the store,yahoo
 ANIK,2019-12-31,2023-08-31,ANIK,priced,,,already in the store,yahoo
-ANSS,2019-12-31,2025-06-30,ANSS,short,1996-06-21,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-ANTM,2019-12-31,2022-05-31,ELV,renamed_member,,,in today's list,yahoo (today's ticker)
+ANRZQ,2011-06-30,2012-09-30,ANRZQ,no_data,,,neither Yahoo nor Stonks/tickers,
+ANSS,2017-06-30,2025-06-30,ANSS,short,1996-06-21,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ANTM,2009-12-31,2022-05-31,ELV,renamed_member,,,in today's list,yahoo (today's ticker)
+APC,2009-12-31,2019-07-31,APC,no_data,2026-02-12,2026-11-09,neither Yahoo nor Stonks/tickers,
 APEI,2019-12-31,2022-08-31,APEI,priced,,,already in the store,yahoo
 APLS,2026-02-27,2026-04-30,APLS,short,2017-11-09,2023-10-10,"covered to 2023-10-10, member to 2026-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+APOL,2009-12-31,2013-06-30,APOL,no_data,,,neither Yahoo nor Stonks/tickers,
 APPS,2021-09-30,2024-02-29,APPS,priced,,,already in the store,yahoo
 APY,2019-12-31,2020-12-31,APY,no_data,,,neither Yahoo nor Stonks/tickers,
 ARCH,2024-03-28,2024-12-31,ARCH,short,2016-10-05,2023-10-10,"covered to 2023-10-10, member to 2024-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ARG,2009-12-31,2016-04-30,ARG,no_data,,,neither Yahoo nor Stonks/tickers,
 ARI,2019-12-31,2026-06-30,ARI,priced,,,already in the store,yahoo
-ARNC,2019-12-31,2023-07-31,ARNC,reused_ticker,,,Stonks/tickers starts 2020-04-02 too: another company,
+ARNC,2009-12-31,2023-07-31,HWM,renamed_member,,,in today's list,yahoo (today's ticker)
 ASGN,2019-12-31,2026-04-30,EFOR,renamed_member,,,in today's list,yahoo (today's ticker)
 ASIX,2019-12-31,2025-11-28,ASIX,priced,,,already in the store,yahoo
-ATGE,2019-12-31,2026-03-31,CVSA,renamed_member,,,in today's list,yahoo (today's ticker)
+ATGE,2009-12-31,2026-03-31,CVSA,renamed_member,,,in today's list,yahoo (today's ticker)
 ATNI,2019-12-31,2024-06-28,ATNI,priced,,,already in the store,yahoo
-ATVI,2019-12-31,2023-09-29,ATVI,priced,1993-10-25,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-AVB,2019-12-31,2026-07-31,AVB,short,1994-03-11,2023-10-10,"covered to 2023-10-10, member to 2026-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ATVI,2015-08-31,2023-09-30,ATVI,priced,1993-10-25,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+AVB,2009-12-31,2026-07-31,AVB,short,1994-03-11,2023-10-10,"covered to 2023-10-10, member to 2026-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AVD,2019-12-31,2023-09-29,AVD,priced,,,already in the store,yahoo
 AVID,2022-09-30,2023-10-31,AVID,short,2014-12-08,2023-10-10,"covered to 2023-10-10, member to 2023-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AVNS,2019-12-31,2026-06-30,AVNS,short,2018-05-22,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+AVP,2009-12-31,2015-01-31,AVP,no_data,,,neither Yahoo nor Stonks/tickers,
 AVTA,2023-02-28,2023-10-31,AVTA,short,2023-01-26,2023-10-10,"covered to 2023-10-10, member to 2023-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AXE,2019-12-31,2020-05-29,AXE,no_data,,,neither Yahoo nor Stonks/tickers,
 AXL,2019-12-31,2026-03-31,DCH,renamed_member,,,in today's list,yahoo (today's ticker)
+AYE,2009-12-31,2011-01-31,AYE,no_data,,,neither Yahoo nor Stonks/tickers,
 AZPN,2021-05-28,2025-02-28,AZPN,short,1994-10-26,2023-10-10,"covered to 2023-10-10, member to 2025-02-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 B,2019-12-31,2024-12-31,B,priced,,,already in the store,yahoo
-BBBY,2019-12-31,2023-02-28,BBBY,priced,1992-06-05,2023-05-02,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+BBBY,2009-12-31,2023-02-28,BBBY,priced,1992-06-05,2023-05-02,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 BCEI,2019-12-31,2021-10-29,BCEI,priced,2011-12-15,2021-11-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 BCOR,2019-12-31,2023-01-31,BCOR,priced,1998-12-15,2023-01-25,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+BCR,2009-12-31,2017-10-31,BCR,no_data,,,neither Yahoo nor Stonks/tickers,
+BDK,2009-12-31,2010-02-28,BDK,no_data,,,neither Yahoo nor Stonks/tickers,
 BDN,2020-06-30,2025-12-31,BDN,priced,,,already in the store,yahoo
+BEAM,2009-12-31,2014-04-30,BEAM,reused_ticker,2020-02-06,2026-11-09,Stonks/tickers starts 2020-02-06 too: another company,
 BEAT,2019-12-31,2021-01-29,BEAT,reused_ticker,2021-11-11,2026-11-09,Stonks/tickers starts 2021-11-11 too: another company,
 BELFB,2019-12-31,2021-07-30,BELFB,priced,,,already in the store,yahoo
 BERY,2023-06-30,2025-04-30,BERY,short,2012-10-04,2023-10-10,"covered to 2023-10-10, member to 2025-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 BGG,2019-12-31,2020-05-29,BGG,no_data,,,neither Yahoo nor Stonks/tickers,
 BGS,2019-12-31,2025-08-29,BGS,priced,,,already in the store,yahoo
+BHGE,2009-12-31,2019-09-30,BKR,renamed_member,,,in today's list,yahoo (today's ticker)
 BHLB,2019-12-31,2025-08-29,BBT,renamed_member,,,in today's list,yahoo (today's ticker)
 BID,2020-10-30,2020-11-30,BID,no_data,2026-07-20,2026-11-09,neither Yahoo nor Stonks/tickers,
-BIG,2019-12-31,2023-05-31,BIG,priced,1985-06-20,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-BK,2019-12-31,2026-04-30,BNY,renamed_member,,,in today's list,yahoo (today's ticker)
+BIG,2009-12-31,2023-05-31,BIG,priced,1985-06-20,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+BJS,2009-12-31,2010-03-31,BJS,no_data,,,neither Yahoo nor Stonks/tickers,
+BK,2009-12-31,2026-04-30,BNY,renamed_member,,,in today's list,yahoo (today's ticker)
 BLD,2019-12-31,2026-06-30,BLD,short,2015-07-01,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 BLDR,2020-12-31,2026-08-31,BLDR,priced,,,already in the store,yahoo
-BLL,2019-12-31,2022-04-29,BALL,renamed_member,,,in today's list,yahoo (today's ticker)
+BLL,2009-12-31,2022-04-30,BALL,renamed_member,,,in today's list,yahoo (today's ticker)
 BLMN,2019-12-31,2026-02-27,BLMN,priced,,,already in the store,yahoo
+BMC,2009-12-31,2013-07-31,BMC,no_data,,,neither Yahoo nor Stonks/tickers,
+BMS,2009-12-31,2014-11-30,BMS,no_data,,,neither Yahoo nor Stonks/tickers,
 BNED,2019-12-31,2022-03-31,BNED,priced,,,already in the store,yahoo
+BNI,2009-12-31,2010-01-31,BNI,no_data,,,neither Yahoo nor Stonks/tickers,
 BOOM,2019-12-31,2023-05-31,BOOM,priced,,,already in the store,yahoo
 BPFH,2019-12-31,2021-06-30,BPFH,priced,1994-02-14,2021-06-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 BRBR,2022-03-31,2026-05-29,BRBR,priced,,,already in the store,yahoo
+BRCM,2009-12-31,2016-01-31,BRCM,no_data,,,neither Yahoo nor Stonks/tickers,
 BRKL,2019-12-31,2025-08-29,BRKL,short,1998-03-25,2023-10-10,"covered to 2023-10-10, member to 2025-08-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 BRKS,2019-12-31,2021-11-30,BRKS,priced,1995-02-02,2021-11-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 BSIG,2020-06-30,2025-08-29,AAMI,renamed_member,,,in today's list,yahoo (today's ticker)
+BTUUQ,2009-12-31,2014-08-31,BTUUQ,no_data,,,neither Yahoo nor Stonks/tickers,
+BXLT,2015-07-31,2016-05-31,BXLT,no_data,,,neither Yahoo nor Stonks/tickers,
 BXS,2019-12-31,2021-10-29,BXS,priced,1985-10-16,2021-10-28,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CA,2009-12-31,2018-10-31,CA,no_data,,,neither Yahoo nor Stonks/tickers,
 CABO,2019-12-31,2026-06-30,CABO,priced,,,already in the store,yahoo
 CADE,2019-12-31,2026-01-30,CADE,short,1985-10-16,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CAL,2019-12-31,2025-10-31,CAL,priced,,,already in the store,yahoo
+CAM,2009-12-31,2016-03-31,CAM,no_data,2025-10-06,2026-11-09,neither Yahoo nor Stonks/tickers,
 CAMP,2019-12-31,2022-08-31,CAMP,priced,1984-09-07,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CARA,2021-04-30,2023-05-31,CARA,priced,2014-01-31,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CARS,2021-12-31,2026-02-27,CARS,priced,,,already in the store,yahoo
 CATM,2019-12-31,2021-05-28,CATM,priced,2007-12-13,2021-06-18,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CATO,2019-12-31,2022-11-30,CATO,priced,,,already in the store,yahoo
 CBB,2019-12-31,2021-08-31,CBB,priced,1987-05-21,2021-09-03,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CBE,2011-11-30,2012-10-31,CBE,no_data,,,neither Yahoo nor Stonks/tickers,
 CBL,2019-12-31,2020-05-29,CBL,priced,1993-10-28,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CBS,2009-12-31,2019-11-30,VIAC,priced,,,already in the store,yahoo
+CCE,2009-12-31,2016-04-30,CCE,no_data,,,neither Yahoo nor Stonks/tickers,
+CCEP,2016-01-31,2016-04-30,CCEP,priced,2008-01-02,2026-11-09,,yahoo
 CCMP,2020-10-30,2022-06-30,CCMP,priced,2000-04-05,2022-07-06,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CCRN,2019-12-31,2024-09-30,CCRN,short,2001-10-25,2023-10-10,"covered to 2023-10-10, member to 2024-09-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CCSI,2021-10-29,2024-02-29,CCSI,priced,,,already in the store,yahoo
@@ -100,11 +128,14 @@ CDK,2019-12-31,2022-06-30,CDK,priced,2014-09-24,2022-07-05,,"github:Stonks/ticke
 CDMO,2021-11-30,2023-11-30,CDMO,short,2018-01-08,2023-10-10,"covered to 2023-10-10, member to 2023-11-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CDR,2019-12-31,2020-07-31,CDR,priced,1993-02-19,2022-08-19,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CEIX,2019-12-31,2024-12-31,CNR,renamed_member,,,in today's list,yahoo (today's ticker)
-CERN,2019-12-31,2022-05-31,CERN,priced,1990-03-26,2022-06-07,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CELG,2009-12-31,2019-10-31,CELG,no_data,,,neither Yahoo nor Stonks/tickers,
+CEPH,2009-12-31,2011-09-30,CEPH,no_data,,,neither Yahoo nor Stonks/tickers,
+CERN,2010-04-30,2022-05-31,CERN,priced,1990-03-26,2022-06-07,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CEVA,2019-12-31,2025-11-28,CEVA,priced,,,already in the store,yahoo
+CFN,2009-12-31,2015-01-31,CFN,no_data,,,neither Yahoo nor Stonks/tickers,
 CFX,2019-12-31,2022-03-31,CFX,priced,2008-05-08,2022-04-04,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CHCT,2019-12-31,2024-08-30,CHCT,priced,,,already in the store,yahoo
-CHK,2019-12-31,2024-09-30,CHK,reused_ticker,,,Stonks/tickers starts 2021-02-10 too: another company,
+CHK,2009-12-31,2024-09-30,CHK,reused_ticker,,,Stonks/tickers starts 2021-02-10 too: another company,
 CHRS,2020-06-30,2023-08-31,CHRS,priced,,,already in the store,yahoo
 CHS,2019-12-31,2023-12-29,CHS,short,1993-03-24,2023-10-10,"covered to 2023-10-10, member to 2023-12-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CHUY,2019-12-31,2024-09-30,CHUY,short,2012-07-24,2023-10-10,"covered to 2023-10-10, member to 2024-09-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -119,22 +150,27 @@ CLFD,2022-08-31,2023-11-30,CLFD,priced,,,already in the store,yahoo
 CLGX,2019-12-31,2021-05-28,CLGX,priced,1990-03-23,2021-06-03,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CLI,2019-12-31,2021-11-30,CLI,priced,1994-08-25,2021-12-09,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CLW,2019-12-31,2024-10-31,CLW,priced,,,already in the store,yahoo
-CMA,2019-12-31,2026-01-30,CMA,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CMA,2009-12-31,2026-01-30,CMA,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CMCSK,2015-09-30,2015-11-30,CMCSK,no_data,,,neither Yahoo nor Stonks/tickers,
 CMD,2019-12-31,2021-05-28,CMD,priced,1993-02-19,2021-06-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CMO,2019-12-31,2021-10-29,CMO,short,1987-11-05,2021-10-18,"covered to 2021-10-18, member to 2021-10-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CMP,2019-12-31,2024-08-30,CMP,priced,,,already in the store,yahoo
 CMTL,2019-12-31,2023-05-31,CMTL,priced,,,already in the store,yahoo
 CNSL,2019-12-31,2024-12-31,CNSL,short,2005-07-22,2023-10-10,"covered to 2023-10-10, member to 2024-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-COG,2019-12-31,2021-09-30,COG,priced,1990-02-08,2021-10-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+COG,2009-12-31,2021-09-30,COG,priced,1990-02-08,2021-10-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+COL,2009-12-31,2018-10-31,COL,no_data,,,neither Yahoo nor Stonks/tickers,
 CONE,2019-12-31,2022-02-28,CONE,priced,2013-01-18,2022-03-24,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CONN,2019-12-31,2022-11-30,CONN,priced,2003-11-25,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 COOP,2020-09-30,2025-09-30,COOP,short,2015-09-28,2023-10-10,"covered to 2023-10-10, member to 2025-09-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CORE,2019-12-31,2021-08-31,CORE,priced,2017-11-27,2021-09-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+COV,2011-03-31,2014-12-31,COV,no_data,,,neither Yahoo nor Stonks/tickers,
 CPE,2019-12-31,2024-03-28,CPE,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2024-03-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-CPRI,2019-12-31,2026-08-31,CPRI,priced,,,already in the store,yahoo
+CPGX,2015-07-31,2016-06-30,CPGX,no_data,,,neither Yahoo nor Stonks/tickers,
+CPRI,2016-01-31,2026-08-31,CPRI,priced,,,already in the store,yahoo
 CPRX,2022-09-30,2026-06-30,CPRX,short,2006-11-08,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CPS,2019-12-31,2022-02-28,CPS,priced,,,already in the store,yahoo
 CPSI,2019-12-31,2023-08-31,CPSI,priced,2002-05-21,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CPWR-201412,2009-12-31,2011-12-31,CPWR-201412,no_data,,,neither Yahoo nor Stonks/tickers,
 CRCM,2019-12-31,2020-01-31,CRCM,no_data,,,neither Yahoo nor Stonks/tickers,
 CREE,2019-12-31,2021-10-29,CREE,short,1993-02-09,2021-10-01,"covered to 2021-10-01, member to 2021-10-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CRMT,2020-02-28,2024-02-29,CRMT,priced,,,already in the store,yahoo
@@ -142,41 +178,49 @@ CRNC,2021-07-30,2024-06-28,CRNC,priced,,,already in the store,yahoo
 CRY,2019-12-31,2021-12-31,AORT,renamed_member,,,in today's list,yahoo (today's ticker)
 CSGS,2019-12-31,2026-04-30,CSGS,short,1996-02-28,2023-10-10,"covered to 2023-10-10, member to 2026-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CSII,2019-12-31,2023-04-28,CSII,priced,2006-06-28,2023-04-27,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CSRA,2015-11-30,2018-03-31,CSRA,no_data,2026-08-12,2026-11-09,neither Yahoo nor Stonks/tickers,
 CSWI,2024-09-30,2025-07-31,CSW,renamed_member,,,in today's list,yahoo (today's ticker)
 CTB,2019-12-31,2021-05-28,CTB,priced,1987-11-05,2021-06-04,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CTKB,2023-05-31,2026-06-30,CTKB,priced,,,already in the store,yahoo
-CTL,2019-12-31,2020-08-31,LUMN,renamed_member,,,in today's list,yahoo (today's ticker)
-CTLT,2019-12-31,2024-11-29,CTLT,short,2014-07-31,2023-10-10,"covered to 2023-10-10, member to 2024-11-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CTL,2009-12-31,2020-08-31,LUMN,renamed_member,,,in today's list,yahoo (today's ticker)
+CTLT,2019-12-31,2024-11-30,CTLT,short,2014-07-31,2023-10-10,"covered to 2023-10-10, member to 2024-11-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CTRA,2021-10-29,2026-04-30,CTRA,short,1990-02-08,2023-10-10,"covered to 2023-10-10, member to 2026-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-CTXS,2019-12-31,2022-09-30,CTXS,priced,1995-12-08,2022-09-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CTXS,2009-12-31,2022-09-30,CTXS,priced,1995-12-08,2022-09-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CUB,2019-12-31,2021-04-30,CUB,priced,1989-02-21,2021-05-24,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CUTR,2019-12-31,2023-05-31,CUTR,priced,2004-03-31,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CVC,2010-12-31,2016-05-31,CVC,no_data,,,neither Yahoo nor Stonks/tickers,
 CVET,2019-12-31,2022-09-30,CVET,priced,2019-02-08,2022-10-12,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CVGW,2019-12-31,2024-08-30,CVGW,short,2002-07-22,2023-10-10,"covered to 2023-10-10, member to 2024-08-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-CXO,2019-12-31,2020-12-31,CXO,no_data,,,neither Yahoo nor Stonks/tickers,
+CVH,2009-12-31,2013-02-28,CVH,no_data,,,neither Yahoo nor Stonks/tickers,
+CXO,2016-02-29,2020-12-31,CXO,no_data,,,neither Yahoo nor Stonks/tickers,
 CY,2019-12-31,2020-10-30,CY,no_data,,,neither Yahoo nor Stonks/tickers,
 CYH,2019-12-31,2023-11-30,CYH,priced,,,already in the store,yahoo
 DAKT,2019-12-31,2021-10-29,DAKT,priced,,,already in the store,yahoo
-DAY,2024-02-29,2026-01-30,DAY,no_data,,,neither Yahoo nor Stonks/tickers,
+DAY,2024-02-29,2026-01-31,DAY,no_data,,,neither Yahoo nor Stonks/tickers,
 DBI,2019-12-31,2024-08-30,DBI,priced,,,already in the store,yahoo
 DDD,2019-12-31,2024-08-30,DDD,priced,,,already in the store,yahoo
 DDS,2019-12-31,2020-11-30,DDS,priced,,,already in the store,yahoo
-DFS,2019-12-31,2025-04-30,DFS,short,2007-06-14,2023-10-10,"covered to 2023-10-10, member to 2025-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+DF,2009-12-31,2013-02-28,DF,no_data,,,neither Yahoo nor Stonks/tickers,
+DFS,2009-12-31,2025-04-30,DFS,short,2007-06-14,2023-10-10,"covered to 2023-10-10, member to 2025-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 DHC,2020-06-30,2022-11-30,DHC,priced,,,already in the store,yahoo
 DIN,2019-12-31,2024-08-30,DIN,priced,,,already in the store,yahoo
-DISCA,2019-12-31,2022-03-31,DISCA,priced,2005-07-08,2022-04-08,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-DISCK,2019-12-31,2022-03-31,DISCK,priced,2008-09-18,2022-04-08,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-DISH,2019-12-31,2023-12-29,DISH,short,1995-06-21,2023-10-10,"covered to 2023-10-10, member to 2023-12-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+DISCA,2010-03-31,2022-03-31,DISCA,priced,2005-07-08,2022-04-08,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+DISCK,2014-08-31,2022-03-31,DISCK,priced,2008-09-18,2022-04-08,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+DISH,2017-03-31,2023-12-29,DISH,short,1995-06-21,2023-10-10,"covered to 2023-10-10, member to 2023-12-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 DLPH,2019-12-31,2020-11-30,DLPH,no_data,,,neither Yahoo nor Stonks/tickers,
+DNB,2009-12-31,2017-03-31,DNB,reused_ticker,,,Stonks/tickers starts 2020-07-01 too: another company,
 DNKN,2019-12-31,2020-11-30,DNKN,no_data,,,neither Yahoo nor Stonks/tickers,
-DO,2019-12-31,2020-04-30,DO,reused_ticker,,,Stonks/tickers starts 2022-03-30 too: another company,
+DNR,2009-12-31,2015-01-31,DNR,no_data,,,neither Yahoo nor Stonks/tickers,
+DO,2009-12-31,2020-04-30,DO,reused_ticker,,,Stonks/tickers starts 2022-03-30 too: another company,
 DOUG,2022-01-31,2023-05-31,DOUG,priced,,,already in the store,yahoo
 DPLO,2019-12-31,2020-01-31,DPLO,no_data,,,neither Yahoo nor Stonks/tickers,
-DRE,2019-12-31,2022-09-30,DRE,priced,1987-11-05,2022-09-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+DRE,2017-07-31,2022-09-30,DRE,priced,1987-11-05,2022-09-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 DRQ,2019-12-31,2025-07-31,INVX,renamed_member,,,in today's list,yahoo (today's ticker)
 DSPG,2019-12-31,2021-11-30,DSPG,priced,1994-02-14,2021-12-02,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+DTV,2009-12-31,2015-06-30,DTV,no_data,,,neither Yahoo nor Stonks/tickers,
 DVAX,2022-05-31,2026-01-30,DVAX,short,2004-02-19,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-EA,2019-12-31,2026-07-31,EA,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2026-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+DWDP,2017-09-30,2019-04-30,DD,renamed_member,,,in today's list,yahoo (today's ticker)
+EA,2009-12-31,2026-07-31,EA,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2026-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 EBIX,2019-12-31,2023-09-29,EBIX,priced,1990-03-26,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 EBS,2019-12-31,2023-07-31,EBS,priced,,,already in the store,yahoo
 ECOL,2019-12-31,2022-04-29,ECOL,priced,1990-03-26,2022-04-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -186,63 +230,77 @@ EGOV,2019-12-31,2021-03-31,EGOV,no_data,,,neither Yahoo nor Stonks/tickers,
 EGRX,2019-12-31,2023-05-31,EGRX,priced,,,already in the store,yahoo
 EHAB,2022-07-29,2024-08-30,EHAB,short,2022-07-01,2023-10-10,"covered to 2023-10-10, member to 2024-08-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 EHTH,2019-12-31,2022-08-31,EHTH,priced,,,already in the store,yahoo
+EKDKQ,2009-12-31,2010-11-30,EKDKQ,no_data,,,neither Yahoo nor Stonks/tickers,
 ELME,2023-11-30,2026-01-30,ELME,short,1992-03-17,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ELY,2019-12-31,2022-08-31,CALY,renamed_member,,,in today's list,yahoo (today's ticker)
 EMBC,2022-04-29,2026-06-30,EMBC,priced,,,already in the store,yahoo
-ENDP,2019-12-31,2022-05-31,ENDP,priced,2000-07-18,2022-08-25,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+EMC,2009-12-31,2016-07-31,EMC,no_data,2023-05-15,2026-11-09,neither Yahoo nor Stonks/tickers,
+ENDP,2015-01-31,2022-05-31,ENDP,priced,2000-07-18,2022-08-25,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ENTA,2019-12-31,2023-08-31,ENTA,priced,,,already in the store,yahoo
 ENV,2021-06-30,2024-10-31,ENV,short,2010-07-29,2023-10-10,"covered to 2023-10-10, member to 2024-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+EP-201205,2009-12-31,2012-04-30,EP-201205,no_data,,,neither Yahoo nor Stonks/tickers,
 EPAY,2019-12-31,2022-04-29,EPAY,priced,1999-02-12,2022-05-13,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-EQR,2019-12-31,2026-07-31,VMRK,renamed_member,,,in today's list,yahoo (today's ticker)
+EQR,2009-12-31,2026-07-31,VMRK,renamed_member,,,in today's list,yahoo (today's ticker)
 ERI,2019-12-31,2020-11-30,ERI,no_data,,,neither Yahoo nor Stonks/tickers,
+ESRX,2009-12-31,2018-11-30,ESRX,no_data,,,neither Yahoo nor Stonks/tickers,
+ESV,2012-07-31,2016-02-29,ESV,no_data,,,neither Yahoo nor Stonks/tickers,
 ETD,2021-08-31,2026-06-30,ETD,priced,,,already in the store,yahoo
-ETFC,2019-12-31,2020-09-30,ETFC,no_data,,,neither Yahoo nor Stonks/tickers,
+ETFC,2009-12-31,2020-09-30,ETFC,no_data,,,neither Yahoo nor Stonks/tickers,
 ETH,2019-12-31,2021-07-30,ETH,priced,1993-03-16,2021-08-13,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ETRN,2019-12-31,2024-06-28,ETRN,short,2018-11-13,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 EV,2019-12-31,2021-02-26,EV,no_data,,,neither Yahoo nor Stonks/tickers,
+EVHC,2016-12-31,2018-09-30,EVHC,no_data,,,neither Yahoo nor Stonks/tickers,
 EXPI,2023-06-30,2026-04-30,AGNT,renamed_member,,,in today's list,yahoo (today's ticker)
 EXPR,2019-12-31,2020-08-31,EXPR,priced,2010-05-13,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 EXTN,2019-12-31,2021-02-26,EXTN,priced,2015-11-04,2022-10-12,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 FARO,2019-12-31,2023-05-31,FARO,priced,1997-09-18,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-FB,2019-12-31,2022-05-31,META,renamed_member,,,in today's list,yahoo (today's ticker)
+FB,2013-12-31,2022-05-31,META,renamed_member,,,in today's list,yahoo (today's ticker)
 FBC,2019-12-31,2022-11-30,FBC,priced,1997-04-30,2022-11-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-FBHS,2019-12-31,2022-11-30,FBHS,priced,2011-09-16,2022-12-14,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+FBHS,2016-06-30,2022-11-30,FBHS,priced,2011-09-16,2022-12-14,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 FBM,2020-01-31,2020-12-31,FBM,no_data,,,neither Yahoo nor Stonks/tickers,
+FDO,2009-12-31,2015-06-30,FDO,no_data,,,neither Yahoo nor Stonks/tickers,
 FDP,2019-12-31,2026-06-30,DMC,renamed_member,,,in today's list,yahoo (today's ticker)
 FF,2019-12-31,2023-08-31,FF,priced,,,already in the store,yahoo
 FI,2023-06-30,2025-10-31,FISV,renamed_member,,,in today's list,yahoo (today's ticker)
-FII,2019-12-31,2020-12-31,FII,no_data,,,neither Yahoo nor Stonks/tickers,
-FL,2019-12-31,2025-08-29,FL,short,1970-01-02,2023-10-10,"covered to 2023-10-10, member to 2025-08-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+FII,2009-12-31,2020-12-31,FII,no_data,,,neither Yahoo nor Stonks/tickers,
+FL,2016-04-30,2025-08-29,FL,short,1970-01-02,2023-10-10,"covered to 2023-10-10, member to 2025-08-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 FLGT,2020-09-30,2025-02-28,FLGT,priced,,,already in the store,yahoo
-FLIR,2019-12-31,2021-04-30,FLIR,no_data,,,neither Yahoo nor Stonks/tickers,
+FLIR,2009-12-31,2021-04-30,FLIR,no_data,,,neither Yahoo nor Stonks/tickers,
 FLOW,2019-12-31,2022-03-31,FLOW,priced,2015-09-28,2022-04-04,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-FLT,2019-12-31,2024-02-29,CPAY,renamed_member,,,in today's list,yahoo (today's ticker)
+FLT,2018-06-30,2024-02-29,CPAY,renamed_member,,,in today's list,yahoo (today's ticker)
 FMBI,2019-12-31,2022-01-31,FMBI,priced,1990-03-26,2022-02-15,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 FOE,2019-12-31,2022-03-31,FOE,priced,1987-11-05,2022-04-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 FORR,2019-12-31,2024-02-29,FORR,priced,,,already in the store,yahoo
-FOSL,2019-12-31,2022-08-31,FOSL,priced,,,already in the store,yahoo
-FRC,2019-12-31,2023-04-28,FRC,priced,2010-12-09,2023-05-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+FOSL,2012-04-30,2022-08-31,FOSL,priced,,,already in the store,yahoo
+FRC,2019-01-31,2023-04-28,FRC,priced,2010-12-09,2023-05-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 FRGI,2019-12-31,2022-03-31,FRGI,priced,2012-04-26,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+FRX,2009-12-31,2014-06-30,FRX,reused_ticker,,,Stonks/tickers starts 2021-01-15 too: another company,
 FSB,2019-12-31,2020-07-31,FSB,no_data,,,neither Yahoo nor Stonks/tickers,
 FSP,2019-12-31,2023-02-28,FSP,priced,,,already in the store,yahoo
+FTR,2009-12-31,2017-02-28,FTR,no_data,,,neither Yahoo nor Stonks/tickers,
 FWRD,2019-12-31,2026-06-30,FWRD,priced,,,already in the store,yahoo
 FYBR,2022-10-31,2025-12-31,FYBR,short,2021-05-04,2023-10-10,"covered to 2023-10-10, member to 2025-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+GAS,2009-12-31,2016-06-30,GAS,no_data,,,neither Yahoo nor Stonks/tickers,
 GCI,2019-12-31,2023-05-31,GCI,priced,2019-11-20,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 GCO,2019-12-31,2023-05-31,GCO,priced,,,already in the store,yahoo
 GCP,2019-12-31,2022-08-31,GCP,priced,2016-02-04,2022-09-26,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 GDEN,2022-03-31,2026-04-30,GDEN,short,2015-08-04,2023-10-10,"covered to 2023-10-10, member to 2026-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 GDOT,2019-12-31,2025-02-28,GDOT,priced,,,already in the store,yahoo
 GDYN,2025-01-31,2026-06-30,GDYN,priced,,,already in the store,yahoo
+GENZ-201104,2009-12-31,2011-03-31,GENZ-201104,no_data,,,neither Yahoo nor Stonks/tickers,
 GEOS,2019-12-31,2020-11-30,GEOS,priced,,,already in the store,yahoo
 GES,2019-12-31,2025-12-31,GES,short,2017-12-15,2023-10-10,"covered to 2023-10-10, member to 2025-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+GGP,2013-12-31,2018-07-31,GGP,no_data,,,neither Yahoo nor Stonks/tickers,
 GHL,2019-12-31,2022-05-31,GHL,priced,2004-05-06,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 GLT,2019-12-31,2022-08-31,GLT,priced,1984-05-16,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 GLUU,2019-12-31,2021-04-30,GLUU,no_data,,,neither Yahoo nor Stonks/tickers,
+GMCR,2014-03-31,2016-02-29,GMCR,no_data,,,neither Yahoo nor Stonks/tickers,
 GMS,2019-12-31,2025-08-29,GMS,short,2016-05-26,2023-10-10,"covered to 2023-10-10, member to 2025-08-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 GOGO,2022-04-29,2026-06-30,GOGO,priced,,,already in the store,yahoo
 GPMT,2019-12-31,2023-02-28,GPMT,priced,,,already in the store,yahoo
 GPRE,2019-12-31,2025-02-28,GPRE,priced,,,already in the store,yahoo
-GPS,2019-12-31,2024-07-31,GAP,renamed_member,,,in today's list,yahoo (today's ticker)
+GPS,2009-12-31,2024-07-31,GAP,renamed_member,,,in today's list,yahoo (today's ticker)
+GR,2009-12-31,2012-06-30,GR,no_data,,,neither Yahoo nor Stonks/tickers,
 GRUB,2019-12-31,2021-05-28,GRUB,priced,2014-04-04,2021-06-14,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 GTLS,2019-12-31,2026-06-30,GTLS,short,2006-07-26,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 GTX,2019-12-31,2020-08-31,GTX,priced,,,already in the store,yahoo
@@ -251,40 +309,49 @@ GWR,2019-12-31,2020-10-30,GWR,no_data,,,neither Yahoo nor Stonks/tickers,
 GWRS,2020-08-31,2020-09-30,GWRS,priced,,,already in the store,yahoo
 HA,2019-12-31,2023-09-29,HA,priced,1995-06-21,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HAIN,2019-12-31,2025-02-28,HAIN,priced,,,already in the store,yahoo
+HAR,2009-12-31,2017-02-28,HAR,no_data,,,neither Yahoo nor Stonks/tickers,
 HAYN,2019-12-31,2024-10-31,HAYN,short,2007-03-21,2023-10-10,"covered to 2023-10-10, member to 2024-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-HBI,2019-12-31,2025-11-28,HBI,short,2006-09-06,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HBI,2015-03-31,2025-11-28,HBI,short,2006-09-06,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HCBK,2009-12-31,2015-10-31,HCBK,no_data,,,neither Yahoo nor Stonks/tickers,
+HCP,2009-12-31,2019-10-31,DOC,renamed_member,,,in today's list,yahoo (today's ticker)
 HELE,2019-12-31,2025-11-28,HELE,priced,,,already in the store,yahoo
-HES,2019-12-31,2025-06-30,HES,short,1983-04-06,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-HFC,2019-12-31,2022-02-28,HFC,priced,1992-03-17,2022-03-14,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HES,2009-12-31,2025-06-30,HES,short,1983-04-06,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HFC,2018-06-30,2022-02-28,HFC,priced,1992-03-17,2022-03-14,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HI,2019-12-31,2026-01-30,HI,short,2008-03-28,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HIBB,2019-12-31,2024-07-31,HIBB,short,1996-10-11,2023-10-10,"covered to 2023-10-10, member to 2024-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HMST,2019-12-31,2023-05-31,HMST,priced,2012-02-10,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HMSY,2019-12-31,2021-02-26,HMSY,no_data,,,neither Yahoo nor Stonks/tickers,
 HNGR,2019-12-31,2022-09-30,HNGR,priced,2018-09-12,2022-09-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-HOLX,2019-12-31,2026-03-31,HOLX,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2026-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HNZ,2009-12-31,2013-05-31,HNZ,no_data,,,neither Yahoo nor Stonks/tickers,
+HOLX,2016-03-31,2026-03-31,HOLX,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2026-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HOT,2009-12-31,2016-07-31,HOT,no_data,,,neither Yahoo nor Stonks/tickers,
 HOUS,2022-07-29,2024-06-28,HOUS,short,2012-10-11,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HPP,2020-12-31,2024-12-31,HPP,priced,,,already in the store,yahoo
 HPR,2019-12-31,2020-05-29,HPR,no_data,,,neither Yahoo nor Stonks/tickers,
 HPT,2019-12-31,2020-12-31,HPT,no_data,,,neither Yahoo nor Stonks/tickers,
 HRC,2019-12-31,2021-11-30,HRC,priced,1987-03-02,2021-12-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HRS,2009-12-31,2019-04-30,LHX,renamed_member,,,in today's list,yahoo (today's ticker)
 HSC,2019-12-31,2023-10-31,HSC,short,1987-11-05,2023-06-16,"covered to 2023-06-16, member to 2023-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HSH,2009-12-31,2012-05-31,HSH,no_data,,,neither Yahoo nor Stonks/tickers,
 HSII,2019-12-31,2025-11-28,HSII,short,1999-04-27,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HSKA,2019-12-31,2023-05-31,HSKA,priced,1997-07-01,2023-06-12,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HSP,2009-12-31,2015-08-31,HSP,no_data,,,neither Yahoo nor Stonks/tickers,
 HT,2019-12-31,2023-02-28,HT,priced,1999-01-21,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HTZ,2023-03-31,2026-07-31,HTZ,priced,,,already in the store,yahoo
 HVT,2019-12-31,2024-08-30,HVT,priced,,,already in the store,yahoo
 IAA,2020-12-31,2023-02-28,IAA,priced,2019-06-28,2023-03-20,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 IAC,2024-05-31,2026-05-29,PPLI,renamed_member,,,in today's list,yahoo (today's ticker)
 IBTX,2019-12-31,2024-12-31,IBTX,short,2013-04-04,2023-10-10,"covered to 2023-10-10, member to 2024-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+IGT,2009-12-31,2014-05-31,IGT,priced,1990-03-26,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 IIIN,2019-12-31,2026-06-30,IIIN,priced,,,already in the store,yahoo
 IIVI,2019-12-31,2022-08-31,IIVI,priced,1990-03-26,2023-06-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ILPT,2019-12-31,2023-02-28,ILPT,priced,,,already in the store,yahoo
 INDUSTRIALS,2020-10-30,2020-10-30,INDUSTRIALS,no_data,,,neither Yahoo nor Stonks/tickers,
-INFO,2019-12-31,2022-02-28,INFO,priced,2014-06-19,2022-02-25,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+INFO,2017-06-30,2022-02-28,INFO,priced,2014-06-19,2022-02-25,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 INGN,2019-12-31,2023-05-31,INGN,priced,,,already in the store,yahoo
 INN,2019-12-31,2026-02-27,INN,priced,,,already in the store,yahoo
 INT,2019-12-31,2023-07-31,WKC,renamed_member,,,in today's list,yahoo (today's ticker)
-IPG,2019-12-31,2025-11-28,IPG,short,1987-11-05,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+IPG,2009-12-31,2025-11-28,IPG,short,1987-11-05,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 IRBT,2019-12-31,2024-02-29,IRBT,short,2005-11-09,2023-10-10,"covered to 2023-10-10, member to 2024-02-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 IRWD,2022-06-30,2025-01-31,IRWD,priced,,,already in the store,yahoo
 ISBC,2021-02-26,2022-03-31,ISBC,priced,2005-10-12,2022-04-06,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -293,42 +360,56 @@ ITOS,2022-01-31,2023-09-29,ITOS,priced,2020-07-24,2023-10-10,,"github:Stonks/tic
 IVC,2019-12-31,2021-10-29,IVC,priced,1990-03-26,2023-02-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 IVR,2019-12-31,2023-11-30,IVR,priced,,,already in the store,yahoo
 JACK,2019-12-31,2025-08-29,JACK,priced,,,already in the store,yahoo
+JAVA,2009-12-31,2009-12-31,JAVA,no_data,2021-10-05,2026-11-09,neither Yahoo nor Stonks/tickers,
 JBT,2019-12-31,2025-07-31,JBTM,renamed_member,,,in today's list,yahoo (today's ticker)
 JCOM,2019-12-31,2021-09-30,JCOM,priced,1999-07-23,2021-10-07,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-JCP,2019-12-31,2020-04-30,JCP,no_data,,,neither Yahoo nor Stonks/tickers,
+JCP,2009-12-31,2020-04-30,JCP,no_data,,,neither Yahoo nor Stonks/tickers,
+JEC,2009-12-31,2019-11-30,J,renamed_member,,,in today's list,yahoo (today's ticker)
 JHG,2019-12-31,2026-06-30,JHG,short,2017-05-30,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-JNPR,2019-12-31,2025-06-30,JNPR,short,1999-06-25,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+JNPR,2009-12-31,2025-06-30,JNPR,short,1999-06-25,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+JNS,2009-12-31,2011-10-31,JNS,no_data,,,neither Yahoo nor Stonks/tickers,
+JOY,2011-02-28,2015-09-30,JOY,no_data,,,neither Yahoo nor Stonks/tickers,
 JRVR,2019-12-31,2023-11-30,JRVR,priced,,,already in the store,yahoo
 JW-A,2019-12-31,2022-12-30,WLY,renamed_member,,,in today's list,yahoo (today's ticker)
-JWN,2019-12-31,2025-04-30,JWN,short,1986-07-09,2023-10-10,"covered to 2023-10-10, member to 2025-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+JWN,2009-12-31,2025-04-30,JWN,short,1986-07-09,2023-10-10,"covered to 2023-10-10, member to 2025-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 JYNT,2021-05-28,2022-12-30,JYNT,priced,,,already in the store,yahoo
-K,2019-12-31,2025-11-28,K,short,1984-12-17,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+K,2009-12-31,2025-11-30,K,short,1984-12-17,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 KAMN,2019-12-31,2024-03-28,KAMN,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2024-03-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 KAR,2019-12-31,2025-12-31,OPLN,renamed_member,,,in today's list,yahoo (today's ticker)
 KELYA,2019-12-31,2024-12-31,KELYA,priced,,,already in the store,yahoo
+KG-201102,2009-12-31,2010-11-30,KG-201102,no_data,,,neither Yahoo nor Stonks/tickers,
 KLG,2023-10-31,2025-08-29,KLG,short,2023-10-02,2023-10-10,"covered to 2023-10-10, member to 2025-08-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+KORS,2013-11-30,2018-08-31,CPRI,priced,,,already in the store,yahoo
 KRA,2019-12-31,2022-02-28,KRA,priced,2009-12-17,2022-03-14,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 KREF,2019-12-31,2026-02-27,KREF,priced,,,already in the store,yahoo
-KSU,2019-12-31,2021-11-30,KSU,priced,1987-11-05,2021-12-13,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-KVUE,2023-08-31,2026-10-30,KVUE,short,2023-05-04,2023-10-10,"covered to 2023-10-10, member to 2026-10-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+KRFT,2012-10-31,2015-06-30,KRFT,no_data,,,neither Yahoo nor Stonks/tickers,
+KSU,2013-05-31,2021-11-30,KSU,priced,1987-11-05,2021-12-13,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+KVUE,2023-08-31,2026-10-31,KVUE,short,2023-05-04,2023-10-10,"covered to 2023-10-10, member to 2026-10-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 KW,2023-03-31,2026-05-29,KW,short,2007-12-03,2023-10-10,"covered to 2023-10-10, member to 2026-05-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LANC,2019-12-31,2025-07-31,LANC,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2025-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-LB,2019-12-31,2021-07-30,LB,priced,1985-07-01,2021-08-02,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+LB,2009-12-31,2021-07-31,LB,priced,1985-07-01,2021-08-02,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LCI,2019-12-31,2021-05-28,LCI,priced,1997-01-02,2023-04-19,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LDL,2019-12-31,2021-09-30,LDL,priced,1990-01-12,2021-09-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LESL,2022-09-30,2025-01-31,LESL,short,2020-10-29,2023-10-10,"covered to 2023-10-10, member to 2025-01-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LHCG,2019-12-31,2023-01-31,LHCG,priced,2005-06-09,2023-02-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+LIFE,2009-12-31,2013-12-31,LIFE,reused_ticker,2026-01-29,2026-11-09,Stonks/tickers starts 2015-05-07 too: another company,
 LL,2019-12-31,2022-11-30,LL,priced,2007-11-09,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-LM,2019-12-31,2020-11-30,LM,no_data,,,neither Yahoo nor Stonks/tickers,
+LLL,2009-12-31,2019-06-30,LLL,reused_ticker,,,Stonks/tickers starts 2013-03-07 too: another company,
+LLTC,2009-12-31,2017-02-28,LLTC,no_data,,,neither Yahoo nor Stonks/tickers,
+LM,2009-12-31,2020-11-30,LM,no_data,,,neither Yahoo nor Stonks/tickers,
 LMNX,2019-12-31,2021-06-30,LMNX,priced,2000-04-06,2021-07-13,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LNW,2022-05-31,2025-10-31,LNW,short,2022-04-29,2023-10-10,"covered to 2023-10-10, member to 2025-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+LO,2009-12-31,2015-04-30,LO,no_data,,,neither Yahoo nor Stonks/tickers,
 LOCO,2019-12-31,2023-06-30,LOCO,priced,,,already in the store,yahoo
 LOGM,2019-12-31,2020-10-30,LOGM,no_data,,,neither Yahoo nor Stonks/tickers,
 LPI,2019-12-31,2023-07-31,LPI,short,2011-12-15,2023-01-06,"covered to 2023-01-06, member to 2023-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LPSN,2019-12-31,2023-05-31,LPSN,priced,2000-04-07,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LPT,2019-12-31,2020-10-30,LPT,no_data,,,neither Yahoo nor Stonks/tickers,
 LSI,2019-12-31,2023-07-31,LSI,short,1995-06-21,2023-07-19,"covered to 2023-07-19, member to 2023-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+LSI-201405,2009-12-31,2014-04-30,LSI-201405,no_data,,,neither Yahoo nor Stonks/tickers,
 LTHM,2019-12-31,2023-12-29,LTHM,short,2018-10-11,2023-10-10,"covered to 2023-10-10, member to 2023-12-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+LVLT,2014-11-30,2017-09-30,LVLT,no_data,,,neither Yahoo nor Stonks/tickers,
+LXK,2009-12-31,2012-09-30,LXK,no_data,,,neither Yahoo nor Stonks/tickers,
 LXU,2019-12-31,2020-05-29,LXU,priced,,,already in the store,yahoo
 LYLT,2021-11-30,2022-06-30,LYLT,priced,2021-11-08,2023-03-20,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 MANT,2019-12-31,2022-08-31,MANT,priced,2002-02-07,2022-09-13,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -337,61 +418,77 @@ MATV,2023-09-29,2025-02-28,MATV,priced,,,already in the store,yahoo
 MCS,2019-12-31,2024-06-28,MCS,priced,,,already in the store,yahoo
 MCW,2022-10-31,2026-04-30,MCW,short,2021-06-25,2023-10-10,"covered to 2023-10-10, member to 2026-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 MDC,2019-12-31,2024-03-28,MDC,short,1980-03-11,2023-10-10,"covered to 2023-10-10, member to 2024-03-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-MDP,2019-12-31,2021-11-30,MDP,priced,1985-07-01,2021-12-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+MDP,2009-12-31,2021-11-30,MDP,priced,1985-07-01,2021-12-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 MDR,2019-12-31,2019-12-31,MDR,no_data,,,neither Yahoo nor Stonks/tickers,
 MDRX,2019-12-31,2024-02-29,MDRX,priced,,,already in the store,yahoo
 MDSO,2019-12-31,2020-09-30,MDSO,no_data,,,neither Yahoo nor Stonks/tickers,
 MED,2019-12-31,2024-06-28,MED,priced,,,already in the store,yahoo
+MEE,2009-12-31,2011-04-30,MEE,no_data,,,neither Yahoo nor Stonks/tickers,
 MEI,2019-12-31,2024-06-28,MEI,priced,,,already in the store,yahoo
 MERC,2019-12-31,2024-08-30,MERC,priced,,,already in the store,yahoo
+MFE,2009-12-31,2011-02-28,MFE,no_data,,,neither Yahoo nor Stonks/tickers,
 MGLN,2019-12-31,2021-12-31,MGLN,priced,2004-02-25,2022-01-03,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 MGPI,2019-12-31,2025-11-28,MGPI,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+MHS,2009-12-31,2012-03-31,MHS,no_data,,,neither Yahoo nor Stonks/tickers,
+MI,2009-12-31,2011-06-30,MI,no_data,2015-11-25,2026-11-09,neither Yahoo nor Stonks/tickers,
 MIK,2019-12-31,2021-03-31,MIK,no_data,,,neither Yahoo nor Stonks/tickers,
+MIL,2009-12-31,2010-06-30,MIL,no_data,,,neither Yahoo nor Stonks/tickers,
 MIME,2021-08-31,2022-04-29,MIME,priced,2015-11-19,2022-05-18,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+MJN,2009-12-31,2017-04-30,MJN,no_data,,,neither Yahoo nor Stonks/tickers,
 MLAB,2019-12-31,2025-08-29,MLAB,priced,,,already in the store,yahoo
 MLHR,2019-12-31,2021-10-29,MLHR,priced,1990-03-26,2021-10-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-MMC,2019-12-31,2025-12-31,MRSH,renamed_member,,,in today's list,yahoo (today's ticker)
+MMC,2009-12-31,2025-12-31,MRSH,renamed_member,,,in today's list,yahoo (today's ticker)
+MNK,2014-08-31,2017-06-30,MNK,no_data,,,neither Yahoo nor Stonks/tickers,
 MNRO,2019-12-31,2026-06-30,MNRO,priced,,,already in the store,yahoo
 MNTA,2019-12-31,2020-09-30,MNTA,no_data,,,neither Yahoo nor Stonks/tickers,
 MODG,2022-09-30,2026-02-27,CALY,renamed_member,,,in today's list,yahoo (today's ticker)
 MODV,2019-12-31,2024-03-28,MODV,short,2003-08-20,2023-10-10,"covered to 2023-10-10, member to 2024-03-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+MOLX,2009-12-31,2013-11-30,MOLX,no_data,,,neither Yahoo nor Stonks/tickers,
+MON,2009-12-31,2018-05-31,MON,reused_ticker,,,Stonks/tickers starts 2021-03-16 too: another company,
 MOV,2019-12-31,2024-09-30,MOV,priced,,,already in the store,yahoo
 MPAA,2019-12-31,2023-02-28,MPAA,priced,,,already in the store,yahoo
 MPW,2019-12-31,2026-01-30,MPT,renamed_member,,,in today's list,yahoo (today's ticker)
-MRO,2019-12-31,2024-10-31,MRO,short,1970-01-02,2023-10-10,"covered to 2023-10-10, member to 2024-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+MRO,2009-12-31,2024-10-31,MRO,short,1970-01-02,2023-10-10,"covered to 2023-10-10, member to 2024-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 MSGS,2023-08-31,2026-10-30,MSGS,short,2015-10-01,2023-10-10,"covered to 2023-10-10, member to 2026-10-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 MSTR,2019-12-31,2021-08-31,MSTR,priced,,,already in the store,yahoo
 MTOR,2019-12-31,2022-07-29,MTOR,priced,2000-07-10,2022-08-02,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 MTRX,2019-12-31,2021-12-31,MTRX,priced,,,already in the store,yahoo
 MTSC,2019-12-31,2021-03-31,MTSC,no_data,,,neither Yahoo nor Stonks/tickers,
-MXIM,2019-12-31,2021-07-30,MXIM,priced,1990-03-26,2021-08-26,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+MWV,2009-12-31,2015-06-30,MWV,no_data,,,neither Yahoo nor Stonks/tickers,
+MWW,2009-12-31,2011-11-30,MWW,no_data,,,neither Yahoo nor Stonks/tickers,
+MXIM,2018-12-31,2021-07-31,MXIM,priced,1990-03-26,2021-08-26,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 MYE,2019-12-31,2024-10-31,MYE,priced,,,already in the store,yahoo
 MYGN,2019-12-31,2026-02-27,MYGN,priced,,,already in the store,yahoo
-MYL,2019-12-31,2020-10-30,MYL,no_data,,,neither Yahoo nor Stonks/tickers,
+MYL,2009-12-31,2020-10-31,VTRS,renamed_member,,,in today's list,yahoo (today's ticker)
 NARI,2022-05-31,2025-01-31,NARI,short,2020-05-22,2023-10-10,"covered to 2023-10-10, member to 2025-01-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 NATI,2019-12-31,2023-09-29,NATI,priced,1995-03-14,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-NBL,2019-12-31,2020-09-30,NBL,no_data,,,neither Yahoo nor Stonks/tickers,
-NBR,2019-12-31,2025-02-28,NBR,priced,,,already in the store,yahoo
+NBL,2009-12-31,2020-09-30,NBL,no_data,,,neither Yahoo nor Stonks/tickers,
+NBR,2009-12-31,2025-02-28,NBR,priced,,,already in the store,yahoo
 NCR,2019-12-31,2023-09-29,NCR,priced,1996-12-11,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 NEX,2023-03-31,2023-08-31,NEX,priced,2017-01-20,2023-08-31,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 NFBK,2019-12-31,2024-06-28,NFBK,short,2007-11-08,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-NKTR,2019-12-31,2023-03-31,NKTR,priced,,,already in the store,yahoo
-NLOK,2019-12-31,2022-10-31,GEN,renamed_member,,,in today's list,yahoo (today's ticker)
-NLSN,2019-12-31,2022-09-30,NLSN,priced,2011-01-27,2022-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+NFX,2010-12-31,2019-01-31,NFX,no_data,2026-07-07,2026-11-09,neither Yahoo nor Stonks/tickers,
+NKTR,2018-03-31,2023-03-31,NKTR,priced,,,already in the store,yahoo
+NLOK,2019-11-30,2022-10-31,GEN,renamed_member,,,in today's list,yahoo (today's ticker)
+NLSN,2013-07-31,2022-09-30,NLSN,priced,2011-01-27,2022-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+NOVL,2009-12-31,2011-03-31,NOVL,no_data,,,neither Yahoo nor Stonks/tickers,
 NP,2019-12-31,2022-06-30,NP,priced,2004-11-17,2022-07-05,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 NR,2019-12-31,2020-09-30,NR,priced,1991-09-26,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 NSA,2019-12-31,2026-06-30,NSA,short,2015-04-23,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+NSM,2009-12-31,2011-07-31,NSM,no_data,,,neither Yahoo nor Stonks/tickers,
 NTGR,2019-12-31,2023-08-31,NTGR,priced,,,already in the store,yahoo
 NTUS,2019-12-31,2022-06-30,NTUS,priced,2001-07-31,2022-07-20,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 NUS,2019-12-31,2024-08-30,NUS,priced,,,already in the store,yahoo
 NUVA,2019-12-31,2023-08-31,NUVA,priced,2004-05-13,2023-08-31,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 NVEE,2021-12-31,2025-07-31,NVEE,short,2013-09-30,2023-10-10,"covered to 2023-10-10, member to 2025-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+NVLS,2009-12-31,2012-05-31,NVLS,no_data,,,neither Yahoo nor Stonks/tickers,
 NVRI,2023-11-30,2026-05-29,NVRI,priced,,,already in the store,yahoo
 NXGN,2019-12-31,2023-10-31,NXGN,short,2018-09-10,2023-10-10,"covered to 2023-10-10, member to 2023-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 NYCB,2019-12-31,2024-12-31,NYCB,short,1993-11-23,2023-10-10,"covered to 2023-10-10, member to 2024-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 NYMT,2019-12-31,2025-08-29,ADAM,renamed_member,,,in today's list,yahoo (today's ticker)
+NYX,2009-12-31,2013-10-31,NYX,no_data,,,neither Yahoo nor Stonks/tickers,
 OAS,2019-12-31,2020-09-30,OAS,reused_ticker,,,Stonks/tickers starts 2020-11-20 too: another company,
-ODP,2019-12-31,2025-03-31,ODP,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2025-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ODP,2009-12-31,2025-03-31,ODP,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2025-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 OFC,2019-12-31,2023-09-29,OFC,short,1991-12-31,2023-09-13,"covered to 2023-09-13, member to 2023-09-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 OFIX,2019-12-31,2023-11-30,OFIX,priced,,,already in the store,yahoo
 OIS,2019-12-31,2024-02-29,OIS,priced,,,already in the store,yahoo
@@ -407,24 +504,31 @@ OSUR,2019-12-31,2024-06-28,OSUR,priced,,,already in the store,yahoo
 OXM,2019-12-31,2026-06-30,OXM,priced,,,already in the store,yahoo
 PACW,2019-12-31,2023-10-31,PACW,short,2000-06-05,2023-10-10,"covered to 2023-10-10, member to 2023-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PARA,2022-02-28,2025-07-31,PARA,priced,,,already in the store,yahoo
-PBCT,2019-12-31,2022-03-31,PBCT,priced,1990-03-26,2022-04-04,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+PBCT,2009-12-31,2022-03-31,PBCT,priced,1990-03-26,2022-04-04,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+PBG,2009-12-31,2010-02-28,PBG,no_data,,,neither Yahoo nor Stonks/tickers,
 PCH,2019-12-31,2026-01-30,PCH,short,1985-11-11,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+PCL,2009-12-31,2016-01-31,PCL,no_data,2025-08-05,2026-11-09,neither Yahoo nor Stonks/tickers,
+PCP,2009-12-31,2016-01-31,PCP,no_data,,,neither Yahoo nor Stonks/tickers,
 PDCE,2019-12-31,2023-07-31,PDCE,priced,1990-03-26,2023-08-04,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-PDCO,2019-12-31,2025-03-31,PDCO,short,1992-10-28,2023-10-10,"covered to 2023-10-10, member to 2025-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-PEAK,2019-12-31,2024-02-29,PEAK,short,1987-11-05,2023-10-10,"covered to 2023-10-10, member to 2024-02-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+PDCO,2009-12-31,2025-03-31,PDCO,short,1992-10-28,2023-10-10,"covered to 2023-10-10, member to 2025-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+PEAK,2019-11-30,2024-02-29,PEAK,short,1987-11-05,2023-10-10,"covered to 2023-10-10, member to 2024-02-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PEI,2019-12-31,2020-08-31,PEI,priced,1973-05-03,2022-12-15,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+PETM,2012-10-31,2015-01-31,PETM,no_data,,,neither Yahoo nor Stonks/tickers,
 PETS,2019-12-31,2023-05-31,PETS,priced,,,already in the store,yahoo
+PGN,2009-12-31,2012-06-30,PGN,no_data,,,neither Yahoo nor Stonks/tickers,
 PGTI,2019-12-31,2024-03-28,PGTI,short,2006-06-28,2023-10-10,"covered to 2023-10-10, member to 2024-03-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PINC,2023-09-29,2025-11-28,PINC,short,2013-09-26,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PKE,2019-12-31,2023-02-28,PKE,priced,,,already in the store,yahoo
-PKI,2019-12-31,2023-04-28,RVTY,renamed_member,,,in today's list,yahoo (today's ticker)
+PKI,2009-12-31,2023-04-28,RVTY,renamed_member,,,in today's list,yahoo (today's ticker)
 PLAY,2019-12-31,2026-02-27,PLAY,priced,,,already in the store,yahoo
 PLCE,2019-12-31,2023-05-31,PLCE,priced,,,already in the store,yahoo
+PLL,2009-12-31,2015-07-31,PLL,reused_ticker,,,Stonks/tickers starts 2018-05-07 too: another company,
 PLT,2019-12-31,2021-05-28,PLT,priced,1994-01-20,2021-05-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PNM,2019-12-31,2024-12-31,PNM,short,1984-08-10,2023-10-10,"covered to 2023-10-10, member to 2024-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PNTG,2019-12-31,2023-02-28,PNTG,priced,,,already in the store,yahoo
 POL,2019-12-31,2020-12-31,POL,no_data,,,neither Yahoo nor Stonks/tickers,
 POLY,2021-06-30,2022-08-31,POLY,priced,2021-04-21,2022-08-26,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+POM,2009-12-31,2016-02-29,POM,no_data,2025-10-08,2026-11-09,neither Yahoo nor Stonks/tickers,
 PPBI,2019-12-31,2025-08-29,PPBI,short,1997-06-25,2023-10-10,"covered to 2023-10-10, member to 2025-08-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PRA,2019-12-31,2026-05-29,PRA,short,1991-09-04,2023-10-10,"covered to 2023-10-10, member to 2026-05-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PRAA,2019-12-31,2026-06-30,PRAA,priced,,,already in the store,yahoo
@@ -434,23 +538,29 @@ PRSP,2020-12-31,2021-05-28,PRSP,no_data,,,neither Yahoo nor Stonks/tickers,
 PSB,2019-12-31,2022-06-30,PSB,priced,1991-03-27,2022-07-19,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PSKY,2025-08-29,2026-09-30,SKYD,renamed_member,,,in today's list,yahoo (today's ticker)
 PSTG,2024-01-31,2026-04-30,PSTG,short,2015-10-07,2023-10-10,"covered to 2023-10-10, member to 2026-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+PTV,2009-12-31,2010-08-31,PTV,no_data,,,neither Yahoo nor Stonks/tickers,
 PUMP,2019-12-31,2025-08-29,PUMP,priced,,,already in the store,yahoo
 PVAC,2019-12-31,2022-01-31,PVAC,short,2016-12-29,2021-10-15,"covered to 2021-10-15, member to 2022-01-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-PXD,2019-12-31,2024-04-30,PXD,short,1997-08-08,2023-10-10,"covered to 2023-10-10, member to 2024-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-QEP,2019-12-31,2021-02-26,QEP,no_data,,,neither Yahoo nor Stonks/tickers,
+PX,2009-12-31,2018-09-30,LIN,renamed_member,,,in today's list,yahoo (today's ticker)
+PXD,2009-12-31,2024-04-30,PXD,short,1997-08-08,2023-10-10,"covered to 2023-10-10, member to 2024-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+QEP,2010-07-31,2021-02-26,QEP,no_data,,,neither Yahoo nor Stonks/tickers,
+QLGC,2009-12-31,2010-12-31,QLGC,no_data,,,neither Yahoo nor Stonks/tickers,
 QURE,2021-09-30,2023-08-31,QURE,priced,,,already in the store,yahoo
+RAI,2009-12-31,2017-06-30,RAI,no_data,,,neither Yahoo nor Stonks/tickers,
 RAVN,2019-12-31,2021-11-30,RAVN,priced,1980-03-17,2021-11-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 RC,2019-12-31,2025-11-28,RC,priced,,,already in the store,yahoo
 RCII,2019-12-31,2023-10-31,UPBD,renamed_member,,,in today's list,yahoo (today's ticker)
 RCM,2020-09-30,2024-10-31,RCM,short,2017-03-15,2023-10-10,"covered to 2023-10-10, member to 2024-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-RE,2019-12-31,2023-06-30,EG,renamed_member,,,in today's list,yahoo (today's ticker)
+RDC,2009-12-31,2014-07-31,RDC,no_data,,,neither Yahoo nor Stonks/tickers,
+RE,2017-06-30,2023-06-30,EG,renamed_member,,,in today's list,yahoo (today's ticker)
 REGI,2019-12-31,2022-05-31,REGI,priced,2012-01-19,2022-06-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 REI,2019-12-31,2020-08-31,REI,priced,,,already in the store,yahoo
 RGNX,2019-12-31,2024-12-31,RGNX,priced,,,already in the store,yahoo
 RGP,2019-12-31,2024-06-28,RGP,priced,,,already in the store,yahoo
 RGR,2019-12-31,2025-11-28,RGR,priced,,,already in the store,yahoo
 RGS,2019-12-31,2021-09-30,RGS,priced,,,already in the store,yahoo
-RIG,2019-12-31,2020-11-30,RIG,priced,,,already in the store,yahoo
+RHT,2009-12-31,2019-06-30,RHT,no_data,,,neither Yahoo nor Stonks/tickers,
+RIG,2013-10-31,2020-11-30,RIG,priced,,,already in the store,yahoo
 RILY,2021-04-30,2024-08-30,RILY,priced,,,already in the store,yahoo
 RLGY,2019-12-31,2022-06-30,RLGY,short,2012-10-11,2022-06-08,"covered to 2022-06-08, member to 2022-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 RMAX,2019-12-31,2023-08-31,RMAX,priced,2013-10-02,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -458,25 +568,33 @@ ROCC,2022-02-28,2023-05-31,ROCC,priced,2016-12-29,2023-06-16,,"github:Stonks/tic
 ROIC,2019-12-31,2025-01-31,ROIC,short,2009-11-03,2023-10-10,"covered to 2023-10-10, member to 2025-01-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 RPAI,2020-06-30,2021-09-30,RPAI,priced,2012-04-09,2021-10-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 RPT,2019-12-31,2023-12-29,RPT,priced,,,already in the store,yahoo
-RRD,2019-12-31,2020-11-30,RRD,priced,1985-07-01,2022-02-24,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+RRD,2009-12-31,2020-11-30,RRD,priced,1985-07-01,2022-02-24,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 RRGB,2019-12-31,2022-05-31,RRGB,priced,,,already in the store,yahoo
-RTN,2019-12-31,2020-03-31,RTN,no_data,,,neither Yahoo nor Stonks/tickers,
+RSHCQ,2009-12-31,2011-06-30,RSHCQ,no_data,,,neither Yahoo nor Stonks/tickers,
+RTN,2009-12-31,2020-03-31,RTN,no_data,,,neither Yahoo nor Stonks/tickers,
 RUTH,2019-12-31,2023-05-31,RUTH,priced,2005-08-09,2023-06-13,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 RWT,2019-12-31,2026-06-30,RWT,priced,,,already in the store,yahoo
+RX,2009-12-31,2010-01-31,RX,no_data,,,neither Yahoo nor Stonks/tickers,
 RYAM,2019-12-31,2023-05-31,RYAM,priced,,,already in the store,yahoo
+S,2009-12-31,2013-06-30,S,priced,1984-11-08,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SAFM,2019-12-31,2022-06-30,SAFM,priced,1989-12-20,2022-07-21,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SAIL,2020-12-31,2022-07-29,SAIL,priced,2017-11-17,2022-08-15,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SAM,2019-12-31,2026-08-31,SAM,priced,,,already in the store,yahoo
-SATS,2024-01-31,2026-05-29,ECHO,renamed_member,,,in today's list,yahoo (today's ticker)
+SATS,2024-01-31,2026-05-31,ECHO,renamed_member,,,in today's list,yahoo (today's ticker)
 SBNY,2019-12-31,2023-02-28,SBNY,priced,2004-03-23,2023-03-24,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SCG,2009-12-31,2018-12-31,SCG,no_data,,,neither Yahoo nor Stonks/tickers,
 SCVL,2019-12-31,2025-11-28,SCVL,short,1993-03-16,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-SEE,2019-12-31,2026-03-31,SEE,short,1987-12-30,2023-10-10,"covered to 2023-10-10, member to 2026-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SE,2009-12-31,2017-01-31,SE,reused_ticker,2017-10-20,2026-11-09,Stonks/tickers starts 2017-10-20 too: another company,
+SEE,2009-12-31,2026-03-31,SEE,short,1987-12-30,2023-10-10,"covered to 2023-10-10, member to 2026-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SEM,2019-12-31,2026-06-30,SEM,short,2009-09-25,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SENEA,2019-12-31,2023-06-30,SENEA,priced,,,already in the store,yahoo
 SGH,2019-12-31,2025-07-31,PENG,renamed_member,,,in today's list,yahoo (today's ticker)
 SGMS,2019-12-31,2022-04-29,SGMS,priced,1992-04-23,2022-04-28,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SHLD,2009-12-31,2012-07-31,SHLD,no_data,2023-09-14,2026-11-09,neither Yahoo nor Stonks/tickers,
+SIAL,2009-12-31,2015-10-31,SIAL,no_data,,,neither Yahoo nor Stonks/tickers,
+SII,2009-12-31,2010-07-31,SII,reused_ticker,2010-02-22,2026-11-09,Stonks/tickers starts 2020-02-24 too: another company,
 SITC,2019-12-31,2025-11-28,SITC,priced,,,already in the store,yahoo
-SIVB,2019-12-31,2023-02-28,SIVB,priced,1990-03-26,2023-03-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SIVB,2018-03-31,2023-02-28,SIVB,priced,1990-03-26,2023-03-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SIX,2019-12-31,2024-07-31,SIX,short,2010-05-11,2023-10-10,"covered to 2023-10-10, member to 2024-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SJI,2019-12-31,2023-01-31,SJI,priced,1987-12-30,2023-01-31,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SJW,2022-12-30,2025-07-31,HTO,renamed_member,,,in today's list,yahoo (today's ticker)
@@ -487,46 +605,61 @@ SLQT,2021-06-30,2022-09-30,SLQT,priced,,,already in the store,yahoo
 SNBR,2019-12-31,2023-11-30,SNBR,short,1998-12-04,2023-10-10,"covered to 2023-10-10, member to 2023-11-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SNCY,2022-07-29,2026-04-30,SNCY,short,2021-03-17,2023-10-10,"covered to 2023-10-10, member to 2026-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SNH,2019-12-31,2020-11-30,SNH,no_data,,,neither Yahoo nor Stonks/tickers,
+SNI,2009-12-31,2018-01-31,SNI,no_data,,,neither Yahoo nor Stonks/tickers,
 SNV,2019-12-31,2025-12-31,SNV,short,1990-01-12,2023-10-10,"covered to 2023-10-10, member to 2025-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SPLS,2009-12-31,2017-08-31,SPLS,no_data,2026-01-16,2026-11-09,neither Yahoo nor Stonks/tickers,
 SPOK,2019-12-31,2021-07-30,SPOK,priced,,,already in the store,yahoo
 SPPI,2019-12-31,2022-01-31,SPPI,priced,1996-09-27,2023-07-31,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SPTN,2019-12-31,2025-08-29,SPTN,short,2000-08-02,2023-10-10,"covered to 2023-10-10, member to 2025-08-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SPWR,2021-10-29,2024-07-31,SPWR,short,2005-11-17,2023-10-10,"covered to 2023-10-10, member to 2024-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SRC,2019-12-31,2023-12-29,SRC,short,2012-09-20,2023-10-10,"covered to 2023-10-10, member to 2023-12-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-SRCL,2019-12-31,2024-10-31,SRCL,short,1996-08-23,2023-10-10,"covered to 2023-10-10, member to 2024-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SRCL,2009-12-31,2024-10-31,SRCL,short,1996-08-23,2023-10-10,"covered to 2023-10-10, member to 2024-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SRDX,2019-12-31,2023-02-28,SRDX,priced,1998-03-04,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SSP,2019-12-31,2024-03-28,SSP,priced,,,already in the store,yahoo
 SSTK,2019-12-31,2026-05-29,SSTK,priced,,,already in the store,yahoo
 STAR,2019-12-31,2023-03-31,STAR,no_data,,,neither Yahoo nor Stonks/tickers,
 STEL,2022-10-31,2026-06-30,STEL,short,2017-11-08,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+STI,2009-12-31,2019-11-30,STI,no_data,2022-05-02,2026-11-09,neither Yahoo nor Stonks/tickers,
+STJ,2009-12-31,2016-12-31,STJ,no_data,,,neither Yahoo nor Stonks/tickers,
 STL,2019-12-31,2022-01-31,STL,priced,1999-01-08,2022-01-31,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 STMP,2019-12-31,2021-09-30,STMP,priced,1999-06-25,2021-10-04,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 STOR,2020-12-31,2023-01-31,STOR,priced,2014-11-18,2023-02-02,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+STR,2009-12-31,2010-06-30,STR,reused_ticker,,,Stonks/tickers starts 2017-09-08 too: another company,
+SUN,2009-12-31,2012-09-30,SUN,reused_ticker,2012-09-20,2026-11-09,Stonks/tickers starts 2012-09-20 too: another company,
+SUNEQ,2009-12-31,2011-11-30,SUNEQ,no_data,,,neither Yahoo nor Stonks/tickers,
 SVC,2020-03-31,2024-12-31,SVC,priced,,,already in the store,yahoo
+SVU,2009-12-31,2012-04-30,SVU,no_data,,,neither Yahoo nor Stonks/tickers,
 SWAV,2022-06-30,2024-05-31,SWAV,short,2019-03-07,2023-10-10,"covered to 2023-10-10, member to 2024-05-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SWI,2024-08-30,2025-03-31,SWI,short,2018-10-19,2023-10-10,"covered to 2023-10-10, member to 2025-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SWM,2019-12-31,2023-08-31,SWM,short,1995-11-09,2022-07-05,"covered to 2022-07-05, member to 2023-08-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-SWN,2019-12-31,2024-09-30,SWN,short,1987-12-30,2023-10-10,"covered to 2023-10-10, member to 2024-09-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SWN,2009-12-31,2024-09-30,SWN,short,1987-12-30,2023-10-10,"covered to 2023-10-10, member to 2024-09-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SWY,2009-12-31,2014-12-31,SWY,no_data,,,neither Yahoo nor Stonks/tickers,
 SXC,2019-12-31,2026-02-27,SXC,priced,,,already in the store,yahoo
 SYKE,2019-12-31,2021-08-31,SYKE,priced,1996-04-30,2021-08-26,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SYMC,2009-12-31,2019-10-31,GEN,renamed_member,,,in today's list,yahoo (today's ticker)
 SYNH,2019-12-31,2023-09-29,SYNH,priced,2014-11-07,2023-09-27,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-TAP,2019-12-31,2026-08-31,TAP,priced,,,already in the store,yahoo
+TAP,2009-12-31,2026-08-31,TAP,priced,,,already in the store,yahoo
 TBI,2019-12-31,2024-02-29,TBI,priced,,,already in the store,yahoo
 TBK,2019-12-31,2023-07-31,TFIN,renamed_member,,,in today's list,yahoo (today's ticker)
 TCF,2020-12-31,2021-05-28,TCF,priced,1992-03-11,2021-06-08,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 TCMD,2019-12-31,2022-05-31,TCMD,priced,,,already in the store,yahoo
 TCO,2019-12-31,2020-12-31,TCO,no_data,,,neither Yahoo nor Stonks/tickers,
+TE,2009-12-31,2016-06-30,TE,no_data,2020-01-10,2026-11-09,neither Yahoo nor Stonks/tickers,
 TECD,2019-12-31,2020-11-30,TECD,no_data,,,neither Yahoo nor Stonks/tickers,
+TEG,2009-12-31,2015-04-30,TEG,no_data,,,neither Yahoo nor Stonks/tickers,
 TG,2019-12-31,2023-05-31,TG,priced,,,already in the store,yahoo
 TGI,2019-12-31,2025-06-30,TGI,short,1996-10-25,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-TGNA,2019-12-31,2026-02-27,TGNA,short,1985-07-01,2023-10-10,"covered to 2023-10-10, member to 2026-02-27","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+TGNA,2009-12-31,2026-02-27,TGNA,short,1985-07-01,2023-10-10,"covered to 2023-10-10, member to 2026-02-27","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 THRY,2021-11-30,2025-11-28,THRY,priced,,,already in the store,yahoo
 THS,2019-12-31,2026-01-30,THS,short,2005-06-28,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-TIF,2019-12-31,2020-12-31,TIF,no_data,,,neither Yahoo nor Stonks/tickers,
+TIE,2009-12-31,2012-10-31,TIE,no_data,,,neither Yahoo nor Stonks/tickers,
+TIF,2009-12-31,2020-12-31,TIF,no_data,,,neither Yahoo nor Stonks/tickers,
 TISI,2019-12-31,2021-08-31,TISI,priced,,,already in the store,yahoo
 TIVO,2019-12-31,2020-05-29,TIVO,no_data,,,neither Yahoo nor Stonks/tickers,
+TLAB,2009-12-31,2011-11-30,TLAB,no_data,,,neither Yahoo nor Stonks/tickers,
 TLRD,2019-12-31,2020-05-29,TLRD,no_data,,,neither Yahoo nor Stonks/tickers,
 TMHC,2020-11-30,2026-06-30,TMHC,short,2013-04-10,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+TMK,2009-12-31,2019-07-31,GL,renamed_member,,,in today's list,yahoo (today's ticker)
 TMST,2019-12-31,2024-04-30,MTUS,renamed_member,,,in today's list,yahoo (today's ticker)
 TPH,2019-12-31,2026-04-30,TPH,short,2013-01-31,2023-10-10,"covered to 2023-10-10, member to 2026-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 TPRE,2019-12-31,2021-06-30,SPNT,renamed_member,,,in today's list,yahoo (today's ticker)
@@ -534,16 +667,19 @@ TPX,2019-12-31,2025-02-28,TPX,short,2003-12-18,2023-10-10,"covered to 2023-10-10
 TREE,2019-12-31,2023-05-31,TREE,priced,,,already in the store,yahoo
 TRHC,2019-12-31,2022-02-28,TRHC,priced,2016-09-29,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 TSE,2019-12-31,2023-08-31,TSE,priced,2014-06-12,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+TSS,2009-12-31,2019-08-31,TSS,no_data,,,neither Yahoo nor Stonks/tickers,
 TTD,2025-07-31,2026-08-31,TTD,priced,,,already in the store,yahoo
 TTEC,2019-12-31,2024-06-28,TTEC,priced,,,already in the store,yahoo
 TTGT,2019-12-31,2025-08-29,TTGT,priced,,,already in the store,yahoo
 TTI,2019-12-31,2020-05-29,TTI,priced,,,already in the store,yahoo
 TUP,2019-12-31,2022-11-30,TUP,priced,1996-05-08,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 TVTY,2019-12-31,2022-06-30,TVTY,priced,1991-08-13,2022-06-27,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+TWC,2009-12-31,2016-04-30,TWC,no_data,,,neither Yahoo nor Stonks/tickers,
 TWI,2019-12-31,2026-03-31,TWI,priced,,,already in the store,yahoo
 TWNK,2022-02-28,2023-10-31,TWNK,short,2015-11-30,2023-10-10,"covered to 2023-10-10, member to 2023-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 TWO,2021-06-30,2026-07-31,TWO,short,2009-10-30,2023-10-10,"covered to 2023-10-10, member to 2026-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-TWTR,2019-12-31,2022-09-30,TWTR,priced,2013-11-07,2022-10-27,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+TWTR,2018-06-30,2022-10-31,TWTR,priced,2013-11-07,2022-10-27,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+TWX,2009-12-31,2018-05-31,TWX,no_data,,,neither Yahoo nor Stonks/tickers,
 UBA,2019-12-31,2023-07-31,UBA,priced,1998-08-17,2023-08-17,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 UCBI,2019-12-31,2025-08-29,UCB,renamed_member,,,in today's list,yahoo (today's ticker)
 UEIC,2019-12-31,2023-02-28,UEIC,priced,,,already in the store,yahoo
@@ -556,12 +692,13 @@ UMPQ,2019-12-31,2023-02-28,UMPQ,priced,1998-06-03,2023-02-28,,"github:Stonks/tic
 UNVR,2020-12-31,2023-07-31,UNVR,priced,2015-06-18,2023-07-31,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 USCR,2019-12-31,2021-08-31,USCR,priced,2010-10-15,2021-08-25,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 USNA,2019-12-31,2025-10-31,USNA,priced,,,already in the store,yahoo
-UTX,2019-12-31,2020-03-31,RTX,renamed_member,,,in today's list,yahoo (today's ticker)
+UTX,2009-12-31,2020-03-31,RTX,renamed_member,,,in today's list,yahoo (today's ticker)
 UVE,2019-12-31,2023-08-31,UVE,priced,,,already in the store,yahoo
-VAR,2019-12-31,2021-03-31,VAR,no_data,,,neither Yahoo nor Stonks/tickers,
+VAR,2009-12-31,2021-03-31,VAR,no_data,,,neither Yahoo nor Stonks/tickers,
 VBTX,2019-12-31,2025-09-30,VBTX,short,2014-10-09,2023-10-10,"covered to 2023-10-10, member to 2025-09-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 VG,2019-12-31,2022-06-30,VG,priced,2006-05-24,2022-07-20,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 VGR,2019-12-31,2024-09-30,VGR,short,1987-10-09,2023-10-10,"covered to 2023-10-10, member to 2024-09-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+VIAB,2009-12-31,2019-11-30,VIAB,no_data,,,neither Yahoo nor Stonks/tickers,
 VIAC,2019-12-31,2022-01-31,VIAC,priced,2005-12-05,2022-02-16,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 VITL,2025-12-31,2026-06-30,VITL,priced,,,already in the store,yahoo
 VIVO,2019-12-31,2022-12-30,VIVO,priced,,,already in the store,yahoo
@@ -576,32 +713,36 @@ VSM,2020-10-30,2020-11-30,VSM,no_data,,,neither Yahoo nor Stonks/tickers,
 VSTO,2019-12-31,2024-12-31,VSTO,short,2015-02-10,2023-10-10,"covered to 2023-10-10, member to 2024-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 VTLE,2023-08-31,2025-11-28,VTLE,short,2011-12-15,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 VVI,2019-12-31,2025-06-30,PRSU,renamed_member,,,in today's list,yahoo (today's ticker)
-WBA,2019-12-31,2025-07-31,WBA,short,1985-07-01,2023-10-10,"covered to 2023-10-10, member to 2025-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+WBA,2009-12-31,2025-07-31,WBA,short,1985-07-01,2023-10-10,"covered to 2023-10-10, member to 2025-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WBD,2022-04-29,2026-09-30,WBD,short,2005-07-08,2023-10-10,"covered to 2023-10-10, member to 2026-09-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WBS,2019-12-31,2026-07-31,WBS,short,1986-12-12,2023-10-10,"covered to 2023-10-10, member to 2026-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-WCG,2019-12-31,2019-12-31,WCG,no_data,,,neither Yahoo nor Stonks/tickers,
+WCG,2018-09-30,2019-12-31,WCG,no_data,,,neither Yahoo nor Stonks/tickers,
 WDR,2019-12-31,2021-04-30,WDR,no_data,,,neither Yahoo nor Stonks/tickers,
 WETF,2019-12-31,2023-07-31,WT,renamed_member,,,in today's list,yahoo (today's ticker)
+WFM,2009-12-31,2017-07-31,WFM,no_data,,,neither Yahoo nor Stonks/tickers,
+WIN,2009-12-31,2015-03-31,WIN,no_data,,,neither Yahoo nor Stonks/tickers,
 WIRE,2019-12-31,2024-06-28,WIRE,short,1992-07-20,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WLH,2019-12-31,2020-01-31,WLH,no_data,,,neither Yahoo nor Stonks/tickers,
-WLTW,2019-12-31,2021-12-31,WTW,renamed_member,,,in today's list,yahoo (today's ticker)
+WLTW,2016-01-31,2021-12-31,WTW,renamed_member,,,in today's list,yahoo (today's ticker)
 WNC,2019-12-31,2025-02-28,WNC,priced,,,already in the store,yahoo
 WOLF,2021-11-30,2025-06-30,WOLF,short,1993-02-09,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WPG,2019-12-31,2020-10-30,WPG,priced,2014-05-14,2021-09-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-WPX,2019-12-31,2020-12-31,WPX,no_data,,,neither Yahoo nor Stonks/tickers,
+WPX,2012-01-31,2020-12-31,WPX,no_data,,,neither Yahoo nor Stonks/tickers,
 WRE,2019-12-31,2023-10-31,WRE,short,1992-03-17,2022-10-19,"covered to 2022-10-19, member to 2023-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WRI,2019-12-31,2021-07-30,WRI,priced,1988-01-05,2021-08-03,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-WRK,2019-12-31,2024-06-28,WRK,short,2015-06-24,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+WRK,2015-07-31,2024-06-30,WRK,short,2015-06-24,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WSR,2019-12-31,2026-06-30,WSR,short,2010-08-26,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WTR,2019-12-31,2020-02-28,WTR,no_data,,,neither Yahoo nor Stonks/tickers,
 WW,2019-12-31,2023-02-28,WW,priced,2001-11-15,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WWE,2019-12-31,2023-09-29,WWE,short,1999-10-19,2023-09-11,"covered to 2023-09-11, member to 2023-09-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-WYND,2019-12-31,2021-02-26,WYND,no_data,,,neither Yahoo nor Stonks/tickers,
-X,2019-12-31,2025-05-30,X,short,1991-04-12,2023-10-10,"covered to 2023-10-10, member to 2025-05-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-XEC,2019-12-31,2021-09-30,XEC,priced,2002-09-25,2021-09-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-XLNX,2019-12-31,2022-01-31,XLNX,priced,1990-06-18,2022-02-11,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+WYND,2009-12-31,2021-02-26,WYND,no_data,,,neither Yahoo nor Stonks/tickers,
+X,2009-12-31,2025-05-30,X,short,1991-04-12,2023-10-10,"covered to 2023-10-10, member to 2025-05-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+XEC,2014-06-30,2021-09-30,XEC,priced,2002-09-25,2021-09-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+XL,2009-12-31,2018-08-31,XL,reused_ticker,,,Stonks/tickers starts 2019-09-03 too: another company,
+XLNX,2009-12-31,2022-01-31,XLNX,priced,1990-06-18,2022-02-11,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 XPER,2019-12-31,2024-06-28,XPER,short,2003-11-20,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-XRX,2019-12-31,2025-08-29,XRX,priced,,,already in the store,yahoo
+XRX,2009-12-31,2025-08-29,XRX,priced,,,already in the store,yahoo
+XTO,2009-12-31,2010-04-30,XTO,no_data,,,neither Yahoo nor Stonks/tickers,
 Y,2019-12-31,2022-09-30,Y,priced,1984-07-19,2022-10-18,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ZEUS,2019-12-31,2024-08-30,ZEUS,short,1994-03-10,2023-10-10,"covered to 2023-10-10, member to 2024-08-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 ZI,2023-06-30,2025-05-30,GTM,renamed_member,,,in today's list,yahoo (today's ticker)

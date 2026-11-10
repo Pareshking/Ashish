@@ -108,6 +108,11 @@ def main() -> int:
             if r["Detail"] == "already in the store" and r["Symbol"] in before.index:
                 for c in cols:
                     former.loc[i, c] = before.loc[r["Symbol"], c]
+    if "Source" not in former:
+        former["Source"] = ""
+    blank = former["Source"].fillna("") == ""
+    former.loc[blank & (former["Status"] == "renamed_member"), "Source"] = "yahoo (today's ticker)"
+    former.loc[blank & former["Status"].isin(["priced", "short"]), "Source"] = "yahoo"
     accepted = prices[prices["Symbol"].isin(keep)]
     written = ps.store(accepted, mt.ny_today())
     acts = pd.concat([ps.read_actions(), actions[actions["Symbol"].isin(keep)]], ignore_index=True)

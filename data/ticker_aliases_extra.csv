@@ -1,0 +1,13 @@
+Symbol,NewSymbol,Evidence
+SYMC,GEN,"Same SEC CIK 849399: Wikipedia S&P 500 revision 609712965 lists SYMC with it; data/universe.csv lists GEN (Gen Digital) with it"
+HRS,LHX,"Same SEC CIK 202058 (revision 609712965 / universe.csv, L3Harris)"
+JEC,J,"Same SEC CIK 52988 (revision 609712965 / universe.csv, Jacobs Solutions)"
+TMK,GL,"Same SEC CIK 320335 (revision 609712965 / universe.csv, Globe Life)"
+HCP,DOC,"Same SEC CIK 765880 (revision 609712965 / universe.csv, Healthpeak Properties)"
+ARNC,HWM,"Same SEC CIK 4281 (revision 933395471 / universe.csv, Howmet Aerospace)"
+KORS,CPRI,"SEC CIK 1530721 for KORS in revision 609712965; Michael Kors Holdings renamed Capri Holdings (from memory); Yahoo's CPRI history starts 2011-12-15, the Michael Kors IPO month"
+DWDP,DD,"DowDuPont renamed DuPont de Nemours in 2019 (from memory); Yahoo's DD history is continuous through the DWDP years"
+BHGE,BKR,"Baker Hughes, a GE company renamed Baker Hughes Company in 2019 (from memory); Yahoo's BKR and the CRSP-checked dataset's BKR are continuous through the BHGE years"
+MYL,VTRS,"Mylan holders received one Viatris share per Mylan share in Nov 2020 (from memory); Yahoo's VTRS history runs from 2008 through Mylan's years. CIKs differ (1623613 vs Viatris's), so this is a successor, not a rename"
+PX,LIN,"Praxair holders received one Linde plc share per Praxair share in Oct 2018 (from memory); Yahoo's LIN history and the CRSP-checked dataset's LIN both run through Praxair's years. A successor, not a rename"
+CBS,VIAC,"Same SEC CIK 813828 (revision 609712965); CBS Corp renamed ViacomCBS (VIAC) in Dec 2019 (from memory); Yahoo VIAC history runs from 2008 through the CBS years, ends 2022-02 (renamed PARA)"
