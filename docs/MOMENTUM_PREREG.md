@@ -1332,3 +1332,101 @@ about 0.3 false passes are expected by luck. Reported beside each: CAGR
 against the cap-weighted S&P 500 with dividends and against the equal-weight
 point-in-time S&P 500, and the share of months ahead of each. No variant is
 added after a result is seen.
+
+
+### Stage 3 results (10 Nov 2026)
+
+How it was run:
+
+- **Script:** `scripts/research_prereg_stage3.py`, on the store at the current head with no extra
+  file.
+- **Base:** reused from store_v3 (`prereg_runs/store_v3`). A fresh `base_o0_c10` matched it bit for
+  bit.
+- **New runs:** 24 (F1, F2 and F3 at four offsets, at 10 and 20 bps). Outputs are in the session
+  scratchpad under `prereg_runs/stage3`.
+- **Statistics:** stage 1's section 3. Gaps are means over the four offsets at 10 bps. Verdicts are
+  by section 3.3 on the CAGR gap.
+
+Implementation readings, fixed before the run:
+
+- **F2 traded value.**
+  - The size proxy is split-adjusted close (the store's Close, before dividends) times volume. It is
+    averaged over the sessions in the last 63 that have both, up to and including the signal date.
+  - A holding with no traded value in that window gets the median of the other holdings.
+  - Weights are projected onto the 15% stock cap and the 40% sector cap by the engine's `apply_caps`,
+    which moves the excess into headroom. They are reset at each fill.
+  - The sector slot rule is unchanged: 8 names a sector. At equal targets min(1/20, 15%) = 5%, the
+    same as the base, so the 20 names are the base's.
+  - The engine hook is `weight_method="Traded Value"` with `_research_size`. It is off by default,
+    and the golden run is unchanged (tests/test_backtest_prereg_hooks.py).
+- **F1** is `score_method="return"`. **F3** is `top_n=50` and `buffer_n=100`, with the 5% stock cap
+  and 40% sector cap. At 2% targets the sector slot rule allows 20 names a sector.
+- **Equal-weight point-in-time S&P 500.** For month k it is the mean, over the members at the end of
+  month k-1, of their month-k total return. Returns come from `price_store.adjusted_close`
+  month-end closes, with the 5-session stale-anchor rule.
+  - A member with no close at either month end is left out. On average 499 of 502 members a month
+    were priced (503 of 504 from 2020).
+  - It is a monthly series, so its max drawdown and Sharpe are monthly; its Sharpe uses French
+    monthly RF.
+- **SPY_TR** comes from `data/benchmarks.csv`, on daily data, the same sessions as the book.
+- **"Months ahead"** is the share of calendar months in which the book's compounded daily return
+  beat the benchmark's month, averaged over the four offsets. The primary sample's months are Mar
+  2011 to Oct 2026; March 2011 starts at the 1 Mar fill.
+
+#### Primary sample (2011-03-02 to 2026-10-30, 3941 sessions, halves split 2018-12-28; benchmark months 2011-03 to 2026-10)
+
+| Book | CAGR | Max DD | Sharpe | Turn./yr | CAGR vs SPY_TR | CAGR vs EW S&P 500 | Months ahead of SPY_TR | Months ahead of EW | CAGR gap vs base (90% range) | Ahead in | H1 / H2 | By offset 0/5/10/15 | Gap at 20 bps | ΔMDD | ΔTurn. | Verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| base | 13.53% | -33.8% | 0.70 | 499 | -0.32 | +1.55 | 50% | 54% | — | — | — | 14.0% / 14.1% / 12.5% / 13.5% (CAGR) | — | — | — | — |
+| F1: Raw momentum (score_method 'return') | 14.06% | -35.8% | 0.64 | 457 | +0.21 | +2.08 | 51% | 53% | +0.53 (-2.77 to +4.14) | 60.8% | +0.17 / +0.89 | +0.45 / -0.18 / +0.50 / +1.34 | +0.57 | -2.05 | -42 | **inconclusive** |
+| F2: Traded-value weights (63 sessions), stock cap 15%, sector 40% | 17.32% | -31.5% | 0.83 | 547 | +3.47 | +5.34 | 55% | 57% | +3.79 (+1.81 to +6.54) | 100.0% | +1.29 / +6.46 | +4.50 / +3.99 / +3.44 / +3.24 | +3.72 | +2.26 | +48 | **inconclusive** |
+| F3: Fifty names, buffer 100 | 11.27% | -33.2% | 0.63 | 408 | -2.58 | -0.70 | 49% | 53% | -2.25 (-4.53 to -0.39) | 2.4% | +0.08 / -4.65 | -2.32 / -2.80 / -1.78 / -2.11 | -2.14 | +0.59 | -92 | **reject** |
+
+Benchmarks: SPY_TR 13.85% / -33.7% / 0.76 (CAGR / max DD / Sharpe, daily); equal-weight point-in-time S&P 500 11.98% / -27.6% / 0.71 (monthly; 499 of 502 members priced a month on average). Sharpe of SPY_TR on French daily RF, of the EW index on French monthly RF.
+
+Verdict reasons: F1 inconclusive (bootstrap 60.8% < 90%, not ahead at every offset, max drawdown > 2 pts worse); F2 inconclusive (turnover > 15 pts higher); F3 reject (halves, bootstrap 2.4% < 90%, not ahead at every offset, not ahead at 20 bps).
+
+#### Secondary sample (2020-01-02 to 2026-10-30, 1717 sessions, halves split 2023-05-31; benchmark months 2020-01 to 2026-10)
+
+| Book | CAGR | Max DD | Sharpe | Turn./yr | CAGR vs SPY_TR | CAGR vs EW S&P 500 | Months ahead of SPY_TR | Months ahead of EW | CAGR gap vs base (90% range) | Ahead in | H1 / H2 | By offset 0/5/10/15 | Gap at 20 bps | ΔMDD | ΔTurn. | Verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| base | 15.23% | -33.1% | 0.63 | 516 | +0.30 | +3.59 | 51% | 58% | — | — | — | 17.5% / 16.7% / 11.2% / 15.6% (CAGR) | — | — | — | — |
+| F1: Raw momentum (score_method 'return') | 16.65% | -34.7% | 0.60 | 484 | +1.71 | +5.00 | 50% | 55% | +1.42 (-4.91 to +8.25) | 61.5% | +0.03 / +3.10 | -1.02 / -0.00 / +3.61 / +3.08 | +1.45 | -1.63 | -32 | **inconclusive** |
+| F2: Traded-value weights (63 sessions), stock cap 15%, sector 40% | 22.38% | -31.5% | 0.84 | 570 | +7.44 | +10.73 | 55% | 60% | +7.14 (+2.83 to +12.77) | 99.9% | +5.73 / +8.72 | +8.60 / +8.58 / +6.67 / +4.73 | +7.04 | +1.56 | +53 | **inconclusive** |
+| F3: Fifty names, buffer 100 | 9.95% | -33.2% | 0.43 | 437 | -4.99 | -1.70 | 45% | 54% | -5.28 (-10.29 to -2.14) | 0.1% | -2.03 / -8.98 | -6.03 / -6.50 / -2.94 / -5.67 | -5.17 | -0.10 | -79 | **reject** |
+
+Benchmarks: SPY_TR 14.94% / -33.7% / 0.65 (CAGR / max DD / Sharpe, daily); equal-weight point-in-time S&P 500 11.65% / -27.6% / 0.54 (monthly; 503 of 504 members priced a month on average). Sharpe of SPY_TR on French daily RF, of the EW index on French monthly RF.
+
+Verdict reasons: F1 inconclusive (bootstrap 61.5% < 90%, not ahead at every offset); F2 inconclusive (turnover > 15 pts higher); F3 reject (halves, bootstrap 0.1% < 90%, not ahead at every offset, not ahead at 20 bps).
+
+Reading it:
+
+- **F2 is far ahead on every measure except turnover.**
+  - Primary sample: +3.79 pt a year (90% range +1.81 to +6.54), ahead in 100% of draws, both halves
+    ahead (+1.29 and +6.46), ahead at all four offsets and at 20 bps, and max drawdown 2.3 pts better.
+  - 2020+: +7.14 pt, ahead in 99.9% of draws.
+  - It fails only rule 4, on turnover: +48 pts a year (+53 in 2020+) against the 15-pt limit, because
+    resetting to traded-value weights each month trades more. Its verdict is therefore
+    **inconclusive** in both samples, by the rule as written. The rule is not relaxed after the
+    result.
+  - At 20 bps the gap is still +3.72 pt (+7.04 in 2020+), so the extra trading costs little at these
+    rates.
+  - F2 is a size bet. On average about one holding sits at the 15% cap; for example TSLA in January
+    2021 and NVDA in July 2024. Its gain since 2020 is largely the mega-cap leaders.
+  - F2 beat SPY_TR by 3.5 pts a year (7.4 since 2020). The base trailed SPY_TR by 0.3 pt in the
+    primary sample.
+- **F1** (raw momentum) is ahead by +0.53 pt (+1.42 pt in 2020+) but ahead in only 61% of draws.
+  Its max drawdown is 2.05 pts worse in the primary sample, just over the 2-pt limit, and it is
+  behind at one offset (two in 2020+). **Inconclusive.**
+- **F3** (fifty names) is **rejected** in both samples: −2.25 pt and −5.28 pt, ahead in 2.4% and
+  0.1% of draws.
+- **Benchmarks, primary sample:**
+  - The cap-weighted S&P 500 (SPY_TR) returned 13.85% a year, and the equal-weight point-in-time
+    S&P 500 11.98%, so cap weight led by 1.9 pts.
+  - Against these the base returned +1.55 pt a year over the equal-weight index and −0.32 over SPY_TR.
+    The base's 20-name equal-weight momentum beats its own equal-weight universe.
+- **Not checked:**
+  - Traded value as a size proxy against dated market caps (none in the store).
+  - F2's liquidity and market impact at the 15% cap.
+  - Whether F2's turnover can be lowered without new rules, for example by drifting weights between
+    fills. That would be a new specification and is not tested here.
