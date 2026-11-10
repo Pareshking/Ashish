@@ -1,0 +1,43 @@
+[theme]
+# "Paper B · Ledger", white ground (owner, 7 Nov 2026): ink on white, IBM Plex
+# Sans and Mono, blue for up and rust for down, thin rules instead of boxes.
+# The same tokens are repeated as CSS variables in src/ui/theme.py.
+base = "light"
+primaryColor = "#1C1B19"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F7F7F5"
+textColor = "#1C1B19"
+linkColor = "#1C1B19"
+linkUnderline = true
+borderColor = "#D6D6D2"
+showWidgetBorder = true
+baseRadius = "4px"
+greenColor = "#1D5FA6"
+redColor = "#A4441A"
+orangeColor = "#B54708"
+dataframeHeaderBackgroundColor = "#F7F7F5"
+# Names only: the faces are self-hosted in static/fonts.css (audit F61), loaded
+# by the app's own CSS; a Google URL here made the page ask Google as well.
+font = "'IBM Plex Sans', sans-serif"
+headingFont = "'IBM Plex Sans', sans-serif"
+codeFont = "'IBM Plex Mono', monospace"
+
+[server]
+headless = true
+# The chart libraries are served once from ./static (audit F60) instead of
+# being copied into every chart frame.
+enableStaticServing = true
+enableXsrfProtection = true
+# The only uploader is the Actions page's holdings CSV, a few KB. The default
+# 200 MB would let one upload sit in the server's memory beside every session.
+maxUploadSize = 5
+
+[browser]
+gatherUsageStats = false
+
+[client]
+showErrorDetails = "auto"
+toolbarMode = "minimal"
+
+[global]
+showWarningOnDirectExecution = false

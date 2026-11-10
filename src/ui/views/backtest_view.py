@@ -1,0 +1,976 @@
+"""
+Strategy Backtesting View Controller with Friction & Turnover Attribution.
+"""
+
+import html
+import math
+from pathlib import Path
+
+import pandas as pd
+import streamlit as st
+
+from src.core.config import RISK_FREE_RATE
+from src.core.config import DEFAULT_TRANSACTION_COST_BPS
+from src.core.market_time import ist_now
+from src.engine.backtester import DEFAULT_BACKTEST_MONTHS, run_backtest
+from src.engine.corporate_actions import load_events
+from src.engine.membership import load_history_or_none
+from src.engine import compute_gate
+from src.engine.pipeline import price_fingerprint
+from src.loaders.price_loader import fetch_benchmark_history
+from src.loaders import former_members, nse_prices
+from src.loaders.ranking_store import actions_digest
+from src.ui import page_kit as kit
+from src.ui import formats as _fmt
+from src.ui.system_param import page_href
+from src.engine.backtest_export import RunSpec, export_zip, rules_table, trades_table
+from src.engine.track_record import build_combined_grid, ledger_from_curves, summary_stats
+from src.ui.components import (
+    gap_count, render_data_quality_footer, _render_calendar_returns, _render_yearly_summary,
+)
+from src.ui.theme import render_saas_table
+
+
+
+def _months_txt(years: float) -> str:
+    n = max(1, int(round(years * 12)))
+    return f"{n} month" + ("" if n == 1 else "s")
+
+def _canonical_account_stats(ledger: dict, live_meta: dict | None) -> dict:
+    """Summarise the canonical account using Track Record's frozen months and live mark."""
+    meta = live_meta or {}
+    period = meta.get("mtd_period")
+    mtd = None
+    if period:
+        mtd = {
+            "period": pd.Period(period, freq="M"),
+            "strategy": meta.get("strategy_mtd"),
+            "benchmark": meta.get("benchmark_mtd"),
+            "as_of": meta.get("as_of"),
+        }
+    return summary_stats(ledger, mtd=mtd)
+
+
+def _day(value) -> str:
+    """A date as the rest of the site writes it (01 Oct 2026); a dash when absent."""
+    try:
+        return f"{pd.Timestamp(value):%-d %b %Y}" if value else "—"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+@st.fragment
+def _tone(v) -> str:
+    if v is None or pd.isna(v):
+        return ""
+    return "up" if v > 0 else "down" if v < 0 else ""
+
+
+MODE_LIVE = "Live system"
+MODE_HISTORY = "History from 2010"
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _long_file():
+    """Closes and report only: traded value is fetched when a floor is set."""
+    from src.loaders import nse_long
+
+    return nse_long.load(with_value=False)
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _long_value():
+    from src.loaders import nse_long
+
+    return nse_long.load_value()
+
+
+HISTORICAL_INDUSTRIES = Path(__file__).resolve().parents[3] / "data" / "reference" / "historical_industries.csv"
+
+
+@st.cache_data(show_spinner=False)
+def _historical_industries() -> dict[str, str]:
+    """NSE sector (the 22-name level the app ranks on) for stocks no current list labels."""
+    try:
+        frame = pd.read_csv(HISTORICAL_INDUSTRIES)
+    except (OSError, ValueError):
+        return {}
+    return dict(zip(frame["NSE_SYMBOL"], frame["SECTOR"]))
+
+
+def _history_bounds() -> dict | None:
+    """The long file and the months it can test, before any choice is made."""
+    loaded = _long_file()
+    if loaded is None:
+        kit.note("The long price file is not available yet.",
+                 "It is built weekly from NSE's bhavcopy by the 'NSE long price file' workflow "
+                 "and published to the data-latest release.")
+        return None
+    close, _value, report = loaded
+    # A year of prices before the first month, for the 12-month lookback and the EMA.
+    first = pd.Period(close.index[0], freq="M") + 13
+    last = pd.Period(close.index[-1], freq="M") - 1
+    if first > last:
+        kit.note("The long price file has no completed month to test yet.")
+        return None
+    return {"close": close, "report": report,
+            "months": list(pd.period_range(first, last, freq="M"))}
+
+
+def _history_inputs(rank_df: pd.DataFrame, choice: dict, bounds: dict) -> dict | None:
+    """The long backtest's inputs for the settings applied, or None when it cannot run.
+
+    Owner, 2026-10-03: any index from Jan 2010, a start and end month, and a
+    traded-value floor; size from the index tier, no market-cap cutoff. Prices
+    are NSE's own (src/loaders/nse_long.py), membership each index's own point-in-
+    time timeline (src/engine/index_universe.py). The controls live in the
+    settings form (_settings_form) since 9 Oct 2026, so nothing runs until Apply.
+    """
+    from src.engine import index_universe as iu
+    from src.loaders import nse_long
+
+    close, report = bounds["close"], bounds["report"]
+    key = choice["index"]
+    membership = iu.index_history(key)
+    if membership is None:
+        kit.note(f"No membership history for {iu.INDICES[key]}.")
+        return None
+    first = max(iu.first_month(membership), bounds["months"][0])
+    start, end = choice["start"], choice["end"]
+    if start < first:
+        kit.caption(f"{iu.INDICES[key]}'s point-in-time list begins {first.strftime('%b %Y')}, "
+                    "so the test starts there.")
+        start = first
+    if start > end:
+        kit.note(f"{iu.INDICES[key]} has no completed month in the window chosen.",
+                 f"Its list begins {first.strftime('%b %Y')}; move the start or end month.")
+        return None
+    floor = float(choice["floor"] or 0.0)
+
+    # The frame ends at the first session after the end month: the engine reports
+    # the completed months before its last session's month.
+    after = close.index[close.index >= (end + 1).start_time]
+    cut = after[0] if len(after) else close.index[-1]
+    cols = sorted(iu.ever_members(membership) & set(close.columns))
+    frame = close.loc[:cut, cols]
+
+    # Industry for the cap: the current lists, then TradingView mapped to NSE's
+    # names, then data/reference/historical_industries.csv (NSE's sector for the
+    # names that left before today's lists, looked up 3 Oct 2026). A stock
+    # nothing places is its own group, not one shared "Other" the cap would squeeze.
+    sec = rank_df.set_index("Symbol")["Industry"].to_dict() if "Industry" in rank_df.columns else {}
+    sec.update(former_members.industry_for([c for c in cols if c not in sec]))
+    past = _historical_industries()
+    sec.update({c: past[c] for c in cols if sec.get(c, "Other") == "Other" and c in past})
+    unlabelled = [c for c in cols if sec.get(c, "Other") == "Other"]
+    sec.update({c: f"Unlabelled · {c}" for c in unlabelled})
+
+    traded = None
+    if floor:
+        value = _long_value()
+        if value is None:
+            kit.note("Traded value is not available right now, so the floor is off for this run.",
+                     "The long file's traded-value part could not be fetched.")
+            floor = 0.0
+        else:
+            traded = nse_long.average_value(value.reindex(columns=cols).loc[:cut])
+
+    return {
+        "close": frame, "membership": membership, "start": start, "end": end,
+        "months": (end - start).n + 1, "floor": floor,
+        # The Nifty 50 against its own index; the others against the Nifty 500,
+        # the broadest index on file (data/benchmarks.csv holds the two).
+        "benchmark": ("^NSEI", "Nifty 50") if key == "nifty_50" else ("^CRSLDX", "Nifty 500"),
+        "traded_value": traded,
+        "sector_map": sec, "unlabelled": len(unlabelled), "name": iu.INDICES[key],
+        "built": report.get("built"), "last_session": report.get("last_session"),
+    }
+
+
+SCORE_LABELS = {
+    "sharpe": "Risk-adjusted return (Sharpe) · the live system",
+    "return": "Plain lookback return",
+}
+
+
+def _settings_form(weights: tuple[float, ...], liquidity_floor_cr: float,
+                   bounds: dict | None) -> dict:
+    """Every backtest setting in one form; nothing runs until Apply (owner, 9 Oct 2026).
+
+    A slider used to start a full backtest on every tick (~20 s on the 2010
+    history), most of them abandoned. Inside a form the widgets only report
+    their values on Apply. An expander rather than a popover: the columns stack
+    on a phone, and the form has grown.
+    """
+    from src.engine import index_universe as iu
+
+    with st.expander("Backtest settings", icon=":material/tune:"):
+        with st.form("bt_settings", border=False):
+            # Research of 12 Oct 2026 (scripts/research_regime_sweep.py): ahead of the
+            # live settings on all five indexes tested. A note only; defaults unchanged.
+            st.caption("Recommendation: 30 holdings · keep while in the top 90 · 200D EMA · "
+                       "within 20% of the 52W high · live lookback weights")
+            choice: dict = {}
+            if bounds is not None:
+                st.markdown("**Window**")
+                h1, h2 = st.columns([1, 2])
+                choice["index"] = h1.selectbox(
+                    "Index", list(iu.INDICES), format_func=iu.INDICES.get,
+                    index=list(iu.INDICES).index(iu.DEFAULT_INDEX), key="bt_hist_index")
+                months = bounds["months"]
+                choice["start"], choice["end"] = h2.select_slider(
+                    "Start and end month", months, value=(months[0], months[-1]),
+                    format_func=lambda m: m.strftime("%b %Y"), key="bt_hist_months",
+                    help="An index whose point-in-time list begins later starts there.")
+                choice["floor"] = st.number_input(
+                    "Minimum traded value (₹ Cr, 20-day average; 0 = off)", min_value=0.0,
+                    max_value=500.0, value=float(liquidity_floor_cr or 0.0), step=1.0,
+                    key="bt_hist_floor")
+
+            st.markdown("**Portfolio**")
+            c1, c2 = st.columns(2)
+            top_n = c1.number_input("Holdings", min_value=1, max_value=100, value=20, step=1,
+                                    key="bt_top_n")
+            keep_rank = c2.number_input(
+                "Keep a holding while its rank is within top", min_value=1, max_value=750,
+                value=40, step=1, key="bt_keep_rank",
+                help="Rank buffer: a stock already held is sold only when it ranks below this. "
+                     "Below the number of holdings it is raised to it.")
+            c3, c4 = st.columns(2)
+            rebal = c3.number_input(
+                "Rebalance every (trading days)", min_value=1, max_value=252, value=21, step=1,
+                key="bt_rebal_days",
+                help="21 = monthly, at each calendar month's last session (the live system). "
+                     "Any other number: every that many sessions.")
+            weighting = c4.selectbox("Weighting", ["Equal Weight", "Inverse Volatility"],
+                                     index=0, key="bt_weight_scheme")
+            cost = st.number_input(
+                "Trading cost (bps a round trip)", min_value=0.0, max_value=300.0,
+                value=float(DEFAULT_TRANSACTION_COST_BPS), step=1.0, key="bt_cost",
+                help="Round-trip cost (STT + stamp duty + brokerage + slippage). "
+                     "Standard NSE equity is about 25-35 bps.")
+
+            st.markdown("**Rules** · to buy, a stock must pass every buy rule; a holding is "
+                        "kept while it passes every keep rule (blank = same as buy)")
+            b_col, k_col = st.columns(2)
+            b_col.caption("TO BUY")
+            k_col.caption("TO KEEP HOLDING")
+            ema_period = b_col.number_input(
+                "Close above its EMA of (sessions)", min_value=2, max_value=400, value=50,
+                step=1, key="bt_ema_period", help="The live system uses 50.")
+            exit_ema = k_col.number_input(
+                "Close above its EMA of (sessions) ", min_value=2, max_value=400, value=None,
+                step=1, key="bt_exit_ema", placeholder="same as buy")
+            off_52w = b_col.number_input(
+                "Within this % of its 52-week high", min_value=0.5, max_value=95.0, value=20.0,
+                step=0.5, key="bt_52w_off", help="The live system uses 20%.")
+            exit_52w = k_col.number_input(
+                "Within this % of its 52-week high ", min_value=0.5, max_value=95.0, value=None,
+                step=0.5, key="bt_exit_52w", placeholder="same as buy")
+            off_ath = b_col.number_input(
+                "Within this % of its all-time high (blank = no rule)", min_value=0.5,
+                max_value=95.0, value=None, step=0.5, key="bt_ath_off", placeholder="no rule",
+                help="All-time high = the highest close on file up to each signal date: since "
+                     "2008 on History, since the Personal price history begins on Live.")
+            exit_ath = k_col.number_input(
+                "Within this % of its all-time high ", min_value=0.5, max_value=95.0, value=None,
+                step=0.5, key="bt_exit_ath", placeholder="same as buy")
+            ath_years = st.number_input(
+                "All-time-high rule: years of prices on file before it applies", min_value=0.0,
+                max_value=30.0, value=3.0, step=0.5, key="bt_ath_years",
+                help="The price history starts on a fixed date (History: Jan 2008; Live: Sep "
+                     "2016), so a stock trading before then may have its real peak earlier. "
+                     "Such a stock is held to the all-time-high rule only after this many years "
+                     "of prices on file; until then the 52-week rule decides alone. A stock that "
+                     "listed after the history starts is held to it from the first day.")
+
+            st.markdown("**Score** · how stocks are ranked")
+            score = st.radio("Score each lookback window by", list(SCORE_LABELS),
+                             format_func=SCORE_LABELS.get, key="bt_score", horizontal=True)
+            st.caption("Lookback weights · how much each window counts in the score")
+            bw = st.columns(5)
+            active = tuple(
+                bw[i].slider(lbl, 0.0, 1.0, float(weights[i]), 0.05, key=f"btw_{i + 1}")
+                for i, lbl in enumerate(["1M", "3M", "6M", "9M", "12M"])
+            )
+            st.form_submit_button("Apply", type="primary", icon=":material/play_arrow:",
+                                  use_container_width=True)
+
+    def frac(off):
+        return None if off is None else 1.0 - float(off) / 100.0
+
+    return {
+        "history": choice or None,
+        "top_n": int(top_n), "rebal_freq": int(rebal), "weight_method": weighting,
+        "buffer_n": max(int(keep_rank), int(top_n)), "cost_bps": float(cost),
+        "ema_period": int(ema_period), "high_pct": frac(off_52w), "ath_pct": frac(off_ath),
+        "exit_ema_period": None if exit_ema is None else int(exit_ema),
+        "exit_high_pct": frac(exit_52w), "exit_ath_pct": frac(exit_ath),
+        "ath_min_years": float(ath_years),
+        "score_method": score, "weights": active,
+    }
+
+
+def _backtest_body(
+    rank_df: pd.DataFrame,
+    adj_close: pd.DataFrame,
+    stock_cap: float,
+    sector_cap: float,
+    weights: tuple[float, ...],
+    liquidity_floor_cr: float = 0.0,
+    traded_value: pd.DataFrame | None = None,
+    months: int = DEFAULT_BACKTEST_MONTHS,
+    membership: dict | None = None,
+    history_start: pd.Timestamp | None = None,
+) -> None:
+    """Fragment: reruns only when backtest-tab widgets change, not on every global rerun.
+
+    Two tabs (owner, 2026-10-03): the live system's recent months, and the
+    history from 2010. Lazy: only the open tab runs its backtest.
+    """
+    history_mode = st.session_state.get("bt_mode", MODE_LIVE) == MODE_HISTORY
+    actions = kit.page_head(
+        "Backtest",
+        "Any index, any months from 2010, on NSE's own prices" if history_mode else
+        f"Last {months} completed month{'s' if months != 1 else ''}",
+        actions=True,
+    )
+    live_tab, history_tab = st.tabs([MODE_LIVE, MODE_HISTORY], key="bt_mode", on_change="rerun")
+    history_mode = bool(history_tab.open)
+    with history_tab if history_mode else live_tab:
+        _backtest_tab(rank_df, adj_close, stock_cap, sector_cap, weights, liquidity_floor_cr,
+                      traded_value, months, membership, history_start,
+                      history_mode=history_mode, actions=actions)
+
+
+def _backtest_tab(
+    rank_df: pd.DataFrame,
+    adj_close: pd.DataFrame,
+    stock_cap: float,
+    sector_cap: float,
+    weights: tuple[float, ...],
+    liquidity_floor_cr: float,
+    traded_value: pd.DataFrame | None,
+    months: int,
+    membership: dict | None,
+    history_start: pd.Timestamp | None,
+    *,
+    history_mode: bool,
+    actions,
+) -> None:
+    """One tab's controls, backtest and views."""
+    bounds = _history_bounds() if history_mode else None
+    if history_mode and bounds is None:
+        return
+    settings = _settings_form(weights, liquidity_floor_cr, bounds)
+    history = _history_inputs(rank_df, settings["history"], bounds) if history_mode else None
+    if history_mode and history is None:
+        return
+    bt_n, bt_rebal = settings["top_n"], settings["rebal_freq"]
+    bt_weight, keep_rank = settings["weight_method"], settings["buffer_n"]
+    cost_drag_bps, active_weights = settings["cost_bps"], settings["weights"]
+    ema_period, high_pct = settings["ema_period"], settings["high_pct"]
+    ath_pct, score_method = settings["ath_pct"], settings["score_method"]
+    exit_rules = {k: settings[k] for k in ("exit_ema_period", "exit_high_pct", "exit_ath_pct")}
+    ath_min_years = settings["ath_min_years"]
+
+    # Keyed on the WHOLE price history and the applied corporate actions. The
+    # old key (last date + shape) missed an intraday refresh, a vendor
+    # restatement and a newly logged split alike, and served the cached answer
+    # for up to an hour.
+    # Score on the index as it stood: the stocks it once held and has since
+    # dropped need prices too, or the pool is only the survivors.
+    # The exploratory backtest may replace adj_close with an alternate price basis below.
+    membership = membership if membership is not None else load_history_or_none()
+    # Prices as NSE published them (loaders/nse_prices.py): a past month ranks
+    # on what was known then, not on a vendor's later restatement. Where the
+    # file does not reach back far enough, the long Personal (Screener) history stands.
+    _nse, _nse_info = (None, {}) if history else nse_prices.basis_frame(adj_close, membership, months=months)
+    if history:
+        adj_close, _events = history["close"], []
+        membership, months = history["membership"], history["months"]
+        history_start = history["start"].start_time
+        liquidity_floor_cr, traded_value = history["floor"], history["traded_value"]
+        price_basis = ("NSE closes, adjusted for splits, bonuses and demergers, for rights issues of "
+                       "index stocks, and for dividends of 10% or more of the price")
+        kit.caption(
+            f"{history['name']}, point in time · Prices: {price_basis} · file built "
+            f"{_day(history.get('built'))}, last session {_day(history.get('last_session'))}."
+        )
+    elif _nse is not None:
+        adj_close, _events = _nse, []
+        # NSE's file runs to the latest session, often a day ahead of the long Screener history
+        # (on the 1st its first session of the month is already in). Months are counted back
+        # from the frame's end, so a month that has just closed needs one more in the window.
+        if history_start is not None:
+            months = max(months, int((pd.Period(adj_close.index[-1], freq="M")
+                                      - pd.Period(history_start, freq="M")).n))
+        price_basis = (
+            "Personal closes, NSE's where Personal has none; no dividends"
+            if _nse_info.get("basis") == "screener_primary" else
+            "NSE closes, adjusted for splits, bonuses and demergers; no dividends"
+        )
+        kit.caption(f"Prices: {price_basis}.")
+    else:
+        adj_close = former_members.with_former_members(adj_close, membership)
+        _events = load_events()
+        price_basis = "Personal closes, adjusted for splits and bonuses; no dividends"
+        kit.caption(f"Prices: {price_basis}.")
+    ph = f"{price_fingerprint(adj_close)}_{actions_digest(_events)}"
+    if liquidity_floor_cr:
+        kit.caption(f"Liquidity floor on: a stock is bought only while its 20-day average "
+                    f"traded value is ₹{liquidity_floor_cr:g} Cr or more"
+                    + ("." if history else " (Configuration)."))
+        if traded_value is not None:
+            ph += f"_{price_fingerprint(traded_value)}"
+    bench_symbol, bench_name = history["benchmark"] if history else ("^CRSLDX", "Nifty 500")
+    benchmark_close = fetch_benchmark_history(period="max" if history else "2y", symbol=bench_symbol)
+    if benchmark_close.empty:
+        st.error(f"{bench_name} benchmark ({bench_symbol}) data is unavailable. Backtest stopped to "
+                 "prevent an invalid benchmark comparison.")
+        return
+    sec_map = history["sector_map"] if history else (
+        rank_df.set_index("Symbol")["Industry"].to_dict()
+        if "Industry" in rank_df.columns
+        else {}
+    )
+    if history and history["unlabelled"]:
+        kit.caption(f"{history['unlabelled']} of these stocks have no industry on record (mostly ones "
+                    "that left before today's lists); each counts as its own group for the industry cap.")
+    if sec_map and not history:
+        # The sector cap needs an industry for every name it can hold, and the
+        # index files only label the current members.
+        sec_map.update(former_members.industry_for([c for c in adj_close.columns if c not in sec_map]))
+
+    # One backtest computes at a time across the whole server (compute_gate,
+    # TODO S65). A cached result returns at once; only a new run waits.
+    queued = st.empty()
+    if compute_gate.busy():
+        mine = compute_gate.holder() is not None and compute_gate.holder() == compute_gate.current_session()
+        queued.warning(
+            "Backtest running: request queued. Your previous settings are still computing "
+            "(a backtest cannot be stopped part-way); this one starts as soon as it finishes."
+            if mine else
+            "Backtest running: request queued. Another reader's backtest is computing; "
+            "yours starts as soon as it finishes.",
+            icon=":material/hourglass_top:",
+        )
+    with st.spinner("Running the backtest…"):
+        bt_res = run_backtest(
+            ph,
+            adj_close,
+            _benchmark_close=benchmark_close,
+            top_n=bt_n,
+            rebal_freq=bt_rebal,
+            weight_method=bt_weight,
+            config_weights=active_weights,
+            stock_cap=stock_cap,
+            sector_cap=sector_cap,
+            sector_map=sec_map,
+            cost_bps=cost_drag_bps,
+            buffer_n=keep_rank,
+            _membership=membership,
+            backtest_months=months,
+            stateful_history=True,
+            history_start=history_start,
+            _actions=_events,
+            liquidity_floor_cr=liquidity_floor_cr,
+            _traded_value=traded_value,
+            ema_period=ema_period,
+            high_pct=high_pct,
+            score_method=score_method,
+            ath_pct=ath_pct,
+            ath_min_years=ath_min_years,
+            **exit_rules,
+        )
+    queued.empty()
+
+    if bt_res is None:
+        st.warning(
+            f"Insufficient price history to backtest the last "
+            f"{months} completed month{'s' if months != 1 else ''}. The strategy needs a "
+            "full 12-month formation window BEFORE the reported period, so "
+            "roughly 18 months of continuous daily data is required."
+        )
+        return
+
+    if not bt_res.get("stats", {}).get("total_return") and bt_res["equity_curve"].empty:
+        # The first month of a system: its first book exists (Actions, Portfolio)
+        # but no month has completed, so there is no return to report yet.
+        kit.empty("No completed month yet.",
+                  "The first book is on Actions and Portfolio; returns appear here when "
+                  "the month closes.")
+        return
+
+    # The backtest runs on the DEEPEST history available, which is not always
+    # the history the live screener ranks on -- a ranking wants the freshest
+    # complete session, a backtest wants years. When the two differ, say so:
+    # they do not share a corporate-action adjustment basis, so a name with a
+    # demerger can sit at a different level in each, and a reader comparing a
+    # backtest holding against today's table deserves to know why.
+    try:
+        from src.core import startup_metrics as _m
+        from src.loaders.price_source import display_name as _display
+
+        _ranked_on = str(_m.snapshot().get("facts", {}).get("price_source") or "")
+        # In history mode the long NSE file is the history: nothing to explain.
+        if _ranked_on and _ranked_on != "yahoo" and not history:
+            st.caption(
+                f"Long price history used: {_display(_ranked_on)} does not yet "
+                f"reach far enough back for {months} months."
+            )
+    except Exception:
+        pass
+
+    stats = bt_res["stats"]
+
+    # Say which window these numbers describe. The backtest reports the last
+    # completed calendar months only -- the month in progress is excluded, so a
+    # part-month return is never shown beside whole ones.
+    _eq_idx = bt_res["equity_curve"].index
+    bt_window_label = (
+        f"{_eq_idx[0]:{'%-d %b' if _eq_idx[0].year == _eq_idx[-1].year else '%-d %b %Y'}} "
+        f"to {_eq_idx[-1]:%-d %b %Y}"
+        if len(_eq_idx)
+        else f"last {months} completed month{'s' if months != 1 else ''}"
+    )
+
+    # What was tested, in one line: the reader's first question of any result.
+    _rebal_txt = "monthly, first trading day" if bt_rebal == 21 else f"every {bt_rebal} trading days"
+    st.html(
+        '<div class="bt-sum"><b>Tested</b>'
+        f"<span>{html.escape(bt_window_label)}</span>"
+        f"<span>Holdings <b>{bt_n}</b></span><span>Rebalance <b>{_rebal_txt}</b></span>"
+        f"<span>Weighting <b>{html.escape(bt_weight.lower())}</b></span>"
+        f"<span>Costs <b>{cost_drag_bps:.0f} bps</b> a round trip</span>"
+        f"<span>Keep while in top <b>{keep_rank}</b></span>"
+        f"<span>Buy above <b>{ema_period}D EMA</b></span>"
+        f"<span>Buy within <b>{(1 - high_pct):.1%}</b> of 52W high</span>"
+        + (f"<span>Buy within <b>{(1 - ath_pct):.1%}</b> of ATH</span>" if ath_pct is not None else "")
+        + (f"<span>ATH since <b>{pd.Timestamp(adj_close.index[0]):%b %Y}</b>, applied from "
+           f"<b>{ath_min_years:g} yrs</b> on file</span>"
+           if (ath_pct is not None or exit_rules["exit_ath_pct"] is not None) and len(adj_close) else "")
+        + (f"<span>Keep above <b>{exit_rules['exit_ema_period']}D EMA</b></span>"
+           if exit_rules["exit_ema_period"] is not None else "")
+        + (f"<span>Keep within <b>{(1 - exit_rules['exit_high_pct']):.1%}</b> of 52W high</span>"
+           if exit_rules["exit_high_pct"] is not None else "")
+        + (f"<span>Keep within <b>{(1 - exit_rules['exit_ath_pct']):.1%}</b> of ATH</span>"
+           if exit_rules["exit_ath_pct"] is not None else "")
+        + f"<span>Score <b>{'plain return' if score_method == 'return' else 'Sharpe'}</b></span></div>"
+    )
+
+    # The Weighting Scheme control is inert whenever the stock cap admits only
+    # one fully-invested book. The backtester reports it; nothing displayed it,
+    # so the selector stayed lit while making no difference to the simulation.
+    _cash = float(stats.get("cap_cash_max", 0.0) or 0.0)
+    if _cash > 1e-6:
+        kit.note(
+            f"The caps left up to {_cash:.1%} of the book in cash.",
+            "Caps are never raised, so weight they cannot place is held as cash at 0%. "
+            "Hold more names, or loosen the stock cap in Configuration → Portfolio limits.",
+        )
+
+    # Equal weight is that one book already, so the note is only news for
+    # another scheme.
+    if stats.get("scheme_neutralised") and bt_weight != "Equal Weight":
+        kit.note(
+            f"{bt_weight} made no difference to this run.",
+            f"A {stock_cap:.0%} stock cap across {bt_n} holdings leaves {1 / max(bt_n, 1):.1%} "
+            "in every name. Raise the cap in Configuration → Portfolio limits, or hold fewer names.",
+        )
+
+    # ── Survivorship coverage ────────────────────────────────────────────────
+    # run_backtest counts how many rebalances were scored against the index as
+    # it ACTUALLY stood versus how many fell back to today's constituent list,
+    # and its own comment says a caller reporting the return without reporting
+    # this overstates the result. No caller reported it. Index additions skew
+    # toward recent winners and this screen preferentially buys exactly those,
+    # so a month scored on today's list can hold names it could not have known
+    # to hold. The direction of that bias is known; the size is not, which is
+    # the reason to state it rather than to estimate it.
+    _pit = int(stats.get("pit_periods", 0) or 0)
+    _cur = int(stats.get("current_universe_periods", 0) or 0)
+    if _cur:
+        _from = stats.get("pit_from")
+        kit.note(
+            f"Read with care: {_cur} of {_pit + _cur} rebalances used today's index lists.",
+            "Stocks added to an index tend to be recent winners, so those months flatter "
+            "the result by an amount this run cannot measure. "
+            + (
+                f"From {_from} every rebalance uses the index as it stood."
+                if _from
+                else "No rebalance in this window had point-in-time membership."
+            )
+        )
+
+    # ── Executive KPI Cards Grid ─────────────────────────────────────────────
+
+    # The +/- is the standard error of the SHARPE, so it belongs beside the
+    # Sharpe value. It used to render at the end of the "Sortino: x / +/-y s.e."
+    # subline, where it read as the Sortino's own error, and the one tooltip
+    # covering both described the Sharpe denominator ("annualised volatility")
+    # for a ratio that divides by downside deviation.
+    _rf = stats.get("risk_free_rate", RISK_FREE_RATE)
+    _se = float(stats.get("sharpe_stderr_iid", float("nan")))
+    _sortino = float(stats.get("sortino", float("nan")))
+    # Both can legitimately be absent: the standard error needs a non-empty
+    # sample, and the Sortino is withheld when too few sessions fell below the
+    # MAR to estimate a downside deviation. Printing a bare "nan" beside a
+    # formatted ratio reads like a bug, so say nothing and n/a respectively.
+    sharpe_se_txt = f" \u00b1{_se:.2f}" if math.isfinite(_se) else ""
+    sortino_txt = f"{_sortino:.2f}" if math.isfinite(_sortino) else "n/a"
+
+    # One strip of six, a line under each figure, as on Portfolio. The costs
+    # and the window are in the Tested line above; the risk-free rate and how
+    # each ratio is made are under Method. Under a year the annualised figure
+    # is a scaled-up part-year, so it says so, and the Calmar (which divides
+    # that figure) is left out.
+    _yrs = stats.get("window_years", 0) or 0
+    kit.readings([
+        kit.Reading("Strategy return", f"{_fmt.pct(stats['total_return'])}",
+                    f"{_fmt.pct(stats['gross_return'])} before costs", _tone(stats["total_return"])),
+        # Under a year there is no annual figure to show: scaling a part-year
+        # up invents one (audit F10).
+        kit.Reading("Annualised", f"{_fmt.pct(stats['ann_return'])}" if _yrs >= 1 else "—",
+                    f"{bench_name} {_fmt.pct(stats['ann_bench'])}" if _yrs >= 1
+                    else f"needs 12 months; this is {_months_txt(_yrs)}",
+                    _tone(stats["ann_return"]) if _yrs >= 1 else ""),
+        kit.Reading("Ahead of the index", _fmt.pts(stats['alpha']),
+                    f"{bench_name} {_fmt.pct(stats['bench_return'])}", _tone(stats["alpha"])),
+        # Its basis on the tile (audit F69): daily returns, annualised, over the
+        # risk-free rate the engine uses.
+        kit.Reading("Sharpe", f"{stats['sharpe']:.2f}",
+                    f"daily, annualised, over {RISK_FREE_RATE:.1%} · "
+                    + (f"{sharpe_se_txt.strip()} · " if sharpe_se_txt else "") + f"Sortino {sortino_txt}"),
+        kit.Reading("Max drawdown", _fmt.pct(stats['max_drawdown']),
+                    f"Calmar {stats['calmar']:.2f}" if _yrs >= 1 else "peak to trough",
+                    "down" if stats["max_drawdown"] < 0 else ""),
+        kit.Reading("Months ahead of index", f"{stats.get('beat_rate', 0):.0%}",
+                    f"{stats['win_rate']:.0%} up · turnover {stats['avg_turnover']:.0f}%",
+                    "up" if stats.get("beat_rate", 0) >= 0.5 else "down"),
+    ], "Backtest")
+
+    eq = bt_res["equity_curve"]
+    bm = bt_res["benchmark"].reindex(eq.index).ffill() if bt_res.get("benchmark") is not None else None
+    with kit.card("Growth of ₹100", "bt_growth", "daily"):
+        kit.growth_chart(eq.index, eq.tolist(),
+                         None if bm is None else bm.tolist(), names=("Strategy", bench_name), key="bt")
+
+    # Year-separated calendar returns. This changes presentation only; the
+    # canonical grid still supplies every monthly and compounded return.
+    with kit.card("Calendar returns", "bt_calendar",
+                  f"Strategy, {bench_name} and Alpha · year by year"):
+        _grid = build_combined_grid(ledger_from_curves(eq, bm), alpha_as_difference=True)
+        if _grid.empty:
+            kit.empty("No full month in this window yet.")
+        else:
+            _grid["SERIES"] = _grid["SERIES"].replace({"Nifty 500": bench_name})
+            # Year by year first (owner, 9 Oct 2026): the CY column of each block below.
+            _render_yearly_summary(_grid, bench_name)
+            _render_calendar_returns(_grid)
+            st.caption(
+                "After costs, from the first fill to the last completed month · CY Jan–Dec, "
+                "FY Apr–Mar · Alpha is the strategy's return minus the index's over the same period "
+                "(a difference, not compounded)."
+            )
+
+    # One download (owner, 2026-10-08): the rules this run followed, and every
+    # trade it made. A CSV has no sheets, so it is a ZIP of two CSV files.
+    with kit.card("Download", "bt_export", "The rules this run used and every trade it made"):
+        try:
+            _trades = trades_table(bt_res.get("closed_trades"))
+            _universe = history["name"] if history else "Nifty Total Market (the live 750 system)"
+            _rules = rules_table(RunSpec(
+                mode=MODE_HISTORY if history else MODE_LIVE,
+                universe=_universe, benchmark=bench_name,
+                first_fill=eq.index[0] if len(eq) else None,
+                last_session=eq.index[-1] if len(eq) else None,
+                top_n=bt_n, rebal_freq=bt_rebal, buffer_n=int(keep_rank),
+                weight_method=bt_weight, cost_bps=cost_drag_bps,
+                stock_cap=stock_cap, sector_cap=sector_cap, weights=tuple(active_weights),
+                liquidity_floor_cr=float(liquidity_floor_cr or 0.0), price_basis=price_basis,
+                has_industry_map=bool(sec_map), stats=stats,
+                ema_period=int(ema_period), high_pct=high_pct, ath_pct=ath_pct,
+                ath_min_years=float(ath_min_years), score_method=score_method,
+                exit_ema_period=exit_rules["exit_ema_period"],
+                exit_high_pct=exit_rules["exit_high_pct"], exit_ath_pct=exit_rules["exit_ath_pct"],
+                generated=f"{ist_now():%Y-%m-%d %H:%M}",
+            ), _trades)
+            _slug = "".join(c if c.isalnum() else "_" for c in _universe).strip("_").lower()
+            _span = f"{eq.index[0]:%Y%m}_{eq.index[-1]:%Y%m}" if len(eq) else "empty"
+            st.download_button(
+                "Download rules + all trades (ZIP of 2 CSV files)",
+                export_zip(_rules, _trades), f"backtest_{_slug}_{_span}.zip", "application/zip",
+                key="dl_bt_export", icon=":material/download:",
+            )
+            _n_open = int((_trades["Status"] == "Open").sum()) if len(_trades) else 0
+            st.caption(f"{len(_trades)} trades ({len(_trades) - _n_open} closed, {_n_open} open) in "
+                       "backtest_trades.csv; the rules and what each column means in backtest_rules.csv.")
+        except Exception as exc:  # the page must not fail because a download could not be built
+            st.caption(f"The download is unavailable for this run ({type(exc).__name__}: {exc}).")
+
+    # "Rebalance periods": fill to fill, not calendar months (audit, 8 Nov 2026: the
+    # name sat it beside the calendar grid, Jan -4.2% here and 0.0% there).
+    _views = ["Rebalance periods", "Every trade", "Rebalance log", "Method"]
+    view = st.segmented_control(
+        "Backtest detail",
+        _views,
+        default=_views[0],
+        key="bt_hist_view" if history else "bt_view",
+        label_visibility="collapsed",
+    ) or _views[0]
+
+    # Backtest is research runs only (owner's decision 5, 7 Nov): the live
+    # record's account, today's book and this month's changes are Portfolio's
+    # and Actions', and this page no longer repeats them.
+    if not history:
+        kit.caption_link("These are this run's results. The live record, today's book and this "
+                         "month's changes are on Portfolio.", page_href("portfolio"), "Portfolio")
+
+    # ── Monthly Performance Breakdown & Rebalance Tradebook ──────────────────
+    if view in ("Rebalance periods", "Every trade", "Rebalance log"):
+        with kit.card(view, "bt_perf"):
+            c_dl = st.container()
+            sub_view = view
+
+            monthly = bt_res.get("monthly", pd.DataFrame())
+            tradebook = bt_res.get("tradebook", pd.DataFrame())
+            closed_trades = bt_res.get("closed_trades", pd.DataFrame())
+
+            if sub_view == "Rebalance periods":
+                if not monthly.empty:
+                    m_df = monthly.copy()
+                    if "Period Start" in m_df.columns:
+                        m_df["Period Start"] = pd.to_datetime(
+                            m_df["Period Start"]
+                        ).dt.strftime("%-d %b %Y")
+                    if "Period End" in m_df.columns:
+                        m_df["Period End"] = pd.to_datetime(m_df["Period End"]).dt.strftime(
+                            "%-d %b %Y"
+                        )
+
+                    disp_cols = [
+                        "Period Start",
+                        "Period End",
+                        "Strategy Net",
+                        "Benchmark",
+                        "Alpha vs Benchmark",
+                        "Turnover %",
+                        "Cost Drag %",
+                        "Buys",
+                        "Sells",
+                        "Holdings",
+                    ]
+                    active_cols = [c for c in disp_cols if c in m_df.columns]
+
+                    render_saas_table(m_df[active_cols])
+                    c_dl.download_button(
+                        "Export months CSV",
+                        m_df[active_cols].to_csv(index=False).encode(),
+                        f"monthly_performance_{ist_now():%Y%m%d}.csv",
+                        "text/csv",
+                        key="dl_bt_monthly_csv",
+                    )
+                else:
+                    kit.empty("No months in this window.")
+
+            elif sub_view == "Every trade":
+                if not closed_trades.empty:
+                    ct_df = closed_trades.copy()
+
+                    # Trade KPI summary metrics
+                    closed_only = (
+                        ct_df[ct_df["Status"] == "Closed"]
+                        if "Status" in ct_df.columns
+                        else ct_df
+                    )
+                    # A trade whose fill price is missing has a NaN return, not a
+                    # zero one. Leaving it in the base counts it as a loss in the
+                    # win rate while contributing nothing to either P&L total.
+                    closed_only = closed_only[closed_only["Return %"].notna()]
+                    if not closed_only.empty and "Return %" in closed_only.columns:
+                        n_closed = len(closed_only)
+                        wins = closed_only[closed_only["Return %"] > 0]
+                        losses = closed_only[closed_only["Return %"] < 0]
+                        win_rate_pct = (len(wins) / n_closed * 100) if n_closed > 0 else 0.0
+                        avg_win = (wins["Return %"].mean() * 100) if not wins.empty else 0.0
+                        avg_loss = (
+                            (losses["Return %"].mean() * 100) if not losses.empty else 0.0
+                        )
+                        tot_gain = wins["Return %"].sum() if not wins.empty else 0.0
+                        tot_loss = (
+                            abs(losses["Return %"].sum()) if not losses.empty else 0.001
+                        )
+                        profit_factor = (tot_gain / tot_loss) if tot_loss > 0 else 0.0
+                        best_tr = (
+                            (closed_only["Return %"].max() * 100)
+                            if not closed_only.empty
+                            else 0.0
+                        )
+                        worst_tr = (
+                            (closed_only["Return %"].min() * 100)
+                            if not closed_only.empty
+                            else 0.0
+                        )
+
+                        kit.readings([
+                            kit.Reading("Closed trades", f"{n_closed}", f"{win_rate_pct:.1f}% of them won"),
+                            kit.Reading("Profit factor", f"{profit_factor:.2f}×", "total gains ÷ total losses"),
+                            kit.Reading("Average win / loss", f"+{avg_win:.1f}% / {avg_loss:.1f}%", ""),
+                            kit.Reading("Best / worst", f"+{best_tr:.1f}% / {worst_tr:.1f}%", ""),
+                        ], "Closed trades")
+
+                    tf1, tf2 = st.columns([1.5, 1], vertical_alignment="center")
+                    all_months = ["All months"] + [
+                        m for m in ct_df["Month"].unique() if m
+                    ]
+                    sel_m = tf1.selectbox(
+                        "Month", all_months, index=0, key="bt_ct_month_filter"
+                    )
+
+                    tr_filter = tf2.pills(
+                        "Outcome",
+                        ["All", "Winners", "Losers", "Open"],
+                        default="All",
+                        key="bt_ct_outcome_filter",
+                        label_visibility="collapsed",
+                    )
+
+                    if sel_m != "All months":
+                        ct_df = ct_df[ct_df["Month"] == sel_m]
+
+                    if tr_filter == "Winners":
+                        ct_df = ct_df[ct_df["Return %"] > 0]
+                    elif tr_filter == "Losers":
+                        ct_df = ct_df[ct_df["Return %"] < 0]
+                    elif tr_filter == "Open":
+                        ct_df = ct_df[ct_df["Status"] == "Open"]
+
+                    disp_trade_cols = [
+                        "Month",
+                        "Symbol",
+                        "Entry Date",
+                        "Entry Price",
+                        "Exit Date",
+                        "Exit Price",
+                        "Return %",
+                        "Holding (Days)",
+                        "Reason for Exit",
+                    ]
+                    active_ct_cols = [c for c in disp_trade_cols if c in ct_df.columns]
+
+                    render_saas_table(ct_df[active_ct_cols])
+                    c_dl.download_button(
+                        "Export trades CSV",
+                        closed_trades[active_ct_cols].to_csv(index=False).encode(),
+                        f"realised_trades_{ist_now():%Y%m%d}.csv",
+                        "text/csv",
+                        key="dl_bt_realized_trades_csv",
+                    )
+                else:
+                    kit.empty("No trades in this window.")
+
+            else:
+                # ── Rebalance Log View ───────────────────────────────────────────
+                if not tradebook.empty:
+                    t1, t2 = st.columns([1.5, 1], vertical_alignment="center")
+                    all_periods = ["All rebalances"] + [
+                        p for p in tradebook["Period"].unique() if p
+                    ]
+                    selected_period = t1.selectbox(
+                        "Rebalance",
+                        all_periods,
+                        index=0,
+                        key="bt_tb_period_filter",
+                    )
+
+                    action_filter = t2.pills(
+                        "Action",
+                        ["All", "Buy", "Sell", "Hold"],
+                        default="All",
+                        key="bt_tb_action_filter",
+                        label_visibility="collapsed",
+                    )
+
+                    tb_view = tradebook.copy()
+                    if selected_period != "All rebalances":
+                        tb_view = tb_view[tb_view["Period"] == selected_period]
+
+                    if action_filter == "Buy":
+                        tb_view = tb_view[tb_view["Action"].str.contains("BUY")]
+                    elif action_filter == "Sell":
+                        tb_view = tb_view[tb_view["Action"].str.contains("SELL")]
+                    elif action_filter == "Hold":
+                        tb_view = tb_view[tb_view["Action"].str.contains("HOLD")]
+
+                    tb_disp_cols = [
+                        "Period",
+                        "Action",
+                        "Symbol",
+                        "Price",
+                        "Return %",
+                        "Weight %",
+                        "Reason / Signal",
+                    ]
+                    active_tb_cols = [c for c in tb_disp_cols if c in tb_view.columns]
+
+                    render_saas_table(tb_view[active_tb_cols])
+
+                    c_dl.download_button(
+                        "Export rebalance log CSV",
+                        tradebook[active_tb_cols].to_csv(index=False).encode(),
+                        f"rebalance_log_{ist_now():%Y%m%d}.csv",
+                        "text/csv",
+                        key="dl_bt_tradebook_csv",
+                    )
+                else:
+                    kit.empty("No rebalances in this window.")
+
+    if view == "Method":
+      with kit.card("Method", "bt_method", "how every figure on this page is made"):
+        st.markdown(
+            "**Zero Look-Ahead Execution**: At each rebalance date $T$, stocks are ranked using closing prices strictly up to $T$. "
+            "Positions are filled at the $T+1$ close, so the first session they earn anything in is $T+2$ — the $T \\rightarrow T+1$ move "
+            "happens before the book exists and is not credited to it.\n\n"
+            "**Fill-to-fill accounting**: every period runs from one fill to the next, which is why a period's end date is the following "
+            "period's start date. Each stock's realised return is exactly its exit fill divided by its entry fill, and the per-period "
+            "strategy return is those same fills weighted — the tradebook and the equity curve are one calculation, not two.\n\n"
+            f"**Transaction Cost Drag**: Deducts **{cost_drag_bps:.0f} bps a round trip**, charged on one-way turnover (selling one unit and buying another costs it once), reflecting STT, Exchange fees, GST, Stamp duty and slippage.\n\n"
+            f"**Rank Persistence Buffer**: Top **{keep_rank}** buffer zone prevents unnecessary trading when stocks oscillate around the rank threshold.\n\n"
+            f"**Ratios**: Sharpe is the annualised mean daily return less a **{_rf:.1%}** risk-free rate, over "
+            "annualised volatility, ± one standard error; Sortino divides the same excess by the downside "
+            "deviation below that rate. Annualised "
+            "compounds the total return to a 252-session year; over less than a year it scales a part-year up, so "
+            "it is not an observed annual return. Calmar is the annualised return over the max drawdown (the largest fall from a peak), "
+            "shown for a year or more. Turnover is the average per rebalance."
+        )
+
+    render_data_quality_footer(
+        total_stocks=len(rank_df),
+        gap_count=gap_count(rank_df),
+        short_count=int((rank_df.get("Short History", pd.Series()) == "Yes").sum()),
+    )
+
+
+# The parameter sweep was removed from this page (owner, 9 Oct 2026): it is
+# heavy, invites fitting to noise, and the Apply form covers one-off what-ifs.
+# src/engine/parameter_sweep.py remains for deliberate offline research.
+
+
+def render_backtest_view(
+    rank_df: pd.DataFrame,
+    adj_close: pd.DataFrame,
+    stock_cap: float,
+    sector_cap: float,
+    weights: tuple[float, ...],
+    liquidity_floor_cr: float = 0.0,
+    traded_value: pd.DataFrame | None = None,
+    months: int = DEFAULT_BACKTEST_MONTHS,
+    membership: dict | None = None,
+    history_start: pd.Timestamp | None = None,
+) -> None:
+    """Renders the Walk-Forward Historical Strategy Backtesting Interface."""
+    _backtest_body(
+        rank_df, adj_close, stock_cap, sector_cap, weights,
+        liquidity_floor_cr, traded_value, months, membership, history_start
+    )

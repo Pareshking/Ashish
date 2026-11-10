@@ -1,0 +1,299 @@
+"""
+Portfolio construction.
+Weighting schemes: Equal Weight, Inverse Volatility.
+Constraints: Stock Cap, Sector Cap, Volatility Targeting.
+
+Equal Risk Contribution (and the Ledoit-Wolf covariance it needed) was removed
+on 2026-09-25: nothing in the app could reach it, and it was the only reason
+scipy was installed on every cold start.
+"""
+
+from __future__ import annotations
+
+from typing import Sequence
+
+import numpy as np
+import pandas as pd
+
+from src.core.logger import logger
+
+
+def apply_caps(
+    weights: pd.Series,
+    sector_map: dict[str, str] | None,
+    *,
+    sector_cap: float = 0.40,
+    stock_cap: float = 0.10,
+    hard: bool = True,
+) -> pd.Series:
+    """Project weights onto the stock and sector caps. Both are actually binding.
+
+    HARD by default (owner, 2026-10-02): a cap is never raised. Weight the caps
+    cannot place stays as cash (``attrs["cash"]``) instead of being scaled back
+    into names through the cap. Selection (backtester._select_holdings with a
+    per-industry slot limit) keeps the canonical book fully invested; cash
+    appears only when the settings themselves cannot be met, e.g. a stock cap
+    below 1/n. ``hard=False`` keeps the earlier relax-to-feasible behaviour
+    described below; nothing in the app passes it.
+
+    Two callers need this and only one had it. ``run_backtest`` accepted
+    ``stock_cap`` and ``sector_cap``, put them in its cache key, and never
+    applied them: a 1% stock cap with a 2% sector cap produced byte-identical
+    statistics to 100%/100%, and the "Current Holdings" book the Backtest tab
+    tells you to trade came out 75% in one industry while the Portfolio tab, on
+    the same ranking and the same settings, held the cap. A control that does
+    nothing is worse than no control, because the user believes the limit is on.
+
+    The projection itself was also wrong, in the shipped Portfolio tab, in the
+    direction that matters. It clipped to the caps and then renormalised the
+    whole vector back to 1.0 -- and scaling everything up lifts the clipped
+    names straight back through the cap they were just clipped to. Twenty equal
+    weights under a 6% stock cap and a 40% sector cap came out with a 6.98%
+    position and 58.1% in one sector, against a docstring promising both were
+    "strictly satisfied" and a UI captioned "Cap: 40%".
+
+    So the deficit left by clipping is redistributed to HEADROOM instead of
+    scaled into everyone: each name may absorb at most what its own cap allows,
+    and at most its share of what its sector's cap allows. Every step therefore
+    stays inside the feasible set, and the result satisfies both caps or says it
+    could not.
+
+    Caps are made feasible before they are applied: a cap below 1/n (or below
+    1/num_sectors) cannot be met by any portfolio of n names, so it is raised to
+    the tightest achievable value rather than iterated against forever.
+    """
+    if stock_cap <= 0 or sector_cap <= 0:
+        raise ValueError("Caps must be > 0")
+
+    w = weights.copy().fillna(0.0).astype(float)
+    n = len(w)
+    if n == 0:
+        return w
+    if n == 1 and hard:
+        only = pd.Series([min(1.0, stock_cap, sector_cap if sector_map else 1.0)], index=w.index)
+        only.attrs["effective_stock_cap"] = stock_cap
+        only.attrs["effective_sector_cap"] = sector_cap
+        only.attrs["caps_relaxed"] = False
+        only.attrs["scheme_neutralised"] = True
+        only.attrs["cash"] = 1.0 - float(only.iloc[0])
+        return only
+    if n == 1:
+        only = pd.Series([1.0], index=w.index)
+        # One name is 100% of the book whatever the cap says. Report that rather
+        # than returning a Series with no metadata for the caller to read.
+        only.attrs["effective_stock_cap"] = 1.0
+        only.attrs["effective_sector_cap"] = 1.0
+        only.attrs["caps_relaxed"] = bool(stock_cap < 1.0)
+        only.attrs["scheme_neutralised"] = True
+        return only
+
+    sec_groups: dict[str, list[str]] = {}
+    if sector_map:
+        for sym in w.index:
+            sec_groups.setdefault(sector_map.get(sym, "Other"), []).append(sym)
+    num_sec = max(len(sec_groups), 1)
+
+    # Feasibility. Bumping each cap to its own floor is not enough: the two
+    # interact. Seventeen names split 15/2 across two sectors, under a 5.9%
+    # stock cap and a 50% sector cap, can hold at most 50% + 2x5.9% = 61.8% --
+    # both caps individually "feasible", jointly impossible, and the projection
+    # below would then hand back a fully-invested book that breaches them.
+    #
+    # Total capacity is sum_sectors min(sector_cap, n_i x stock_cap), which is
+    # exactly linear in a common scale factor, so the smallest relaxation that
+    # admits a fully-invested portfolio is 1/capacity applied to both caps.
+    eff_stock_cap = stock_cap if hard else max(stock_cap, 1.0 / n + 1e-9)
+    eff_sector_cap = sector_cap if hard else max(sector_cap, 1.0 / num_sec + 1e-9)
+    # A cap raised to its own floor is ALREADY a relaxation, and `relaxed` used
+    # to be set only by the joint-capacity test below -- so the commonest case
+    # never flagged and the caller's warning was dead for it. Twenty names in
+    # one industry under a 30% sector cap produced a 100%-single-industry book
+    # with nothing said.
+    # Relative tolerance, so the 1e-9 epsilon added to the feasibility floors
+    # above is not itself reported as a relaxation. Only a materially raised cap
+    # counts.
+    floor_relaxed = (
+        eff_stock_cap > stock_cap * (1.0 + 1e-6) + 1e-12
+        or eff_sector_cap > sector_cap * (1.0 + 1e-6) + 1e-12
+    )
+    capacity = sum(
+        min(eff_sector_cap, len(syms) * eff_stock_cap)
+        for syms in (sec_groups.values() or [list(w.index)])
+    ) or 1.0
+    relaxed = floor_relaxed or (capacity < 1.0 - 1e-12 and not hard)
+    if capacity < 1.0 - 1e-12 and not hard:
+        eff_stock_cap /= capacity
+        eff_sector_cap /= capacity
+        logger.warning(
+            "Concentration caps were jointly infeasible for %d names across %d "
+            "sectors (capacity %.3f); relaxed to stock %.2f%% / sector %.2f%%.",
+            n, num_sec, capacity, eff_stock_cap * 100, eff_sector_cap * 100,
+        )
+
+    if float(w.sum()) <= 0:
+        w = pd.Series(1.0 / n, index=w.index)
+
+    # A stock cap at or below 1/n admits exactly ONE fully-invested portfolio --
+    # equal weight -- so the projection silently discards whatever weighting
+    # scheme produced the input. At the shipped defaults (20 holdings, 5% stock
+    # cap) that is exactly the case: "Inverse Volatility" and "Equal Weight"
+    # returned byte-identical books while the selector stayed lit on the user's
+    # choice. The maths is unavoidable; presenting it without saying so is not.
+    # Decided from the RESULT below, not from the raw cap. Inferring it from
+    # `stock_cap <= 1/n` ignores the capacity relaxation a few lines up, which
+    # raises the effective cap ABOVE 1/n and leaves the projection genuinely
+    # non-equal-weight. At the shipped defaults the log shows exactly that --
+    # "relaxed to stock 5.26%" -- so the tab printed "5.0% in every name"
+    # beside a warning saying 5.3% was enforced, and the first was simply false.
+    # Names the scheme deliberately zeroed (inverse-vol gives 0 to a symbol with
+    # zero or unusable volatility) must not be revived by the deficit
+    # redistribution below. Handing 5% of the book to a name with no usable
+    # return data is not a cap projection, it is a different portfolio.
+    excluded = w <= 0
+
+    for _ in range(200):
+        # 1. Clip to the individual cap.
+        w = w.clip(upper=eff_stock_cap)
+
+        # 2. Scale each over-weight sector down to its cap. Scaling DOWN can
+        #    never breach the stock cap, so this leaves step 1 intact.
+        for syms in sec_groups.values():
+            total = float(w[syms].sum())
+            if total > eff_sector_cap:
+                w[syms] *= eff_sector_cap / total
+
+        total = float(w.sum())
+        if total > 1.0 + 1e-12:
+            w /= total          # pure down-scale: still inside both caps
+            continue
+        deficit = 1.0 - total
+        if deficit <= 1e-12:
+            break
+
+        # 3. Hand the deficit to headroom, never to everyone. A name can take
+        #    at most (stock cap - its weight), and a sector's names can take at
+        #    most (sector cap - the sector's weight) between them.
+        room = (eff_stock_cap - w).clip(lower=0.0)
+        # Keep the scheme's own exclusions, unless honouring them leaves nowhere
+        # to put the remaining capital.
+        if excluded.any() and float(room[~excluded].sum()) > deficit:
+            room[excluded] = 0.0
+        for syms in sec_groups.values():
+            sector_room = eff_sector_cap - float(w[syms].sum())
+            wanted = float(room[syms].sum())
+            if sector_room <= 0:
+                room[syms] = 0.0
+            elif wanted > sector_room:
+                room[syms] *= sector_room / wanted
+        available = float(room.sum())
+        if available <= 1e-15:
+            break               # caps jointly leave nowhere to put the rest
+        w = w + room * min(1.0, deficit / available)
+    else:
+        # The loop ran all 200 iterations without converging or concluding that
+        # the caps leave nowhere to put the capital. Every exit above is a
+        # decision; falling out of the bottom is not one, and the normalise
+        # below would then quietly rescale a book that never satisfied the
+        # constraints. Nothing here can see that from the outside, so say it.
+        logger.warning(
+            "Concentration cap projection did not converge in 200 iterations "
+            "for %d names across %d sectors (residual deficit %.3e); the "
+            "returned weights are the last iterate and may not satisfy the "
+            "stock %.2f%% / sector %.2f%% caps exactly.",
+            n, num_sec, abs(1.0 - float(w.sum())),
+            eff_stock_cap * 100, eff_sector_cap * 100,
+        )
+
+    total = float(w.sum())
+    if hard:
+        # Never scale UP: that is how a clipped name goes back through its cap.
+        out = w / total if total > 1.0 else w.copy()
+        if total <= 0:
+            out = pd.Series(min(1.0 / n, eff_stock_cap), index=w.index)
+    else:
+        out = w / total if total > 0 else pd.Series(1.0 / n, index=w.index)
+    out.attrs["cash"] = max(0.0, 1.0 - float(out.sum()))
+    # What was ACTUALLY enforced, so a caller showing "Cap: 30%" can show the
+    # relaxation instead of the number the user typed.
+    out.attrs["effective_stock_cap"] = eff_stock_cap
+    out.attrs["effective_sector_cap"] = eff_sector_cap
+    out.attrs["caps_relaxed"] = bool(relaxed)
+    # Observed degeneracy: every name at the same weight means the input
+    # scheme had no effect, whatever the caps nominally are.
+    # Tolerance relative to the mean weight, not absolute: the iterative
+    # projection leaves float residue around 3e-09 on a 20-name book, which an
+    # absolute 1e-9 threshold reads as genuine dispersion. Any real difference
+    # between weighting schemes is orders of magnitude larger.
+    _mean_w = float(out.mean()) if len(out) else 0.0
+    out.attrs["scheme_neutralised"] = bool(
+        len(out) > 1 and float(out.max() - out.min()) <= 1e-4 * max(_mean_w, 1e-12)
+    )
+    return out
+
+
+class PortfolioOptimizer:
+    """Constructs and optimizes multi-asset portfolios with institutional risk management."""
+
+    def __init__(
+        self, log_returns_df: pd.DataFrame, sector_map: dict[str, str] | None = None
+    ):
+        self.returns: pd.DataFrame = log_returns_df
+        self.sector_map: dict[str, str] = sector_map or {}
+
+    def equal_weight(self, symbols: Sequence[str]) -> pd.Series:
+        n = len(symbols)
+        if n == 0:
+            return pd.Series(dtype=float)
+        return pd.Series(1.0 / n, index=list(symbols))
+
+    def inverse_volatility(self, symbols: Sequence[str], window: int = 63) -> pd.Series:
+        valid = [s for s in symbols if s in self.returns.columns]
+        if not valid:
+            return self.equal_weight(symbols)
+        vol = self.returns[valid].iloc[-window:].std(ddof=0) * np.sqrt(252)
+        inv = 1.0 / vol.replace(0, np.nan)
+        inv = inv.fillna(0)
+        total = float(inv.sum())
+        return (inv / total) if total > 0 else self.equal_weight(valid)
+
+    def apply_constraints(
+        self,
+        weights: pd.Series,
+        sector_cap: float = 0.40,
+        stock_cap: float = 0.10,
+    ) -> pd.Series:
+        """Project weights onto the stock and sector caps. See ``apply_caps``."""
+        return apply_caps(
+            weights, self.sector_map, sector_cap=sector_cap, stock_cap=stock_cap
+        )
+
+    def volatility_target(
+        self,
+        weights: pd.Series,
+        target_vol: float = 0.25,
+        window: int = 63,
+    ) -> tuple[pd.Series, float, float]:
+        """Scales portfolio weights to meet target annualized volatility."""
+        if target_vol <= 0:
+            raise ValueError("target_vol must be > 0")
+        valid = [s for s in weights.index if s in self.returns.columns]
+        if not valid:
+            return weights, 1.0, 0.0
+        sub = self.returns[valid].iloc[-window:].dropna(how="any")
+        port = (sub * weights[valid]).sum(axis=1)
+        realised = float(port.std(ddof=0) * np.sqrt(252))
+        scale = (
+            float(np.clip(target_vol / realised, 0.10, 1.0)) if realised > 0 else 1.0
+        )
+        return weights * scale, scale, realised
+
+    def summary(
+        self, weights: pd.Series, rank_df: pd.DataFrame | None = None
+    ) -> pd.DataFrame:
+        """Constructs human-readable portfolio allocation summary."""
+        s = weights[weights > 1e-6].sort_values(ascending=False)
+        tbl = pd.DataFrame({"Symbol": s.index, "Weight %": (s.values * 100).round(2)})
+        if rank_df is not None and "Industry" in rank_df.columns:
+            ind_map = rank_df.set_index("Symbol")["Industry"].to_dict()
+            tbl["Industry"] = tbl["Symbol"].map(ind_map)
+        return tbl.reset_index(drop=True)

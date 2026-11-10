@@ -1,0 +1,669 @@
+"""Append-only monthly track record: what the strategy ACTUALLY posted, month by month.
+
+The backtest recomputes everything from live price data on every run. That is
+correct for a backtest and useless as a track record: survivorship in the
+universe file, a vendor's price revision, a changed weight slider -- any of them
+silently rewrites what "January" returned, and a record that changes when you
+change your mind is not a record. It is a rolling opinion.
+
+So a closed month is written ONCE and then frozen. `finalize_months` refuses to
+touch a month it has already stored; nothing short of a deliberate, explicit
+recompute can alter history. Each entry carries the configuration fingerprint
+that produced it, so a later parameter change is visible as a discontinuity in
+the record rather than a silent rewrite of everything before it.
+
+Month-to-date is deliberately NOT stored. It moves every session, so it is
+computed live and shown beside the frozen months, never folded into them.
+
+Conventions match the reference tracker:
+  Q1 = Jan·Feb·Mar, Q2 = Apr·May·Jun, Q3 = Jul·Aug·Sep, Q4 = Oct·Nov·Dec
+  CY = Jan..Dec compounded;  FY = Apr(Y)..Mar(Y+1) compounded (Indian FY)
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable, Sequence
+
+import numpy as np
+import pandas as pd
+
+from src.core.logger import logger
+
+# Nothing before this month is ever recorded. The strategy's live history
+# starts here; earlier "returns" would be pure hindsight simulation presented
+# beside real ones.
+INCEPTION = pd.Period("2026-01", freq="M")
+
+# Repo-root anchored: see the note on LOG_PATH in corporate_actions.py. A
+# missing ledger reads as an empty track record rather than an error.
+LEDGER_PATH = Path(__file__).resolve().parents[2] / "data" / "track_record.json"
+SCHEMA_VERSION = 1
+
+MONTH_LABELS = [
+    "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+]
+
+
+# The configuration the record is kept under. It mirrors the Backtest tab's
+# defaults, and it is pinned HERE rather than read from the UI on purpose: a
+# track record has to be produced by one fixed setup, or its months are not
+# comparable with each other. Changing anything in this dict changes the
+# fingerprint, which marks every month written afterwards as a new regime and
+# leaves the months before it untouched.
+TRACK_RECORD_CONFIG: dict[str, Any] = {
+    "top_n": 20,
+    "rebal_freq": 21,
+    "ema_period": 50,
+    "high_pct": 0.80,
+    "weight_method": "Equal Weight",
+    "config_weights": [0.10, 0.30, 0.30, 0.20, 0.10],
+    "cost_bps": 30.0,
+    "buffer_n": 40,
+    # From this signal the model scores the day's index members only, as the
+    # Screener does (owner, 7 Nov 2026; backtester.MEMBERS_ONLY_SCORING_FROM).
+    # A forward-dated rule: months it does not govern keep their fingerprint
+    # (config_fingerprint_for_month), so no frozen month changes regime.
+    "members_only_scoring_from": "2026-11-30",
+    # The screener's 30-print EMA warm-up, from the same signal (owner,
+    # 10 Nov 2026). Forward-dated, so every frozen month keeps its
+    # fingerprint and replays unchanged.
+    "ema_warmup_from": "2026-11-30",
+    # Six-monthly reset (owner, 8 Nov 2026: "6 monthly reset final", after TODO
+    # S111's tests of four rules with a tax estimate: Nifty 500 2010-26 after
+    # tax, monthly reset 15.41% a year, six-monthly 15.30%, the owner's fixed
+    # buys 14.69%, yearly 14.58%; 2026 six-monthly best). From the 30 Nov 2026
+    # signal:
+    #   - at the March and September signals every holding goes back to 5%;
+    #   - between them a kept holding keeps the weight the market gave it,
+    #     trimmed only above 15%, and each new buy is 5% of the account at the
+    #     last reset, paid from cash (fewer shares when cash is short; no kept
+    #     name is sold to fund a buy; leftover stays cash)
+    #   (backtester._fixed_buys, buy_size, weight_reset_months).
+    # Forward-dated like the rule above, with its companions: earlier months
+    # keep the monthly reset to 5% and their fingerprints.
+    "hold_cap": 0.15,
+    "buy_size": 0.05,
+    "weight_reset_months": [3, 9],
+    "hold_cap_from": "2026-11-30",
+    # Position and industry caps (owner, 2026-10-02), HARD: no stock above 5%
+    # and no NSE industry above 40% of the book at any rebalance. Enforced at
+    # selection (at most 8 of 20 names per industry; the rest go to the
+    # next-ranked name) and never relaxed by the weight projection. Between
+    # rebalances the book is held (accrual buy_and_hold), so price moves can
+    # carry an industry past 40% until the next rebalance trims it.
+    # Industry labels are the NSE index file's, with TradingView mapped onto them
+    # for former members (loaders/former_members.industry_for) -- today's labels,
+    # not point-in-time ones; no classification history is committed.
+    "stock_cap": 0.05,
+    "sector_cap": 0.40,
+    "caps": "hard_at_rebalance",
+    "sector_labels": "nse_index_industry_tv_fallback",
+    "benchmark": "^CRSLDX",
+    # Not a run_backtest argument: it names the ACCOUNTING, so the fingerprint
+    # changes with it. From 2026-09-25 the backtest holds each book between
+    # fills (buy and hold) instead of re-weighting it to target every session;
+    # months frozen before that stay as they are and read as a separate regime.
+    "accrual": "buy_and_hold",
+    # The price basis, also not a run_backtest argument. From 2026-10-01 the 750's record
+    # is struck on Screener's closes, as the live ranking is, with NSE's closes as
+    # published (then Yahoo's) only where Screener has none (src/loaders/nse_prices.py).
+    # Not Yahoo's restated adjusted closes: a rebuilt month ranks on what was published,
+    # and a stock that has since merged away keeps its prices.
+    # scripts/update_track_record.py records the basis it actually used.
+    "prices": "screener_primary",
+}
+
+
+# The Recommendation, recorded forward beside the live system and never traded
+# (owner, 12 Oct 2026, TODO 6 and 9; docs/REGIME_SETTINGS_2026-10-12.md): the
+# live record's setup with 30 holdings, keep while in the top 90 and a 200-day
+# EMA. On the Nifty 750, from the book signalled at the 30 Oct 2026 close.
+# Reviewed after 12 months: turnover about half the live record's, max drawdown
+# no worse, return not clearly behind. The live record is not changed by it.
+SHADOW_CONFIG: dict[str, Any] = {**TRACK_RECORD_CONFIG, "top_n": 30, "buffer_n": 90,
+                                 "ema_period": 200}
+SHADOW_INCEPTION = pd.Period("2026-11", freq="M")
+SHADOW_LEDGER_PATH = LEDGER_PATH.with_name("track_record_shadow.json")
+SHADOW_NAME = "Recommendation (shadow)"
+
+
+# ── Ledger I/O ───────────────────────────────────────────────────────────────
+
+def ledger_inception(ledger: dict[str, Any] | None) -> pd.Period:
+    """The first month this ledger may hold: its own, else the 750's INCEPTION.
+
+    Nano Cap and Combined keep their own ledgers from October 2026 (owner,
+    2026-09-27); reading the start from the ledger keeps one set of functions
+    for all three records.
+    """
+    raw = (ledger or {}).get("inception")
+    return pd.Period(raw, freq="M") if raw else INCEPTION
+
+
+def empty_ledger(inception: pd.Period = INCEPTION) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "inception": str(inception),
+        "benchmark": "^CRSLDX",
+        "months": {},
+    }
+
+
+def _current_month() -> pd.Period:
+    """Current UTC calendar month used only to classify missing ledgers."""
+    # The UTC wall clock, made naive first: to_period on an aware timestamp warns
+    # that it drops the timezone (log, 7 Oct 2026); the month is the same.
+    return pd.Timestamp.now(tz="UTC").tz_localize(None).to_period("M")
+
+
+def load_ledger(path: Path | str = LEDGER_PATH,
+                inception: pd.Period | None = None) -> dict[str, Any]:
+    """Read the ledger, or an empty one. A corrupt file is never silently reset.
+
+    Returning a fresh ledger on a JSON error would let one bad write erase the
+    entire history on the next successful run, which is the one failure mode
+    this file exists to prevent.
+    """
+    p = Path(path)
+    if not p.exists():
+        expected_start = pd.Period(inception, freq="M") if inception is not None else None
+        # No ledger is expected until the first month has closed and been frozen
+        # (1st - 5th of the next month): Nano Cap and Combined started in Oct 2026
+        # and warned every day of October.
+        if expected_start is not None and _current_month() <= expected_start:
+            logger.info(
+                "Track-record ledger %s has no frozen month yet; first month is %s.",
+                p,
+                expected_start,
+            )
+        else:
+            logger.warning("No track-record ledger at %s; reporting an empty record.", p)
+        return empty_ledger(expected_start or INCEPTION)
+    with p.open("r", encoding="utf-8") as fh:
+        ledger = json.load(fh)
+    if not isinstance(ledger, dict) or "months" not in ledger:
+        raise ValueError(f"{p} is not a track-record ledger")
+    return ledger
+
+
+def save_ledger(ledger: dict[str, Any], path: Path | str = LEDGER_PATH) -> None:
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    payload = dict(ledger)
+    payload["months"] = dict(sorted(payload.get("months", {}).items()))
+    with p.open("w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2, sort_keys=False)
+        fh.write("\n")
+
+
+def config_fingerprint(**params: Any) -> str:
+    """Short stable hash of the strategy configuration behind a month's return.
+
+    Two months produced by different settings are not the same series. Storing
+    the fingerprint makes that visible instead of leaving a step change in the
+    numbers unexplained.
+    """
+    blob = json.dumps(params, sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode()).hexdigest()[:12]
+
+
+# Rules that start on a signal date. A month governed by an earlier signal was
+# not struck under them, so they are left out of that month's fingerprint.
+FORWARD_DATED_KEYS = ("members_only_scoring_from", "hold_cap_from", "ema_warmup_from")
+# Settings that exist only with a forward-dated rule: left out with it.
+FORWARD_DATED_COMPANIONS = {"hold_cap_from": ("hold_cap", "buy_size", "weight_reset_months")}
+
+
+def config_for_month(cfg: dict[str, Any], period) -> dict[str, Any]:
+    """The configuration that governed one calendar month.
+
+    A month is governed by the signal on the last session of the month
+    before, so a rule dated D governs the months that start after D."""
+    start = pd.Period(period, freq="M").start_time.normalize()
+    later = [k for k in FORWARD_DATED_KEYS if cfg.get(k) and start <= pd.Timestamp(cfg[k]).normalize()]
+    drop = set(later) | {c for k in later for c in FORWARD_DATED_COMPANIONS.get(k, ())}
+    return {k: v for k, v in cfg.items() if k not in drop}
+
+
+def config_fingerprint_for_month(cfg: dict[str, Any], period) -> str:
+    return config_fingerprint(**config_for_month(cfg, period))
+
+
+# ── Deriving calendar-month returns ──────────────────────────────────────────
+
+def calendar_month_returns(curve: pd.Series) -> pd.Series:
+    """Month-over-month returns of an equity curve, indexed by calendar month.
+
+    The backtest's own period table runs fill-to-fill (03 Aug -> 31 Aug), which
+    is right for attributing a rebalance and wrong for a column headed AUG. A
+    track record wants the calendar month, so take month-end closes off the
+    curve. The first month is measured from the curve's base point -- the value
+    it is indexed at, before any P&L -- so no partial period is dropped.
+    """
+    s = pd.Series(curve).dropna()
+    if s.empty:
+        return pd.Series(dtype=float)
+    s.index = pd.DatetimeIndex(s.index)
+    month_last = s.resample("ME").last().dropna()
+    if month_last.empty:
+        return pd.Series(dtype=float)
+    prev = month_last.shift(1)
+    prev.iloc[0] = s.iloc[0]
+    rets = (month_last / prev.replace(0, np.nan)) - 1.0
+    rets.index = month_last.index.to_period("M")
+    return rets.dropna()
+
+
+def ledger_from_curves(strategy_curve: pd.Series, benchmark_curve: pd.Series | None = None) -> dict[str, Any]:
+    """A ledger-shaped dict of calendar-month returns, built from two equity curves.
+
+    The Portfolio page's calendar grid reads the frozen ledger; a backtest has no
+    ledger, only curves. This gives `build_combined_grid` the same input from a
+    curve, so a backtest's year-by-month table is computed by the very code the
+    record's is (CY, FY and quarter conventions included). Alpha is the month's
+    strategy return minus its benchmark return, as in the ledger. The ledger's
+    inception is the first month of the curve, so the grid starts there and not
+    at the record's own inception.
+    """
+    s = calendar_month_returns(strategy_curve)
+    b = (calendar_month_returns(benchmark_curve)
+         if benchmark_curve is not None and len(benchmark_curve) else pd.Series(dtype=float))
+    months: dict[str, dict[str, float]] = {}
+    for period, value in s.items():
+        entry = {"strategy": float(value)}
+        if period in b.index:
+            entry["benchmark"] = float(b.loc[period])
+            entry["alpha"] = float(value) - float(b.loc[period])
+        months[str(period)] = entry
+    return {"inception": str(s.index.min()) if len(s) else None, "months": months}
+
+
+def compound(returns: Iterable[float]) -> float | None:
+    """Chain-link a run of monthly returns. None when there is nothing to chain."""
+    vals = [float(r) for r in returns if r is not None and np.isfinite(r)]
+    if not vals:
+        return None
+    return float(np.prod([1.0 + v for v in vals]) - 1.0)
+
+
+# ── Append-only finalisation ─────────────────────────────────────────────────
+
+def finalize_months(
+    ledger: dict[str, Any],
+    strategy_curve: pd.Series,
+    benchmark_curve: pd.Series,
+    fingerprint: Any,
+    as_of: pd.Timestamp,
+    data_as_of: pd.Timestamp | None = None,
+    pit_from: str | None = None,
+    force: bool = False,
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Write newly CLOSED months into the ledger. Never rewrite a stored one.
+
+    Returns (ledger, added, skipped). `skipped` names months that were eligible
+    but already recorded -- the normal case on a re-run, and the whole point:
+    running this twice must not change a single stored number.
+
+    `force` exists for a deliberate rebuild and is never used by the scheduled
+    updater. It rewrites history, which is exactly what everything else here is
+    built to prevent, so it is opt-in and loud.
+    """
+    strat = calendar_month_returns(strategy_curve)
+    bench = calendar_month_returns(benchmark_curve)
+
+    current_month = pd.Period(pd.Timestamp(as_of), freq="M")
+    start = ledger_inception(ledger)
+    months = dict(ledger.get("months", {}))
+    added: list[str] = []
+    skipped: list[str] = []
+
+    for period in strat.index:
+        if period < start:
+            continue  # pre-inception is not this strategy's record
+        if period >= current_month:
+            continue  # the month in progress is not closed; MTD covers it
+        key = str(period)
+        if key in months and not force:
+            skipped.append(key)
+            continue
+
+        s_ret = float(strat.loc[period])
+        b_ret = float(bench.loc[period]) if period in bench.index else None
+        # How this month came to be recorded, which is not a detail. A month
+        # frozen the moment it closed was struck from the data as it stood then.
+        # A month RECONSTRUCTED later is computed from today's universe file and
+        # today's prices, so it carries the backtest's own biases -- today's
+        # index constituents applied to a month before some of them joined it.
+        # Both are frozen once written; they are not equally strong evidence,
+        # and the record should say which is which rather than leave it to be
+        # inferred from a finalisation date.
+        # A forced rewrite is a reconstruction by definition, whatever the month:
+        # nothing it writes was frozen as that month closed.
+        origin = "recorded" if (period == current_month - 1 and not force) else "backfill"
+        # Which universe the month was scored against. A month whose rebalances
+        # knew the real index membership is survivorship-free; one scored
+        # against today's constituent list is not, and the difference is worth
+        # more than the return itself when judging the record.
+        #
+        # `pit_from` is the first SIGNAL date with membership behind it. A
+        # signal on 27 Feb governs March, so a month qualifies when its first
+        # day falls on or after that signal.
+        universe = "current"
+        if pit_from:
+            if pd.Timestamp(pit_from).date() <= period.start_time.date():
+                universe = "point_in_time"
+        months[key] = {
+            "strategy": round(s_ret, 6),
+            "benchmark": round(b_ret, 6) if b_ret is not None else None,
+            "alpha": round(s_ret - b_ret, 6) if b_ret is not None else None,
+            "origin": origin,
+            "universe": universe,
+            "finalized_on": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "config": fingerprint(period) if callable(fingerprint) else fingerprint,
+            "data_as_of": (
+                pd.Timestamp(data_as_of).strftime("%Y-%m-%d")
+                if data_as_of is not None
+                else None
+            ),
+        }
+        added.append(key)
+
+    out = dict(ledger)
+    out["months"] = months
+    out.setdefault("schema_version", SCHEMA_VERSION)
+    out.setdefault("inception", str(start))
+    return out, added, skipped
+
+
+def drift_report(
+    ledger: dict[str, Any], strategy_curve: pd.Series
+) -> list[dict[str, Any]]:
+    """Where a recompute now disagrees with what was frozen. Stored always wins.
+
+    Not an error: prices get revised, universes change. It is a diagnostic --
+    a large drift means the recomputed backtest and the record have parted
+    company, which is worth knowing even though the record does not move.
+    """
+    recomputed = calendar_month_returns(strategy_curve)
+    out: list[dict[str, Any]] = []
+    for key, entry in sorted(ledger.get("months", {}).items()):
+        period = pd.Period(key, freq="M")
+        if period not in recomputed.index:
+            continue
+        now = float(recomputed.loc[period])
+        was = entry.get("strategy")
+        if was is None:
+            continue
+        if abs(now - float(was)) > 5e-4:
+            out.append(
+                {"month": key, "stored": float(was), "recomputed": now,
+                 "drift": now - float(was)}
+            )
+    return out
+
+
+# ── Presentation ─────────────────────────────────────────────────────────────
+
+def _series_from(ledger: dict[str, Any], field: str) -> pd.Series:
+    rows = {}
+    for key, entry in ledger.get("months", {}).items():
+        val = entry.get(field)
+        if val is not None:
+            rows[pd.Period(key, freq="M")] = float(val)
+    if not rows:
+        return pd.Series(dtype=float)
+    return pd.Series(rows).sort_index()
+
+
+def build_grid(
+    ledger: dict[str, Any],
+    field: str = "strategy",
+    mtd: tuple[pd.Period, float] | None = None,
+    years: Sequence[int] | None = None,
+) -> pd.DataFrame:
+    """Year-by-month grid with CY, FY and calendar-quarter aggregates.
+
+    `mtd` adds the live, unfrozen month-to-date figure into its own cell so the
+    current month is visible without being recorded. It is included in the
+    quarter and CY compounding -- a year-to-date number that ignored the
+    running month would be wrong in the other direction -- and the caller
+    labels it as partial.
+    """
+    series = _series_from(ledger, field)
+    start = ledger_inception(ledger)
+    if mtd is not None:
+        period, value = mtd
+        if value is not None and np.isfinite(value) and period >= start:
+            series.loc[period] = float(value)
+            series = series.sort_index()
+
+    if series.empty:
+        return pd.DataFrame()
+
+    if years is None:
+        years = range(start.year, int(series.index.max().year) + 1)
+
+    def _get(y: int, m: int) -> float | None:
+        p = pd.Period(year=y, month=m, freq="M")
+        return float(series.loc[p]) if p in series.index else None
+
+    rows = []
+    for y in years:
+        monthly = [_get(y, m) for m in range(1, 13)]
+        row: dict[str, Any] = {"YEAR": y}
+        for label, val in zip(MONTH_LABELS, monthly):
+            row[label] = val
+        row["CY RETURN"] = compound([v for v in monthly if v is not None])
+        # Indian financial year: Apr of this row's year through Mar of the next.
+        fy_months = [_get(y, m) for m in range(4, 13)] + [
+            _get(y + 1, m) for m in range(1, 4)
+        ]
+        row["FY RETURN"] = compound([v for v in fy_months if v is not None])
+        for qi in range(4):
+            q_vals = [v for v in monthly[qi * 3 : qi * 3 + 3] if v is not None]
+            row[f"Q{qi + 1}"] = compound(q_vals)
+        rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+SERIES_LABELS: dict[str, str] = {
+    "strategy": "Strategy",
+    "benchmark": "Nifty 500",
+    "alpha": "Alpha",
+}
+
+
+def build_combined_grid(
+    ledger: dict[str, Any],
+    mtd_period: pd.Period | None = None,
+    mtd_values: dict[str, float | None] | None = None,
+    years: Sequence[int] | None = None,
+    alpha_as_difference: bool = True,
+) -> pd.DataFrame:
+    """All three series in one grid, three rows per year.
+
+    Strategy, benchmark and alpha in separate tables meant comparing them
+    required switching views and holding numbers in your head. The question
+    being asked of this table is almost always "how did we do against the index
+    in June", and that should be one glance down a column.
+
+    Rows are grouped by year, then Strategy / Nifty 500 / Alpha, so a year reads
+    as a block. Each row is built by `build_grid`, so the CY/FY/quarter
+    conventions cannot drift between the combined and per-series views.
+
+    The Alpha row's CY, FY and quarter cells are the plain difference, the
+    year's strategy return minus the year's index return (owner, 2026-10-07,
+    TODO S40): 2010 at +17.7% against +25.2% reads -7.5 pts on every page.
+    `alpha_as_difference=False` gives the monthly alphas compounded instead
+    (-6.4% for 2010), which Portfolio showed until then; the monthly cells are
+    differences either way.
+    """
+    mtd_values = mtd_values or {}
+
+    if years is None:
+        seen: set[int] = set()
+        for field in SERIES_LABELS:
+            s = _series_from(ledger, field)
+            seen.update(int(p.year) for p in s.index)
+        if mtd_period is not None and any(
+            mtd_values.get(f) is not None for f in SERIES_LABELS
+        ):
+            seen.add(int(mtd_period.year))
+        if not seen:
+            return pd.DataFrame()
+        years = range(min(seen), max(seen) + 1)
+
+    rows: list[dict[str, Any]] = []
+    for year in years:
+        for field, label in SERIES_LABELS.items():
+            pair = None
+            value = mtd_values.get(field)
+            if mtd_period is not None and value is not None:
+                pair = (mtd_period, value)
+            grid = build_grid(ledger, field=field, mtd=pair, years=[year])
+            if grid.empty:
+                # Keep the row so every year shows all three series; a series
+                # with nothing recorded reads as blank rather than vanishing,
+                # which would silently misalign the block.
+                blank: dict[str, Any] = {"SERIES": label, "YEAR": year}
+                for label_m in MONTH_LABELS:
+                    blank[label_m] = None
+                for extra in ("CY RETURN", "FY RETURN", "Q1", "Q2", "Q3", "Q4"):
+                    blank[extra] = None
+                rows.append(blank)
+                continue
+            rows.append({"SERIES": label, **grid.iloc[0].to_dict()})
+        if alpha_as_difference:
+            block = {r["SERIES"]: r for r in rows[-len(SERIES_LABELS):] if r.get("YEAR") == year}
+            strat, bench, alpha = (block.get(SERIES_LABELS[k]) for k in ("strategy", "benchmark", "alpha"))
+            if strat is not None and bench is not None and alpha is not None:
+                for col in ("CY RETURN", "FY RETURN", "Q1", "Q2", "Q3", "Q4"):
+                    a, b = strat.get(col), bench.get(col)
+                    ok = a is not None and b is not None and np.isfinite(a) and np.isfinite(b)
+                    alpha[col] = float(a) - float(b) if ok else None
+
+    if not rows:
+        return pd.DataFrame()
+    frame = pd.DataFrame(rows)
+    ordered = (
+        ["SERIES", "YEAR"]
+        + MONTH_LABELS
+        + ["CY RETURN", "FY RETURN", "Q1", "Q2", "Q3", "Q4"]
+    )
+    return frame[[c for c in ordered if c in frame.columns]]
+
+
+def _elapsed_fraction(period: pd.Period, as_of: Any | None) -> float:
+    """How much of `period` has actually happened, as a fraction of the month.
+
+    Three days into September is 0.1 of a month, not 1.0. Annualising as though
+    a whole month had passed divides the return by more time than has elapsed.
+    """
+    if as_of is None:
+        return 1.0
+    stamp = pd.Timestamp(as_of).normalize()
+    start = period.start_time.normalize()
+    end = period.end_time.normalize()
+    if stamp >= end:
+        return 1.0
+    if stamp < start:
+        return 0.0
+    total = (end - start).days + 1
+    return float(((stamp - start).days + 1) / total)
+
+
+def summary_stats(
+    ledger: dict[str, Any], mtd: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Headline figures. Pass `mtd` to include the running month.
+
+    The month in progress is real money. Excluding it from the headline while
+    the grid below compounds it into CY produced two different answers to the
+    same question -- "+38.7% since inception" beside "CY +37.2%" for what is,
+    in the first year, exactly the same period. Whichever convention is chosen,
+    it has to be the same one everywhere.
+
+    `mtd` is {"period", "strategy", "benchmark", "as_of"}. It is NOT read from
+    the ledger, because it is never stored there: it moves every session.
+
+    For annualisation the running month counts as the FRACTION of it elapsed,
+    not as a whole month. Treating three days as a full month would divide the
+    return by more time than has actually passed and understate the annualised
+    figure.
+    """
+    strat = _series_from(ledger, "strategy")
+    bench = _series_from(ledger, "benchmark")
+
+    frozen_months = len(strat)
+    partial = 0.0
+    mtd_period = None
+    if mtd:
+        mtd_period = mtd.get("period")
+        s_mtd, b_mtd = mtd.get("strategy"), mtd.get("benchmark")
+        if mtd_period is not None and s_mtd is not None:
+            strat.loc[mtd_period] = float(s_mtd)
+            strat = strat.sort_index()
+            partial = _elapsed_fraction(mtd_period, mtd.get("as_of"))
+        if mtd_period is not None and b_mtd is not None:
+            bench.loc[mtd_period] = float(b_mtd)
+            bench = bench.sort_index()
+
+    if strat.empty:
+        return {"months": 0, "frozen_months": 0, "includes_mtd": False}
+
+    total_s = compound(strat.values)
+    total_b = compound(bench.values) if not bench.empty else None
+    n = frozen_months + partial
+    ann_s = (1 + total_s) ** (12.0 / n) - 1 if total_s is not None and n else None
+    ann_b = (1 + total_b) ** (12.0 / n) - 1 if total_b is not None and n else None
+
+    equity = (1 + strat).cumprod()
+    max_dd = float((equity / equity.cummax() - 1).min()) if n else 0.0
+    beat = (
+        float((strat.reindex(bench.index) > bench).mean()) if not bench.empty else None
+    )
+    entries = list(ledger.get("months", {}).values())
+    origins = [e.get("origin", "backfill") for e in entries]
+    universes = [e.get("universe", "current") for e in entries]
+    return {
+        "months": len(strat),
+        "frozen_months": frozen_months,
+        "includes_mtd": partial > 0,
+        "mtd_period": str(mtd_period) if mtd_period is not None else None,
+        "elapsed_months": n,
+        "backfilled": sum(1 for o in origins if o == "backfill"),
+        "recorded": sum(1 for o in origins if o == "recorded"),
+        "point_in_time": sum(1 for u in universes if u == "point_in_time"),
+        "current_universe": sum(1 for u in universes if u != "point_in_time"),
+        "first": str(strat.index.min()),
+        "last": str(strat.index.max()),
+        "total_return": total_s,
+        "bench_return": total_b,
+        "alpha": (total_s - total_b) if (total_s is not None and total_b is not None) else None,
+        "ann_return": ann_s,
+        "ann_bench": ann_b,
+        "max_drawdown": max_dd,
+        "best_month": float(strat.max()),
+        "worst_month": float(strat.min()),
+        "positive_months": int((strat > 0).sum()),
+        "beat_rate": beat,
+        "configs": sorted(
+            {e.get("config") for e in ledger.get("months", {}).values() if e.get("config")}
+        ),
+    }
+
+
+def months_to_cover(as_of: pd.Timestamp, inception: pd.Period = INCEPTION) -> int:
+    """How many completed months a backtest must report to reach inception.
+
+    The backtest window is counted back from the month in progress, so covering
+    January from September means asking for the eight completed months Jan-Aug.
+    """
+    current = pd.Period(pd.Timestamp(as_of), freq="M")
+    return max(int((current - inception).n), 0)

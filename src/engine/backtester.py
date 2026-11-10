@@ -1,0 +1,2089 @@
+"""
+Walk-forward historical backtesting engine with zero look-ahead bias and transaction cost drag.
+
+Features:
+  1. Zero Look-Ahead Execution (Rank at T close -> Trade at T+1)
+  2. Transaction Cost & Slippage Drag Matrix (STT, Stamp Duty, Brokerage, Slippage)
+  3. Rank Persistence Buffer Zones (Minimize turnover and transaction friction)
+  4. Full Performance Attribution (CAGR, Sharpe, Sortino, Calmar, Max DD, Turnover)
+"""
+
+from __future__ import annotations
+
+from typing import Any, Sequence
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+
+from src.core.config import HIGH_52W_MIN_OBSERVATIONS, MOMENTUM_WINDOWS, RISK_FREE_RATE
+from src.engine.calendar_momentum import anchor_frame, period_sharpe_at, winsorised_z
+from src.engine.corporate_actions import adjust_prices
+from src.engine import compute_gate, liquidity
+from src.engine.membership import members_on
+from src.engine.portfolio import apply_caps
+
+# MOMENTUM_WINDOWS are calendar months; warmup arithmetic needs trading sessions.
+SESSIONS_PER_MONTH: int = 21
+
+
+DEFAULT_BACKTEST_MONTHS: int = 6
+
+
+def _rolling_high_at(prices: pd.DataFrame, idx: int) -> pd.Series:
+    """Return the canonical 252-session high at one row, matching pandas rolling.
+
+    Keep the same rolling operation as the full-history reference rather than
+    replacing it with DataFrame.max/count: pandas rolling has its own handling
+    of missing/non-finite values, and signal parity matters more than saving a
+    few operations on this small window. Only the 252-row slice is materialised.
+    """
+    window = prices.iloc[max(0, idx - 251) : idx + 1]
+    # .copy(): a row of a one-dtype frame is a VIEW, and it kept the whole
+    # 252-row rolled frame alive. run_backtest keeps one of these per signal
+    # date (_high_at_cache), so the History-from-2010 run held ~200 of them,
+    # ~580 MB, to keep ~3 MB of values -- the backtest that took production
+    # down on 8 Oct 2026. Same values; tests/test_memory_guardrails.py.
+    return window.rolling(252, min_periods=HIGH_52W_MIN_OBSERVATIONS).max().iloc[-1].copy()
+
+
+def ath_history(prices: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    """(whole history on file, first date on file) for each column.
+
+    A stock whose first price comes after the frame's first week began trading
+    inside the file, so its all-time high on file is its real one. A stock
+    priced from the start may have peaked before the file begins.
+    """
+    first_pos = prices.notna().to_numpy().argmax(axis=0)
+    full = pd.Series(first_pos > 5, index=prices.columns)
+    first = pd.Series(pd.DatetimeIndex(prices.index)[first_pos], index=prices.columns)
+    return full, first
+
+
+def ath_trusted(history: tuple[pd.Series, pd.Series], on, min_years: float) -> pd.Series:
+    """Which columns the all-time-high rule applies to on `on` (owner, 9 Oct 2026)."""
+    full, first = history
+    age_days = (pd.Timestamp(on) - first).dt.days
+    return full | (age_days >= float(min_years) * 365.25)
+
+
+def completed_month_window(
+    dates: pd.DatetimeIndex, months: int = DEFAULT_BACKTEST_MONTHS
+) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """First and last day of the most recent `months` COMPLETED calendar months.
+
+    The month in progress is excluded. Reporting a partial month beside full
+    ones invites comparing a half-month return against six whole ones, and the
+    partial month moves every day the market is open. On 18 Aug 2026 this spans
+    1 Feb 2026 to 31 Jul 2026 -- August is still running.
+    """
+    if len(dates) == 0:
+        raise ValueError("completed_month_window requires at least one date")
+    if months <= 0:
+        raise ValueError("months must be positive")
+    current_month_start = pd.Timestamp(dates[-1]).normalize().replace(day=1)
+    window_end = current_month_start - pd.Timedelta(days=1)
+    window_start = current_month_start - pd.DateOffset(months=months)
+    return window_start, window_end
+
+
+def _calendar_period_sharpe(
+    prices: pd.DataFrame,
+    log_returns: pd.DataFrame,
+    end_idx: int,
+    months: int,
+    *,
+    prices_anchor: pd.DataFrame | None = None,
+    metric: str = "sharpe",
+) -> tuple[pd.Series, int]:
+    """V1 period-scale Sharpe -- the screener's definition, not a copy of it.
+
+    This delegates to src.engine.calendar_momentum.period_sharpe_at. It used to
+    reimplement the statistic, and the copy drifted: it read the window's
+    opening price off one exact session with no staleness allowance, so a single
+    holed session on the anchor date scored a stock NaN here and a real number
+    on screen. The test that was supposed to pin the two together happened to
+    put its gaps where both engines returned NaN.
+    """
+    return period_sharpe_at(
+        prices, log_returns, end_idx, months, prices_anchor=prices_anchor, metric=metric
+    )
+
+
+def _fill_price(prices: pd.DataFrame, symbol: str, idx: int) -> float:
+    """The price a fill is struck at, or NaN when the tape has nothing to fill on.
+
+    Yahoo holes sessions routinely, and `float(prices[s].iloc[idx])` on a holed
+    session returned NaN, which the callers then fed into `if p_entry > 0` --
+    False for NaN -- and logged the trade as a flat 0.00% round trip. A
+    fabricated zero in a blotter is worse than a gap: it lands in the win rate,
+    the profit factor and the average-loss figure as a real, uneventful trade.
+    So carry the last real print forward (a stock that has not traded is filled
+    at the last price it traded at), and if there is no earlier print at all,
+    return NaN and let the trade report NaN.
+    """
+    if symbol not in prices.columns or idx >= len(prices):
+        return float("nan")
+    col = prices[symbol]
+    value = col.iloc[idx]
+    if pd.isna(value):
+        prior = col.iloc[: idx + 1].dropna()
+        if prior.empty:
+            return float("nan")
+        value = prior.iloc[-1]
+    return float(value)
+
+
+def _round_trip_return(entry: float, exit_: float) -> float:
+    """Realised return, or NaN when either leg has no price. Never a fake 0%."""
+    if not np.isfinite(entry) or not np.isfinite(exit_) or entry <= 0:
+        return float("nan")
+    return (exit_ / entry) - 1.0
+
+
+def _composite_z_score(
+    prices: pd.DataFrame,
+    log_returns: pd.DataFrame,
+    start_idx: int,
+    windows: Sequence[int],
+    weights: Sequence[float],
+    prices_anchor: pd.DataFrame | None = None,
+    metric: str = "sharpe",
+) -> pd.Series:
+    """Canonical multi-window composite z-score used by every ranking method.
+
+    A window that is unavailable for a stock must NOT become a synthetic zero
+    z-score. A zero is the cross-sectional average, so filling it silently
+    shrinks that stock's score toward the mean in proportion to the weight it
+    is missing. Each stock is therefore renormalised by the weight actually
+    available to it, matching apply_calendar_momentum() in
+    src/engine/calendar_momentum.py.
+    """
+    composite = pd.Series(0.0, index=prices.columns)
+    available_weight = pd.Series(0.0, index=prices.columns)
+    # Loop-invariant: five windows share one stale-anchor frame.
+    if prices_anchor is None:
+        prices_anchor = anchor_frame(prices)
+    # strict: a short weight list would otherwise be padded by silent
+    # truncation, scoring a 3-horizon composite and reporting it as 5.
+    for w_period, cw in zip(windows, weights, strict=True):
+        if cw <= 0:
+            continue
+        raw_mom, _ = _calendar_period_sharpe(
+            prices, log_returns, start_idx, int(w_period),
+            prices_anchor=prices_anchor, metric=metric,
+        )
+        # winsorise -> z -> clamp, the documented pipeline, applied by the same
+        # function the screener uses. Z-scoring first and clipping afterwards is
+        # a different transform: it leaves the dispersion inflated by whatever
+        # outliers the cross-section has, so a fat-tailed window carried less
+        # than its configured weight here while carrying all of it on screen.
+        # A degenerate cross-section comes back all-NaN and therefore
+        # contributes no score and no available weight, as before.
+        z = winsorised_z(raw_mom)
+        composite += z.fillna(0.0) * cw
+        available_weight += z.notna().astype(float) * cw
+    return composite.div(available_weight.replace(0.0, np.nan))
+
+
+# Share lines of one company: a book holds at most one, so the 5% per-stock
+# cap holds for the company (owner, 2026-10-02: "Tata Motors DVR: count it"
+# -- the DVR is an index member in its own right, Nifty 50 2016-04-01 to
+# 2017-05-26, Nifty 500 and Total Market until 2024-08-29). TMPV is today's
+# ticker for Tata Motors' ordinary shares (TATAMOTORS until 2025-10-24).
+SAME_COMPANY: dict[str, str] = {
+    "TATAMTRDVR": "TATAMOTORS",
+    "TATAMOTORS": "TATAMOTORS",
+    "TMPV": "TATAMOTORS",
+}
+
+
+def _select_holdings(
+    full_ranked: pd.Series,
+    prev_holdings: Sequence[str],
+    top_n: int,
+    effective_buffer: int,
+    *,
+    sector_map: dict[str, str] | None = None,
+    max_per_sector: int | None = None,
+) -> list[str]:
+    """Buffer-zone selection: retain incumbents inside the buffer, then top up.
+
+    With `max_per_sector` (the hard industry cap, owner 2026-10-02) no
+    industry gets more than that many names: incumbents are retained best rank
+    first, so an over-full industry keeps its strongest and sells the rest, and
+    the top-up skips a full industry for the next-ranked name. Unlabelled names
+    share the group "Other", as in portfolio.apply_caps.
+
+    A name already held keeps its slot while it ranks inside `effective_buffer`
+    (wider than `top_n`), so a holding that drifts from #18 to #24 is not sold
+    and re-bought for a rank wobble. Only once it falls past the buffer, or
+    fails a filter and drops out of `full_ranked` entirely, does it go.
+
+    Two share lines of one company (SAME_COMPANY: Tata Motors and its DVR)
+    take one slot: a line already held keeps it (the buffer rule, no churn),
+    otherwise the better-ranked line takes it and the other is skipped.
+
+    Shared by the backtest loop and the pending-rebalance preview. Keeping one
+    implementation is the point: a preview that told you to sell a name the
+    backtest would have retained is worse than no preview, and a second copy of
+    this logic is exactly how the two drift apart.
+    """
+    limit = max_per_sector if (max_per_sector and sector_map is not None) else None
+    used: dict[str, int] = {}
+    companies: set[str] = set()
+
+    def fits(s: str) -> bool:
+        company = SAME_COMPANY.get(s)
+        if company is not None and company in companies:
+            return False          # another share line of a company already held
+        if limit is not None:
+            g = sector_map.get(s, "Other")
+            if used.get(g, 0) >= limit:
+                return False
+            used[g] = used.get(g, 0) + 1
+        if company is not None:
+            companies.add(company)
+        return True
+
+    incumbents = list(prev_holdings)
+    if limit is not None:
+        incumbents.sort(key=lambda s: full_ranked.index.get_loc(s)
+                        if s in full_ranked.index else len(full_ranked) + 1)
+    selected: list[str] = []
+    for s in incumbents:
+        if len(selected) >= top_n:
+            break
+        if s in full_ranked.index:
+            if full_ranked.index.get_loc(s) + 1 <= effective_buffer and fits(s):
+                selected.append(s)
+    for s in full_ranked.index:
+        if len(selected) >= top_n:
+            break
+        if s not in selected and fits(s):
+            selected.append(s)
+    return selected[:top_n]
+
+
+def sector_slots(top_n: int, stock_cap: float, sector_cap: float) -> int:
+    """Most names one industry may hold so the hard cap holds at target weights.
+
+    Each name targets min(1/top_n, stock_cap); an industry of k names then
+    weighs k times that, so k = floor(sector_cap / per-name weight). 20 names,
+    5% and 40% give 8.
+    """
+    per_name = min(1.0 / max(int(top_n), 1), float(stock_cap))
+    return max(1, int(np.floor(float(sector_cap) / per_name + 1e-9)))
+
+
+def _compute_weights(
+    holdings: Sequence[str],
+    log_ret: pd.DataFrame,
+    start_idx: int,
+    weight_method: str,
+    *,
+    sector_map: dict[str, str] | None = None,
+    stock_cap: float = 1.0,
+    sector_cap: float = 1.0,
+) -> pd.Series:
+    """Target weights for a selected book, projected onto the configured caps.
+
+    Equal weight unless inverse-vol, then the SAME cap projection the Portfolio
+    tab applies. The caps were previously accepted by run_backtest and dropped:
+    the simulation, and the live book it hands the user to trade, ran with no
+    concentration limit at all while the Configuration tab showed one in force.
+    """
+    if not len(holdings):
+        return pd.Series(dtype=float)
+    if weight_method == "Inverse Volatility":
+        # Same estimate as the Portfolio tab (PortfolioOptimizer.inverse_volatility):
+        # the last 63 sessions up to and including the signal date, population SD.
+        vol_w = log_ret[list(holdings)].iloc[max(start_idx - 62, 0) : start_idx + 1].std(ddof=0)
+        inv = (1.0 / vol_w.replace(0, np.nan)).fillna(0)
+        t_w = inv.sum()
+        raw = inv / t_w if t_w > 0 else pd.Series(1.0 / len(holdings), index=list(holdings))
+    else:
+        raw = pd.Series(1.0 / len(holdings), index=list(holdings))
+    # The caller reads `.attrs` off this Series directly; nothing is stashed on
+    # the function. A module- or function-level attribute would be shared by
+    # every Streamlit session in the process -- and this app is deployed
+    # publicly, so one user's cap setting would decide another user's flag.
+    return apply_caps(
+        raw, sector_map or {}, sector_cap=sector_cap, stock_cap=stock_cap
+    )
+
+
+def _exit_reason(
+    symbol: str,
+    full_ranked: pd.Series,
+    above_ema: pd.Series,
+    near_high: pd.Series,
+    ema_period: int,
+    high_pct: float,
+    effective_buffer: int,
+    *,
+    index_mask: pd.Series | None = None,
+    liq_mask: pd.Series | None = None,
+    signal_date: Any = None,
+    near_ath: pd.Series | None = None,
+    ath_pct: float | None = None,
+) -> str:
+    """Why a held name is being sold, in the order the filters actually bind.
+
+    The last two gates are the ones a name can fail with its price filters
+    intact: it is not in the index on the signal date, or it trades below the
+    liquidity floor. Without them such a sale read "Rebalance Exit", which
+    explained nothing. The masks are the same ones that decided the ranking.
+    """
+    if symbol in full_ranked.index:
+        rk = full_ranked.index.get_loc(symbol) + 1
+        return f"Rank Dropped (#{rk} > Buffer {effective_buffer})"
+    if not above_ema.get(symbol, False):
+        return f"Trend Breakdown (< {ema_period} EMA)"
+    if not near_high.get(symbol, False):
+        return f"Failed 52W High Filter (< {high_pct*100:.0f}%)"
+    if near_ath is not None and not bool(near_ath.get(symbol, False)):
+        return f"Failed ATH Filter (< {(ath_pct or 0)*100:.0f}% of all-time high)"
+    if index_mask is not None and not bool(index_mask.get(symbol, False)):
+        when = f" on {pd.Timestamp(signal_date):%d %b %Y}" if signal_date is not None else ""
+        return f"Not in the index{when}"
+    if liq_mask is not None and not bool(liq_mask.get(symbol, False)):
+        return "Below the liquidity floor"
+    return "Rebalance Exit"
+
+
+def _index_mask(
+    membership: dict[str, Any] | None,
+    columns: pd.Index,
+    on: pd.Timestamp,
+) -> pd.Series | None:
+    """Which columns were actually in the index on `on`, or None if unknown.
+
+    None means the membership history does not reach back this far, and the
+    caller must then score against the current universe and SAY SO. Quietly
+    substituting today's list for a date we have no record of would reintroduce
+    exactly the survivorship bias this is here to remove, while appearing to
+    have removed it.
+    """
+    if membership is None:
+        return None
+    members = members_on(membership, pd.Timestamp(on).date(), canonical=True)
+    if members is None:
+        return None
+    return pd.Series(columns.isin(members), index=columns)
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _build_rebalance_schedule(
+    prices: pd.DataFrame,
+    start_offset: int,
+    rebal_freq: int,
+    backtest_months: int,
+    *,
+    stateful_history: bool = False,
+    history_start: pd.Timestamp | None = None,
+) -> tuple[list[int], list[int], int, pd.Timestamp] | None:
+    """Which sessions the book is rebalanced on, and where the simulation stops.
+
+    Returns (rebal_dates, all_signal_idx, last_sim_idx, window_end), or None
+    when the reported window contains no rebalance at all.
+
+    `all_signal_idx` is the same calendar WITHOUT the "needs two sessions after
+    it" guard and without the reported-window filter: the pending preview only
+    needs the signal itself, and the signal it needs -- the most recent month
+    end -- is precisely the one both filters throw away.
+    """
+    dates = pd.DatetimeIndex(prices.index)
+    if rebal_freq == 21:
+        # Monthly convention: signal/rebalance at the last available trading
+        # session of each calendar month, then execute on the next session.
+        eligible = dates[start_offset:]
+        month_keys = eligible.to_period("M")
+        idx_values = np.arange(start_offset, len(prices))
+        last_by_month = pd.Series(idx_values, index=eligible).groupby(month_keys).last()
+        rebal_dates = [int(i) for i in last_by_month.to_numpy() if int(i) < len(prices) - 2]
+        # The same calendar WITHOUT the "needs two sessions after it" guard and
+        # without the reported-window filter below. The guard exists so a
+        # rebalance has room to accrue; the pending preview only needs the
+        # signal itself, and the signal it needs -- the most recent month end --
+        # is precisely the one both filters throw away.
+        all_signal_idx = [int(i) for i in last_by_month.to_numpy()]
+    else:
+        rebal_dates = list(range(start_offset, len(prices) - 2, rebal_freq))
+        all_signal_idx = list(range(start_offset, len(prices), rebal_freq))
+
+    # Restrict the REPORTED window to the last N completed calendar months. The
+    # formation history before it is untouched -- a rebalance still scores on a
+    # full 12-month lookback; we simply do not report periods outside the
+    # window. Filter on the EXECUTION date (T+1), because a rebalance signalled
+    # on the last session of January is the trade that holds through February.
+    window_start, window_end = completed_month_window(dates, backtest_months)
+    if stateful_history:
+        rebal_dates = [i for i in rebal_dates if dates[i + 1] <= window_end]
+        if history_start is not None:
+            history_start = pd.Timestamp(history_start).normalize()
+            rebal_dates = [i for i in rebal_dates if dates[i + 1] >= history_start]
+    else:
+        rebal_dates = [
+            i for i in rebal_dates if window_start <= dates[i + 1] <= window_end
+        ]
+    if not rebal_dates or not any(
+        window_start <= dates[i + 1] <= window_end for i in rebal_dates
+    ):
+        # No completed month holds a rebalance. That is the first month of a
+        # system whose history starts today (Nano Cap, Combined): its first
+        # book is signalled at the last close before inception and fills on
+        # the first session after, so it is the rebalance this window excludes.
+        # Return the schedule empty so the current-book block can still apply
+        # it; with no signal in or after history_start there is nothing to show.
+        if not (
+            stateful_history
+            and history_start is not None
+            and any(dates[i + 1] >= history_start for i in all_signal_idx if i + 1 < len(dates))
+        ):
+            return None
+        rebal_dates = []
+
+    # The final holding period must stop at the window, not run into the month
+    # in progress. searchsorted(..., "right") is an EXCLUSIVE bound, so the last
+    # session the simulation may touch is one before it.
+    hard_end_idx = int(dates.searchsorted(window_end, side="right"))
+    last_sim_idx = min(hard_end_idx - 1, len(prices) - 1)
+
+    return rebal_dates, all_signal_idx, last_sim_idx, window_end
+
+
+def _step_portfolio_allocation(
+    wts: pd.Series,
+    prev_weights: pd.Series,
+    columns: pd.Index,
+    cost_bps: float,
+) -> tuple[pd.Series, float, float]:
+    """One period's target book, its turnover, and the friction that costs.
+
+    Returns (full_w, turnover_period, friction_drag). `prev_weights` must be
+    the book as it STANDS at this fill, i.e. the previous target carried
+    forward through the market -- see `_drift_holdings`. Nothing here mutates
+    its arguments.
+    """
+    full_w = pd.Series(0.0, index=columns)
+    full_w[wts.index] = wts.values
+
+    # One definition of turnover, including the first rebalance. The
+    # establishment period used to be hard-coded to 1.0 while every later
+    # period used sum|dw|/2, so the same `cost_bps` priced two different
+    # quantities: full notional traded on day one, half notional after. It
+    # also put a 100% reading into the "Avg Period Turnover" KPI beside
+    # 20% readings, inflating the average of a series whose terms did not
+    # measure the same thing.
+    #
+    # sum|dw|/2 is one-way turnover, which is what `cost_bps` is documented
+    # to price ("round-trip cost"): establishing a book buys 100% and sells
+    # nothing, i.e. half a round trip, so 0.5 -- 15 bps at the default, not
+    # 30. NB the closing book is never liquidated, so its exit leg is never
+    # charged either; the two simplifications point the same way.
+    turnover_period = float((full_w - prev_weights).abs().sum() / 2.0)
+
+    friction_drag = turnover_period * (cost_bps / 10000.0)
+    return full_w, turnover_period, friction_drag
+
+
+def _hold_cap_on(hold_cap: float | None, hold_cap_from: str | None, signal) -> bool:
+    """Whether the let-winners-run rule governs the rebalance struck at `signal`."""
+    if hold_cap is None:
+        return False
+    return hold_cap_from is None or pd.Timestamp(signal).normalize() >= pd.Timestamp(hold_cap_from).normalize()
+
+
+def _let_winners_run(target: pd.Series, standing: pd.Series, prev_holdings,
+                     hold_cap: float, sector_map: dict[str, str] | None = None,
+                     sector_cap: float | None = None) -> pd.Series:
+    """Let winners run (owner, 8 Nov 2026): kept names keep their drifted weight
+    up to `hold_cap`; the money freed by sells and by trims goes to the new buys
+    in equal shares; with no buys it goes to the kept names in proportion.
+
+    The industry cap stays HARD at the rebalance (owner, 2 Oct 2026): an
+    industry above `sector_cap` has its kept names scaled down to it, and no
+    money is placed that would carry an industry past it. No name ends above
+    `hold_cap`; what cannot be placed stays cash.
+
+    `target`: the reset rule's weights for this rebalance (its index is the new
+    book). `standing`: the old book as it stands at this fill (_drift_holdings).
+    """
+    names = list(target.index)
+    if not names:
+        return target
+    prev = set(prev_holdings or [])
+    ind = pd.Series({s: (sector_map or {}).get(s, f"_{s}") for s in names})
+    capped_ind = sector_map is not None and sector_cap is not None
+    kept = [s for s in names if s in prev and float(standing.get(s, 0.0)) > 0]
+    buys = [s for s in names if s not in kept]
+    w = pd.Series(0.0, index=names)
+    if kept:
+        w[kept] = standing.reindex(kept).astype(float).clip(upper=hold_cap).to_numpy()
+        if capped_ind:
+            by = w.groupby(ind).sum()
+            for g, tot in by[by > sector_cap].items():
+                members = ind.index[ind == g]
+                w[members] *= sector_cap / tot
+    free = max(1.0 - float(w.sum()), 0.0)
+    takers = buys if buys else kept
+    for _ in range(2 * len(names) + 2):          # spread, re-spreading what a cap turns away
+        room = (hold_cap - w[takers]).clip(lower=0.0)
+        if capped_ind:
+            ind_room = (sector_cap - w.groupby(ind).sum()).clip(lower=0.0)
+            for g in set(ind[takers]):
+                grp = [s for s in takers if ind[s] == g]
+                room[grp] = room[grp].clip(upper=ind_room.get(g, 0.0) / len(grp))
+        takers = [s for s in takers if room[s] > 1e-12]
+        if free <= 1e-12 or not takers:
+            break
+        share = (pd.Series(1.0, index=takers) if buys else w[takers].clip(lower=1e-12))
+        give = (share / share.sum() * free).clip(upper=room[takers])
+        w[takers] += give
+        free -= float(give.sum())
+    out = w.astype(float)
+    out.attrs = dict(target.attrs)
+    out.attrs["cash"] = max(free, 0.0)
+    return out
+
+
+def _fixed_buys(target: pd.Series, standing: pd.Series, prev_holdings, hold_cap: float,
+                buy_w: float, sector_map: dict[str, str] | None = None,
+                sector_cap: float | None = None) -> pd.Series:
+    """The owner's rule (8 Nov 2026), research: kept names keep their drifted
+    weight, trimmed only above `hold_cap`; each new buy gets `buy_w` (a fixed
+    amount as a share of today's book) from cash; short of cash, the buys share
+    it equally; cash left over stays cash; no kept name is sold to fund a buy.
+    The industry cap stays hard (kept names scaled down to it; a buy only gets
+    the room its industry has)."""
+    names = list(target.index)
+    if not names:
+        return target
+    prev = set(prev_holdings or [])
+    ind = pd.Series({s: (sector_map or {}).get(s, f"_{s}") for s in names})
+    capped_ind = sector_map is not None and sector_cap is not None
+    kept = [s for s in names if s in prev and float(standing.get(s, 0.0)) > 0]
+    buys = [s for s in names if s not in kept]
+    w = pd.Series(0.0, index=names)
+    if kept:
+        w[kept] = standing.reindex(kept).astype(float).clip(upper=hold_cap).to_numpy()
+        if capped_ind:
+            by = w.groupby(ind).sum()
+            for g, tot in by[by > sector_cap].items():
+                w[ind.index[ind == g]] *= sector_cap / tot
+    free = max(1.0 - float(w.sum()), 0.0)
+    if buys:
+        each = min(float(buy_w), free / len(buys), hold_cap)
+        for s in buys:
+            give = each
+            if capped_ind:
+                room = sector_cap - float(w[ind == ind[s]].sum())
+                give = max(min(give, room), 0.0)
+            w[s] = give
+    out = w.astype(float)
+    out.attrs = dict(target.attrs)
+    out.attrs["cash"] = max(1.0 - float(out.sum()), 0.0)
+    return out
+
+
+def _book_return(
+    weights: pd.Series,
+    prices_ff: pd.DataFrame,
+    fill_idx: int,
+    from_idx: int,
+    to_idx: int,
+) -> float:
+    """A buy-and-hold book's return between two sessions after its fill.
+
+    Valued exactly as the daily accrual loop values it: the weight the caps left
+    uninvested is cash at 0%, and each name is worth its fill weight times its
+    price growth since the fill. A name unpriced at the fill or on the day keeps
+    its weight unchanged, as it does there.
+    """
+    held = weights[weights != 0.0]
+    if held.empty or to_idx <= from_idx:
+        return 0.0
+    w = held.to_numpy(dtype=float)
+    cash = max(1.0 - float(w.sum()), 0.0)
+    base = prices_ff.iloc[fill_idx].reindex(held.index).to_numpy(dtype=float)
+    ok = np.isfinite(base) & (base > 0)
+
+    def value(idx: int) -> float:
+        px = prices_ff.iloc[idx].reindex(held.index).to_numpy(dtype=float)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            growth = np.where(ok & np.isfinite(px), px / base, 1.0)
+        return cash + float((w * growth).sum())
+
+    start = value(from_idx)
+    return value(to_idx) / start - 1.0 if start > 0 else 0.0
+
+
+def _drift_holdings(
+    prev_weights: pd.Series,
+    prices: pd.DataFrame,
+    from_idx: int | None,
+    to_idx: int,
+) -> pd.Series:
+    """Carry a book from the fill that set it to the fill that replaces it.
+
+        w_drifted,i = w_prev,i * (1 + r_i) / sum_j w_prev,j * (1 + r_j)
+
+    where r is each holding's return between the two fills. Nobody rebalances
+    between rebalances, so the weights a portfolio actually arrives with are
+    not the weights it was given: winners grow their share of the book and
+    losers shrink theirs, and the renormalisation is what makes the drifted
+    vector sum to 1 again.
+
+    Comparing a new target against the STALE prior target -- which is what the
+    loop did -- therefore prices the wrong trade. It under-reports whenever
+    drift has already moved the book toward the new target and over-reports
+    when it has moved away, and in the limiting case it is plainly wrong: hold
+    the same 20 names at the same targets for a month, re-strike the same
+    targets, and stale differencing reports 0.0000 turnover for a rebalance
+    that really does have to sell the winners back down and top the losers up.
+    Simulated at sigma = 9%/name/month that omission is ~3.5% of one-way
+    turnover per rebalance, about 12.5 bps a year of cost never charged --
+    always in the strategy's favour, since the missing trades are never free.
+
+    A holding that fails to price at either endpoint drifts by a factor of
+    1.0 rather than vanishing: the accrual loop already treats an unpriceable
+    leg as contributing nothing, and dropping it here instead would hand its
+    weight to the survivors and manufacture turnover out of a data gap.
+    """
+    held = prev_weights[prev_weights != 0.0]
+    if from_idx is None or held.empty or to_idx <= from_idx:
+        return prev_weights
+
+    p0 = prices.iloc[from_idx].reindex(held.index).to_numpy(dtype=float)
+    p1 = prices.iloc[to_idx].reindex(held.index).to_numpy(dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        growth = p1 / p0
+    growth = np.where(np.isfinite(growth) & (p0 > 0.0) & (p1 > 0.0), growth, 1.0)
+
+    value = held.to_numpy(dtype=float) * growth
+    # Cash the caps left uninvested earns 0% and stays in the book: dividing by the
+    # holdings alone made a 75%-invested book come back 100% invested (audit, 8 Nov
+    # 2026), so re-striking it was charged turnover nobody traded and the 15% rule
+    # placed the cash against inflated weights.
+    cash = max(1.0 - float(held.sum()), 0.0)
+    total = float(value.sum()) + cash
+    if not np.isfinite(total) or total <= 0.0:
+        return prev_weights
+
+    drifted = pd.Series(0.0, index=prev_weights.index)
+    drifted.loc[held.index] = value / total
+    return drifted
+
+
+def _returns_autocorr_lag1(daily: pd.Series) -> float:
+    """Sample first-order autocorrelation of the daily net return series.
+
+    Reported because the Sharpe standard error beside it assumes this is zero,
+    and a momentum book is the kind of strategy where it usually is not. The
+    sign is what matters: positive rho means the i.i.d. standard error is too
+    SMALL and the annualised Sharpe too large; negative means the reverse.
+
+    Lo's eta(q) is deliberately NOT computed here. It weights each sample rho_k
+    by (q - k), which at q = 252 is roughly 252x, while the reported window is
+    six completed months -- about 130 sessions, SHORTER than the aggregation
+    period it would be annualising to. On a sample series with rho_1 of only
+    -0.058 that arithmetic returned eta = 51.2 against sqrt(252) = 15.9: not a
+    property of the strategy, just estimation noise multiplied by 252. A
+    statistic that cannot be estimated from the window on offer does not become
+    estimable by being printed to two decimals.
+    """
+    n = len(daily)
+    if n < 20:
+        return float("nan")
+    x = daily.to_numpy(dtype=float)
+    x = x - x.mean()
+    denom = float((x * x).sum())
+    if not np.isfinite(denom) or denom <= 0:
+        return float("nan")
+    return float((x[1:] * x[:-1]).sum() / denom)
+
+
+def _underwater_durations(equity: pd.Series) -> tuple[int, int]:
+    """Longest and current stretch below the previous equity peak, in CALENDAR days.
+
+    Depth is only half of a drawdown; the half a holder actually feels is how
+    long it lasted. Measured in calendar days rather than sessions because that
+    is the elapsed time someone lived through, and from the first session below
+    the peak to the last one, inclusive -- the session that regains the peak is
+    a recovery, not part of the underwater run.
+    """
+    if equity is None or len(equity) < 2:
+        return 0, 0
+    peak = equity.cummax()
+    underwater = equity < peak * (1.0 - 1e-12)
+    if not bool(underwater.any()):
+        return 0, 0
+    runs = (underwater != underwater.shift(fill_value=False)).cumsum()
+    spans = [
+        (seg.index[-1] - seg.index[0]).days + 1
+        for _, seg in equity[underwater].groupby(runs[underwater])
+    ]
+    longest = int(max(spans)) if spans else 0
+    current = int(spans[-1]) if bool(underwater.iloc[-1]) else 0
+    return longest, current
+
+
+def _calculate_backtest_metrics(
+    eq_strat_net: pd.Series,
+    eq_strat_gross: pd.Series,
+    eq_bench: pd.Series,
+    dates: pd.DatetimeIndex,
+    strat_net_daily: list[float],
+    monthly_df: pd.DataFrame,
+    prices: pd.DataFrame,
+    rebal_dates: list[int],
+    _membership: dict[str, Any] | None,
+    pit_periods: int,
+    current_universe_periods: int,
+    actions_applied: list[dict[str, Any]],
+    scheme_neutralised_seen: bool,
+) -> dict[str, Any]:
+    """Total and annualised returns, risk ratios, drawdown and run provenance.
+
+    Every number the `stats` key carries is computed here and nowhere else.
+    """
+    total_s_net = float(eq_strat_net.iloc[-1] / eq_strat_net.iloc[0] - 1)
+    total_s_gross = float(eq_strat_gross.iloc[-1] / eq_strat_gross.iloc[0] - 1)
+    total_b = float(eq_bench.iloc[-1] / eq_bench.iloc[0] - 1)
+
+    n_days = len(dates)  # accrual sessions; the base point is not one of them
+    window_years = n_days / 252.0
+    ann_factor = 252.0 / max(n_days, 1)
+    # An annualised figure, not a compound annual growth rate observed over a
+    # year. The reported window is six completed months, so this raises a
+    # half-year result to the power of two: a +23% half-year prints +51%. It is
+    # the standard convention and it is kept, but `window_years` travels beside
+    # it so no caller can show it without being able to say what it extrapolates.
+    cagr_net = float((1 + total_s_net) ** ann_factor - 1) if (1 + total_s_net) > 0 else -1.0
+    cagr_gross = (
+        float((1 + total_s_gross) ** ann_factor - 1) if (1 + total_s_gross) > 0 else -1.0
+    )
+    cagr_bench = float((1 + total_b) ** ann_factor - 1) if (1 + total_b) > 0 else -1.0
+
+    strat_daily_s = pd.Series(strat_net_daily)
+    strat_vol = float(strat_daily_s.std() * np.sqrt(252))
+
+    # Sharpe from the MEAN excess return, which is what a Sharpe ratio is.
+    # It used to divide the annualised CAGR by annualised volatility -- a
+    # geometric numerator over an arithmetic denominator, and a numerator
+    # extrapolated from half a year at that, so the compounding of one strong
+    # month leaked into a statistic that is supposed to describe the average.
+    ann_mean_excess = float(strat_daily_s.mean() * 252) - RISK_FREE_RATE
+    strat_sharpe = float(ann_mean_excess / strat_vol) if strat_vol > 0 else 0.0
+    # How much of that ratio is sample noise, per Lo (2002):
+    #     SE(S) = sqrt((1 + S^2/2) / n)
+    # where S is the PER-PERIOD Sharpe and n the number of those periods. The
+    # first version of this line passed the ANNUALISED Sharpe with a count of
+    # daily sessions and returned the result unscaled, which understates the
+    # true standard error by roughly an order of magnitude -- 0.15 where a
+    # 20,000-trial Monte Carlo gives 1.43 for S_ann = 2 over 126 sessions, a
+    # factor of 9.2, and 13x at S_ann = 1 over 252.
+    #
+    # That inverted the entire point of the field. A six-month Sharpe that is
+    # statistically indistinguishable from zero (1.4 sigma) was being presented
+    # as overwhelming evidence (13 sigma), beside a number printed to two
+    # decimals. Convert to the daily Sharpe, take the standard error there, and
+    # scale back up: SE(S_ann) = sqrt(252) * sqrt((1 + S_ann^2/504) / n).
+    _ANNUALISATION = 252.0
+    if n_days > 1:
+        _s_period = strat_sharpe / np.sqrt(_ANNUALISATION)
+        sharpe_stderr_iid = float(
+            np.sqrt(_ANNUALISATION) * np.sqrt((1.0 + 0.5 * _s_period**2) / n_days)
+        )
+    else:
+        _s_period = float("nan")
+        sharpe_stderr_iid = float("nan")
+
+    # The key says `_iid` because the formula above assumes it, twice: Lo's
+    # SE(S) = sqrt((1 + S^2/2)/n) is derived for independent returns, and the
+    # sqrt(252) that annualises it assumes them too. A momentum book is
+    # positively autocorrelated within a holding period, which makes the TRUE
+    # standard error larger than this one -- so an unlabelled `sharpe_stderr`
+    # was quietly the optimistic end of the range.
+    #
+    # The measured lag-1 autocorrelation travels beside it so the size and
+    # direction of that assumption are visible. Lo's eta(q) is not reported --
+    # see _returns_autocorr_lag1 for why it cannot be estimated from a
+    # six-month window.
+    returns_autocorr_lag1 = _returns_autocorr_lag1(strat_daily_s)
+
+    dd_series = eq_strat_net / eq_strat_net.cummax() - 1
+    max_dd = float(dd_series.min())
+    max_dd_duration_days, current_dd_duration_days = _underwater_durations(eq_strat_net)
+
+    # The earliest signal date that had real membership behind it.
+    # NB: index `prices.index`, not `dates` -- `dates` is rebound above to the
+    # equity-curve calendar (accrual sessions only), so indexing it with a
+    # rebalance position reads the wrong date or runs off the end entirely.
+    pit_from = None
+    if _membership is not None and pit_periods:
+        for _i in rebal_dates:
+            if _index_mask(_membership, prices.columns, prices.index[_i]) is not None:
+                pit_from = pd.Timestamp(prices.index[_i]).strftime("%Y-%m-%d")
+                break
+
+    n_periods = len(monthly_df)
+    # Two different things, both of which were called "Win Rate". The card said
+    # "Profitable Periods" and showed the share of months that BEAT THE
+    # BENCHMARK -- 83% on a run where every month was profitable. They are
+    # reported separately now and neither borrows the other's label.
+    win_rate = (
+        float((monthly_df["Strategy Net"] > 0).mean())
+        if not monthly_df.empty and "Strategy Net" in monthly_df.columns
+        else 0.0
+    )
+    beat_rate = (
+        float((monthly_df["Alpha vs Benchmark"] > 0).mean())
+        if not monthly_df.empty and "Alpha vs Benchmark" in monthly_df.columns
+        else 0.0
+    )
+
+    # Target semideviation: sqrt(mean(min(r, 0)^2)) over EVERY session, which is
+    # the Sortino denominator. The previous code took the standard deviation of
+    # the negative sessions only -- a different statistic, divided by a smaller
+    # count and measured about their own mean rather than about zero, so it
+    # neither matched any published Sortino nor erred in a predictable
+    # direction. The <=5-observation fallback to total volatility is kept:
+    # a semideviation from four bad days is not a risk estimate.
+    # MAR-ALIGNED. The numerator is excess return over the risk-free rate, so
+    # the denominator measures shortfall against the same target. Measuring the
+    # numerator against rf and the denominator against zero is two different
+    # MARs in one ratio, and matches no published Sortino.
+    _rf_daily = RISK_FREE_RATE / 252.0
+    _downside_excess = np.minimum(strat_daily_s - _rf_daily, 0.0)
+    _n_below_mar = int((strat_daily_s < _rf_daily).sum())
+    _msd = float((_downside_excess**2).mean()) if len(strat_daily_s) else 0.0
+
+    # NO FALLBACK TO TOTAL VOLATILITY. The old code substituted total vol below
+    # six losing days, which is a materially different and much larger
+    # denominator -- measured at ~1.9x the semideviation on a sample series, so
+    # the reported Sortino roughly doubled the moment a sixth losing day
+    # arrived. A metric that steps discontinuously on an arbitrary count is
+    # worse than an absent one. Too few observations, or no shortfall at all,
+    # now reports NaN: not computable is a fact, 0.0 was a verdict, and it was
+    # the worst possible verdict on the best possible outcome.
+    _MIN_DOWNSIDE_OBS = 6
+    if _n_below_mar >= _MIN_DOWNSIDE_OBS and _msd > 0.0:
+        downside_vol = float(np.sqrt(_msd) * np.sqrt(252))
+        strat_sortino = float(ann_mean_excess / downside_vol)
+    else:
+        downside_vol = float("nan")
+        strat_sortino = float("nan")
+
+    # Numerator annualised, denominator observed over `window_years`. Over a
+    # six-month window that is not a Calmar ratio in the sense anyone quotes,
+    # because a half-year cannot contain a year's worth of drawdown. Reported
+    # with the window attached so it is read as what it is.
+    calmar_ratio = float((cagr_net / abs(max_dd))) if abs(max_dd) > 0 else 0.0
+    avg_turnover = float(monthly_df["Turnover %"].mean()) if not monthly_df.empty else 0.0
+    tot_cost_drag = total_s_gross - total_s_net
+
+    return {
+        "total_return": total_s_net,
+        "gross_return": total_s_gross,
+        "bench_return": total_b,
+        "alpha": total_s_net - total_b,
+        "ann_return": cagr_net,
+        "cagr_gross": cagr_gross,
+        "ann_bench": cagr_bench,
+        "max_drawdown": max_dd,
+        # Depth is only half a drawdown; this is how long it lasted.
+        "max_drawdown_duration_days": max_dd_duration_days,
+        "current_drawdown_duration_days": current_dd_duration_days,
+        "win_rate": win_rate,
+        "beat_rate": beat_rate,
+        "sharpe": strat_sharpe,
+        # Renamed from `sharpe_stderr`: the formula assumes zero autocorrelation
+        # and the name now says so, with the measured lag-1 figure beside it.
+        "sharpe_stderr_iid": sharpe_stderr_iid,
+        "returns_autocorr_lag1": returns_autocorr_lag1,
+        "risk_free_rate": RISK_FREE_RATE,
+        "window_years": window_years,
+        "sortino": strat_sortino,
+        "calmar": calmar_ratio,
+        "volatility": strat_vol,
+        "avg_turnover": avg_turnover,
+        "cost_drag_total": tot_cost_drag,
+        "n_periods": n_periods,
+        "n_days": n_days,
+        # How much of this run was actually survivorship-free. A caller
+        # reporting the return without reporting this overstates the result.
+        "pit_periods": pit_periods,
+        "current_universe_periods": current_universe_periods,
+        "pit_from": pit_from,
+        "actions_adjusted": len(actions_applied),
+        # True when the stock cap admits only one fully-invested book, so
+        # `weight_method` had no effect on the simulation at all.
+        "scheme_neutralised": bool(scheme_neutralised_seen),
+    }
+
+
+# Memoised on everything except the underscore-prefixed frames, which the
+# callers identify through `prices_hash`. The decorator was lost in the
+# 2026-09-17 refactor that split this function into stages, after which every
+# rerun of the Backtest and Track Record pages re-ran the whole walk-forward.
+# Bounded: a parameter sweep stores one entry per combination (up to 1,920,
+# three times over with the holdout), each kept for an hour with no ceiling.
+# A sweep reads each result as it lands, so evicting old ones costs it nothing.
+# Gated UNDER the cache: only a miss queues behind another reader's run
+# (src/engine/compute_gate.py, TODO S65).
+# Owner, 7 Nov 2026: "any rank used must be originated from screener". The
+# Screener scores the index members of the day; the model scored its whole
+# frame, which carries the stocks that have left the index (so it can price
+# what it once held), and filtered membership after scoring. The extra names
+# moved every z-score a little and swapped close neighbours (ACUTAAS 44th of
+# the qualified in the model, 45th on the Screener, 6 Nov). From the signal of
+# this date the model scores the members of the day only, as the Screener
+# does; earlier signals keep the old scoring so every frozen month replays
+# unchanged (owner chose "from the next rebalance", TODO S95). Over the 11
+# rebalances to 30 Oct 2026 the members-only scoring would have changed two
+# books by one name (31 Dec 2025, 31 Aug 2026).
+MEMBERS_ONLY_SCORING_FROM = "2026-11-30"
+
+# The screener has always required 30 prints before it will quote a 50-day EMA
+# (momentum.py: ewm(span=50, min_periods=30)); the backtester and rank_history
+# required none, so a name with 10 prints could pass "above its 50-day EMA"
+# here and fail the same gate on the Screener (duplicate audit, 10 Nov 2026:
+# BAGMANE, BIRET and ICICILIFE all did, on 5 Nov). Owner, 10 Nov 2026: 30
+# prints is right, forward-dated from the next signal so the record to date is
+# untouched.
+EMA_MIN_PRINTS = 30
+EMA_WARMUP_FROM = "2026-11-30"
+
+
+def _warmup_cutoff_rows(prices: pd.DataFrame, min_prints: int) -> np.ndarray:
+    """For each column, the row index at which it has `min_prints` prints.
+
+    Returned as positions, not dates, so a signal row can mask its own EMA
+    with one comparison and no second full-size frame: the EMA matrix is
+    already tens of MB at 750 symbols (see the note where it is built).
+    """
+    seen = prices.notna().to_numpy().cumsum(axis=0, dtype=np.int32)
+    enough = seen >= min_prints
+    rows = enough.argmax(axis=0)
+    rows[~enough.any(axis=0)] = len(prices)      # never enough: always masked
+    return rows
+
+
+def _signal_scores(prices, log_ret, idx, windows, weights, *, anchor, metric, members,
+                   on, members_from):
+    """The composite z-score at one signal, among the day's members once the
+    members-only rule applies (MEMBERS_ONLY_SCORING_FROM), else the whole frame."""
+    if (members is not None and members_from
+            and pd.Timestamp(on).normalize() >= pd.Timestamp(members_from)):
+        cols = members[members.astype(bool)].index.intersection(prices.columns)
+        return _composite_z_score(
+            prices[cols], log_ret[cols], idx, windows, weights,
+            prices_anchor=None if anchor is None else anchor[cols], metric=metric,
+        ).reindex(prices.columns)
+    return _composite_z_score(prices, log_ret, idx, windows, weights,
+                              prices_anchor=anchor, metric=metric)
+
+
+@st.cache_data(show_spinner=False, ttl=3600, max_entries=64)
+@compute_gate.serialised
+def run_backtest(
+    prices_hash: str,
+    _adj_close: pd.DataFrame,
+    top_n: int = 20,
+    rebal_freq: int = 21,
+    ema_period: int = 50,
+    high_pct: float = 0.80,
+    weight_method: str = "Equal Weight",
+    config_weights: Sequence[float] = (0.10, 0.30, 0.30, 0.20, 0.10),
+    stock_cap: float = 0.05,
+    sector_cap: float = 0.40,
+    sector_map: dict[str, str] | None = None,
+    cost_bps: float = 30.0,
+    buffer_n: int | None = None,
+    _benchmark_close: pd.Series | None = None,
+    backtest_months: int = DEFAULT_BACKTEST_MONTHS,
+    _membership: dict[str, Any] | None = None,
+    stateful_history: bool = False,
+    _actions: list[dict[str, Any]] | None = None,
+    liquidity_floor_cr: float = 0.0,
+    _traded_value: pd.DataFrame | None = None,
+    history_start: pd.Timestamp | None = None,
+    score_method: str = "sharpe",
+    ath_pct: float | None = None,
+    exit_ema_period: int | None = None,
+    exit_high_pct: float | None = None,
+    exit_ath_pct: float | None = None,
+    ath_min_years: float = 3.0,
+    members_only_scoring_from: str | None = MEMBERS_ONLY_SCORING_FROM,
+    ema_warmup_from: str | None = EMA_WARMUP_FROM,
+    hold_cap: float | None = None,
+    hold_cap_from: str | None = None,
+    buy_size: float | None = None,
+    weight_reset_months: tuple[int, ...] | None = None,
+) -> dict[str, Any] | None:
+    """
+    Executes a walk-forward momentum backtest with zero look-ahead bias and friction modeling.
+
+    ``ath_min_years``: see _ath_trusted below.
+    ``score_method`` "sharpe" (the live system) or "return" (each window's
+    plain log return, same windows and anchors). ``ath_pct``, when set, also
+    requires the close to be at least that fraction of the stock's highest
+    close on file up to the signal date (0.80 = within 20% of it). Both are
+    Backtest-page research options (owner, 9 Oct 2026); the defaults are the
+    live system and leave every result unchanged.
+    ``hold_cap``: owner, 8 Nov 2026: "let winners run till weight is 15%",
+    then "switch to 15% from next rebalance". When set, a kept holding is NOT
+    reset to its target at a rebalance: it keeps the weight the market gave
+    it, trimmed only above ``hold_cap``; see `_let_winners_run`.
+    ``hold_cap_from``: the first signal date it governs (the record: the
+    30 Nov 2026 signal); earlier signals keep the monthly reset, so frozen
+    months are untouched. None with a ``hold_cap`` applies it throughout
+    (research). ``hold_cap`` None is the monthly reset everywhere.
+    ``buy_size``: research only (owner, 8 Nov 2026), used with ``hold_cap``: each
+    new buy is ``buy_size`` (0.05) of the account as it stood at the last
+    financial-year end (31 March; the first book's capital before that), a
+    fixed amount for the year, paid from cash; when cash is short the buys share
+    it equally (fewer shares); cash left over stays cash; kept names are never
+    sold to fund a buy and still trim above ``hold_cap``. See `_fixed_buys`.
+    ``weight_reset_months``: research only (owner, 8 Nov 2026), with
+    ``buy_size``: at a signal in one of these months (3 = end of March,
+    (3, 9) = March and September) every holding goes back to its target
+    weight, and the buy amount becomes ``buy_size`` of the account then;
+    between resets the ``buy_size`` rule applies. None keeps the yearly
+    31 March base of ``buy_size`` alone.
+    """
+    if score_method not in ("sharpe", "return"):
+        raise ValueError(f"score_method must be 'sharpe' or 'return', not {score_method!r}")
+    if ath_pct is not None and not (0.0 < float(ath_pct) <= 1.0):
+        raise ValueError(f"ath_pct must be in (0, 1], not {ath_pct!r}")
+    for _name, _v in (("exit_high_pct", exit_high_pct), ("exit_ath_pct", exit_ath_pct)):
+        if _v is not None and not (0.0 < float(_v) <= 1.0):
+            raise ValueError(f"{_name} must be in (0, 1], not {_v!r}")
+    if not (0.0 <= float(ath_min_years) <= 30.0):
+        raise ValueError(f"ath_min_years must be between 0 and 30, not {ath_min_years!r}")
+    if exit_ema_period is not None and int(exit_ema_period) < 2:
+        raise ValueError(f"exit_ema_period must be at least 2, not {exit_ema_period!r}")
+    # Separate rules for KEEPING a holding (owner, 9 Oct 2026). A stock not held
+    # must pass the entry rules; a held one stays eligible while it passes these.
+    # All None: one set of rules for both, exactly as before.
+    _exit_rules = any(v is not None for v in (exit_ema_period, exit_high_pct, exit_ath_pct))
+    WINDOWS = MOMENTUM_WINDOWS
+    prices = _adj_close.dropna(axis=1, how="all").copy()
+
+    # Benchmark and strategy must share exactly the same completed session.
+    # The benchmark is the canonical daily NIFTY 500 series; never let a newer
+    # index close extend the benchmark beyond the strategy's available prices,
+    # or let an older strategy frame be compared with a newer index close.
+    benchmark_input = _benchmark_close
+    if benchmark_input is not None and not benchmark_input.empty and not prices.empty:
+        benchmark_input = pd.to_numeric(benchmark_input, errors="coerce").dropna().sort_index()
+        if not benchmark_input.empty:
+            common_as_of = min(pd.Timestamp(prices.index.max()), pd.Timestamp(benchmark_input.index.max()))
+            prices = prices.loc[:common_as_of]
+            benchmark_input = benchmark_input.loc[:common_as_of]
+
+
+    # Neutralise flagged corporate actions before anything reads a price. A
+    # split the vendor failed to adjust for shows up as a -50% session, which
+    # this engine would otherwise treat as a real return: it would book a
+    # catastrophic loss on a holding, and wreck the stock's momentum score so it
+    # can never be selected again. Done here, in memory, so nothing is written
+    # and the vendor's own later restatement cannot be double-counted.
+    prices, actions_applied = adjust_prices(prices, _actions)
+
+    # One weight per horizon, checked before anything is scored. zip()
+    # pairs these silently, so a caller passing four weights would have
+    # run a four-horizon strategy and labelled every result with the
+    # five-horizon configuration the UI still displayed.
+    if len(config_weights) != len(WINDOWS):
+        raise ValueError(
+            f"run_backtest needs one weight per lookback horizon: got "
+            f"{len(config_weights)} weights for {len(WINDOWS)} windows "
+            f"({list(WINDOWS)})."
+        )
+
+    w_total = sum(config_weights)
+    norm_w = [cw / w_total for cw in config_weights] if w_total > 0 else [0.2] * 5
+    active_windows = [w for w, cw in zip(WINDOWS, norm_w, strict=True) if cw > 0]
+    # WINDOWS are calendar MONTHS (the scoring path passes them straight to
+    # _calendar_period_sharpe). The warmup below is measured in SESSIONS, so
+    # using the months verbatim gave max_lb = 12 -- a 12-month formation
+    # window warmed up over 12 trading days. The first rebalance then landed
+    # at session 32 and _calendar_period_sharpe, whose searchsorted clamps to
+    # 0, silently scored "12-month momentum" from whatever little history
+    # existed. Convert to sessions for the warmup; keep months for scoring.
+    max_lb = (
+        max(active_windows) if active_windows else max(WINDOWS)
+    ) * SESSIONS_PER_MONTH
+
+    min_needed = max_lb + ema_period + rebal_freq + 10
+    if len(prices) < min_needed:
+        return None
+
+    # One anchor frame for the whole run: the scorer is called five times
+    # per rebalance and this is invariant across all of them.
+    prices_anchor = anchor_frame(prices)
+    # Holdings are valued at their last real print, the rule `_fill_price`
+    # already applies to every fill. Daily pct_change could not do this: a
+    # holed session made BOTH that day's and the next day's return NaN, so the
+    # move across the hole was never booked at all.
+    prices_ff = prices.ffill()
+    log_ret = np.log(prices / prices.shift(1).replace(0, np.nan))
+
+    benchmark_level: pd.Series | None = None
+    if benchmark_input is None or benchmark_input.empty:
+        benchmark_ret = pd.Series(np.nan, index=prices.index, dtype=float)
+    else:
+        # ffill onto the price calendar, and the ffill is not cosmetic. The
+        # index is fetched in its own yfinance call and arrives already
+        # dropna()'d, so any session the price frame has and the index lacks
+        # became NaN here. pct_change then returned NaN on the hole AND on the
+        # session after it (its previous value being NaN), and the loop below
+        # reads every NaN as a 0.0% day -- so ONE missing index print silently
+        # deleted two days of benchmark return. The strategy's own days are
+        # unaffected, so the loss lands entirely in alpha. Carrying the last
+        # real print forward gives 0% across the hole and the true move on the
+        # next real print, which reproduces the index exactly.
+        benchmark_series = (
+            pd.to_numeric(benchmark_input, errors="coerce")
+            .reindex(prices.index)
+            .ffill()
+        )
+        benchmark_ret = benchmark_series.pct_change(fill_method=None)
+        benchmark_level = benchmark_series
+
+    # Keep the EMA matrix (the pandas adjust=True semantics are part of the
+    # strategy), but do not materialise a second full-history 52-week-high
+    # matrix. In History from 2010 that matrix adds tens of MB at 750 symbols and thousands of sessions,
+    # before counting pandas temporaries and Streamlit cache copies. Compute the exact rolling maximum only on signal rows.
+    ema = prices.ewm(span=ema_period).mean()
+    # The EMA warm-up, applied only to signals on or after its date, so every
+    # month the record has already frozen replays unchanged.
+    _warm_rows = (_warmup_cutoff_rows(prices, EMA_MIN_PRINTS)
+                  if ema_warmup_from else None)
+    _warm_from = pd.Timestamp(ema_warmup_from).normalize() if ema_warmup_from else None
+
+    def _ema_at(idx: int, frame: pd.DataFrame) -> pd.Series:
+        """One signal row of an EMA matrix, with the warm-up where it applies."""
+        row = frame.iloc[idx]
+        if _warm_from is None or pd.Timestamp(prices.index[idx]).normalize() < _warm_from:
+            return row
+        return row.where(_warm_rows <= idx)
+    # The all-time-high rule only where the high on file can be trusted (owner,
+    # 9 Oct 2026). The file starts on a fixed date (History: 1 Jan 2008), so a
+    # stock already trading then has its real peak possibly before it: 44% of
+    # the names with prices before 2011 have their "high on file" in Jan 2008.
+    # Such a stock is held to the rule only after `ath_min_years` of prices on
+    # file; one that began trading after the file's first week has its whole
+    # history here and is held to it at once. Untrusted = the rule does not apply.
+    _ath_on = ath_pct is not None or exit_ath_pct is not None
+    if _ath_on:
+        _ath_hist = ath_history(prices)
+
+    def _ath_trusted(idx: int) -> pd.Series:
+        return ath_trusted(_ath_hist, prices.index[idx], ath_min_years)
+    ema_exit = (prices.ewm(span=int(exit_ema_period)).mean()
+                if exit_ema_period is not None and int(exit_ema_period) != int(ema_period) else ema)
+    _high_at_cache: dict[int, pd.Series] = {}
+
+    def _high_at(idx: int) -> pd.Series:
+        cached = _high_at_cache.get(idx)
+        if cached is not None:
+            return cached
+        high = _rolling_high_at(prices, idx)
+        _high_at_cache[idx] = high
+        return high
+
+    start_offset = max_lb + ema_period
+    _schedule = _build_rebalance_schedule(
+        prices, start_offset, rebal_freq, backtest_months,
+        stateful_history=stateful_history,
+        history_start=history_start,
+    )
+    if _schedule is None:
+        return None
+    rebal_dates, all_signal_idx, last_sim_idx, window_end = _schedule
+    dates = pd.DatetimeIndex(prices.index)
+    window_start, _ = completed_month_window(dates, backtest_months)
+
+    strat_net_daily: list[float] = []
+    strat_gross_daily: list[float] = []
+    bench_daily: list[float] = []
+    equity_dates: list[pd.Timestamp] = []
+    period_records: list[dict[str, Any]] = []
+    trade_records: list[dict[str, Any]] = []
+    closed_trades: list[dict[str, Any]] = []
+    open_positions: dict[str, dict[str, Any]] = {}
+    sec_map = sector_map or {}
+
+    prev_weights = pd.Series(0.0, index=prices.columns)
+    # The fill `prev_weights` was struck at, so the next fill knows how far the
+    # book has drifted since. None until the first book is established.
+    prev_fill_idx: int | None = None
+    # buy_size (research): the account's value at the latest fill, and at the
+    # last financial-year end, as multiples of the first book's capital.
+    acct, base_acct, base_fy = 1.0, 1.0, None
+    prev_holdings: list[str] = []
+    effective_buffer = buffer_n if buffer_n is not None else int(top_n * 1.5)
+    pit_periods = 0
+    current_universe_periods = 0
+    # Local to this run, so concurrent sessions cannot see each other's.
+    scheme_neutralised_seen = False
+    cap_cash_max = 0.0  # largest share a hard cap left uninvested at a reported rebalance
+
+    for i, start_idx in enumerate(rebal_dates):
+        # Three distinct indices, previously collapsed into two:
+        #   start_idx  T    -- the signal date; every filter and score reads it
+        #   fwd_start  T+1  -- the FILL. Entry and exit prices are struck here.
+        #   exit_idx        -- the fill that closes this holding (the next
+        #                      rebalance's T+1, or the end of the window).
+        # The position is bought at the T+1 CLOSE, so the first day it can earn
+        # anything is T+2. Accruing from T+1 -- which is what a single
+        # fwd_start did -- credited the portfolio the T -> T+1 move, i.e. it
+        # bought at the close of the very session it ranked on. That is the
+        # look-ahead this engine claims not to have, and it also made the
+        # equity curve disagree with the tradebook: a stock logged as bought at
+        # T+1 and sold at T'+1 contributed P[T']/P[T] to the return series.
+        fwd_start = start_idx + 1  # Key: Zero look-ahead - fill on T+1
+        exit_idx = rebal_dates[i + 1] + 1 if i + 1 < len(rebal_dates) else last_sim_idx
+        exit_idx = min(exit_idx, last_sim_idx)
+        if exit_idx <= fwd_start:
+            continue
+
+        _p = prices.iloc[start_idx]
+        _ema = _ema_at(start_idx, ema)
+        _hi = _high_at(start_idx)
+
+        above_ema = _p > _ema
+        near_high = _p >= _hi * high_pct
+        valid = above_ema & near_high & (_p > 0)
+        # Highest close on file up to the signal date -- never a later one.
+        _ath = prices.iloc[: start_idx + 1].max() if _ath_on else None
+        _ath_ok = _ath_trusted(start_idx) if _ath_on else None
+        near_ath = ((_p >= _ath * ath_pct) | ~_ath_ok) if ath_pct is not None else None
+        if near_ath is not None:
+            valid &= near_ath
+        # The masks _exit_reason explains a sale with: the keep rules when set.
+        keep_ema, keep_high, keep_ath = above_ema, near_high, near_ath
+        if _exit_rules:
+            keep_ema = _p > _ema_at(start_idx, ema_exit)
+            keep_high = _p >= _hi * (exit_high_pct if exit_high_pct is not None else high_pct)
+            keep_ath = ((_p >= _ath * exit_ath_pct) | ~_ath_ok) if exit_ath_pct is not None else near_ath
+            keep = keep_ema & keep_high & (_p > 0)
+            if keep_ath is not None:
+                keep &= keep_ath
+            valid = valid | (keep & prices.columns.isin(prev_holdings))
+
+        # ── Point-In-Time Universe ───────────────────────────────────────────
+        # Restrict to the stocks that were IN the index on the signal date. A
+        # name added to the index in June must not be selectable in January:
+        # index additions skew toward recent strong performers and this screen
+        # preferentially buys exactly those, so today's list applied to a past
+        # month lets the strategy hold what it could not have known to hold.
+        idx_mask = _index_mask(_membership, prices.columns, dates[start_idx])
+        if idx_mask is not None:
+            valid &= idx_mask
+            if (not stateful_history) or dates[start_idx + 1] >= window_start:
+                pit_periods += 1
+        else:
+            if (not stateful_history) or dates[start_idx + 1] >= window_start:
+                current_universe_periods += 1
+        # The liquidity floor (src/engine/liquidity.py): on the value known
+        # at the signal date, never a later one.
+        liq_mask = liquidity.passes(_traded_value, prices.columns, dates[start_idx],
+                                    liquidity_floor_cr)
+        if liq_mask is not None:
+            valid &= liq_mask
+
+        # ── Compute Causal Signal at Day T ───────────────────────────────────
+        # One signal, the composite that drives every rank on screen. The
+        # alternatives that used to branch here -- residual alpha, industry
+        # relative, acceleration, exp regression, raw return -- were removed:
+        # backtesting a ranking the screener never shows answers a question
+        # nobody asked, and each branch was its own untested scoring path.
+        composite_score = _signal_scores(
+            prices, log_ret, start_idx, WINDOWS, norm_w if norm_w else [0.2] * 5,
+            anchor=prices_anchor, metric=score_method, members=idx_mask,
+            on=dates[start_idx], members_from=members_only_scoring_from,
+        )
+        score = composite_score[valid & composite_score.notna()]
+
+        # An empty ranking (nothing passes the trend and 52-week-high filters,
+        # as in a broad sell-off) is not a special case: the book goes to cash.
+        # It used to skip the period, which left every prior holding on the
+        # blotter as still open, charged nothing for leaving it, and earned 0%
+        # as though it had been sold.
+        full_ranked = score.sort_values(ascending=False)
+
+        # ── Buffer Zone Selection (Turnover Reduction) ───────────────────────
+        holdings = _select_holdings(
+            full_ranked, prev_holdings, top_n, effective_buffer,
+            sector_map=sec_map or None,
+            max_per_sector=sector_slots(top_n, stock_cap, sector_cap) if sec_map else None,
+        )
+
+        # ── Portfolio Weighting ──────────────────────────────────────────────
+        wts = _compute_weights(
+            holdings, log_ret, start_idx, weight_method,
+            sector_map=sec_map, stock_cap=stock_cap, sector_cap=sector_cap,
+        )
+        if wts.attrs.get("scheme_neutralised") and (
+            (not stateful_history) or dates[start_idx + 1] >= window_start
+        ):
+            scheme_neutralised_seen = True
+        if (not stateful_history) or dates[start_idx + 1] >= window_start:
+            cap_cash_max = max(cap_cash_max, float(wts.attrs.get("cash", 0.0) or 0.0))
+
+        # ── Turnover & Transaction Drag ──────────────────────────────────────
+        # Against the book as it STANDS at this fill, not the targets last
+        # written down for it. Skipped periods are handled by the same line:
+        # `prev_fill_idx` only advances when a book is actually struck, so a
+        # month the loop passed over drifts through rather than resetting.
+        standing_weights = _drift_holdings(
+            prev_weights, prices_ff, prev_fill_idx, fwd_start
+        )
+        if buy_size is not None:
+            # The account's value at this fill, and at the last 31 March (the
+            # owner's yearly reset of the buy amount).
+            if prev_fill_idx is not None:
+                acct *= (1.0 + _book_return(prev_weights, prices_ff, prev_fill_idx,
+                                            prev_fill_idx, fwd_start))
+            fill_dt = prices.index[min(fwd_start, len(prices.index) - 1)]
+            reset_now = bool(weight_reset_months) and pd.Timestamp(dates[start_idx]).month in weight_reset_months
+            if weight_reset_months:
+                if reset_now or base_fy is None:
+                    base_acct, base_fy = acct, "set"
+            else:
+                fy = fill_dt.year if fill_dt.month >= 4 else fill_dt.year - 1
+                if fy != base_fy:
+                    base_acct, base_fy = acct, fy
+        if _hold_cap_on(hold_cap, hold_cap_from, dates[start_idx]):
+            if buy_size is not None and not reset_now:
+                wts = _fixed_buys(wts, standing_weights, prev_holdings, hold_cap,
+                                  buy_size * base_acct / acct, sec_map or None, sector_cap)
+            elif buy_size is not None:
+                pass                     # a scheduled reset: every holding back to its target
+            else:
+                wts = _let_winners_run(wts, standing_weights, prev_holdings, hold_cap,
+                                       sec_map or None, sector_cap)
+        full_w, turnover_period, friction_drag = _step_portfolio_allocation(
+            wts, standing_weights, prices.columns, cost_bps
+        )
+        if buy_size is not None:
+            acct *= (1.0 - friction_drag)
+        prev_weights = full_w
+        prev_fill_idx = fwd_start
+
+        # ── Record Rebalance Tradebook (Entries, Exits & Holds) ───────────────
+        entries = [s for s in holdings if s not in prev_holdings]
+        exits = [s for s in prev_holdings if s not in holdings]
+        holds = [s for s in holdings if s in prev_holdings]
+
+        # Both endpoints are fills: bought at the close of p_start_dt, sold at
+        # the close of p_end_dt. The period return is exactly what a position
+        # held between those two prints earned.
+        p_start_dt = prices.index[fwd_start]
+        p_end_dt = prices.index[exit_idx]
+        in_report_window = (not stateful_history) or p_start_dt >= window_start
+        period_lbl = (
+            f"{p_start_dt:%d %b %Y} → {p_end_dt:%d %b %Y}"
+            if p_start_dt
+            else f"Period {i+1}"
+        )
+
+        # Record Exits & Closed Round-Trip Returns
+        for s in exits:
+            p_exit = _fill_price(prices, s, fwd_start)
+            reason = _exit_reason(
+                s, full_ranked, keep_ema, keep_high,
+                exit_ema_period or ema_period, exit_high_pct or high_pct, effective_buffer,
+                index_mask=idx_mask, liq_mask=liq_mask, signal_date=dates[start_idx],
+                near_ath=keep_ath, ath_pct=exit_ath_pct or ath_pct,
+            )
+
+            pos = open_positions.pop(s, None)
+            if pos:
+                p_entry = pos["entry_price"]
+                entry_dt = pos["entry_date"]
+                ret_pct = _round_trip_return(p_entry, p_exit)
+                h_days = (
+                    (p_start_dt - entry_dt).days
+                    if (p_start_dt and entry_dt)
+                    else rebal_freq
+                )
+            else:
+                # No recorded entry means no known cost basis. NaN, not a
+                # fabricated flat round trip -- see _fill_price.
+                p_entry = float("nan")
+                entry_dt = p_start_dt
+                ret_pct = float("nan")
+                h_days = rebal_freq
+
+            closed_trades.append(
+                {
+                    "Month": f"{p_start_dt:%b %Y}" if p_start_dt else "—",
+                    "Symbol": s,
+                    "Entry Date": f"{entry_dt:%d %b %Y}" if entry_dt else "—",
+                    "Entry Price": p_entry,
+                    "Exit Date": f"{p_start_dt:%d %b %Y}" if p_start_dt else "—",
+                    "Exit Price": p_exit,
+                    "Return %": ret_pct,
+                    "Holding (Days)": h_days,
+                    "Reason for Exit": reason,
+                    "Status": "Closed",
+                    # For the backtest export (src/engine/backtest_export.py): how the
+                    # trade was chosen and sized, and where the name ranked when it left.
+                    "Sector": sec_map.get(s, ""),
+                    "Entry Signal Date": pos["signal_date"] if pos else pd.NaT,
+                    "Entry Rank": pos["entry_rank"] if pos else float("nan"),
+                    "Entry Weight %": pos["entry_weight"] if pos else float("nan"),
+                    "Exit Signal Date": dates[start_idx],
+                    "Exit Rank": (full_ranked.index.get_loc(s) + 1
+                                  if s in full_ranked.index else float("nan")),
+                }
+            )
+
+            trade_records.append(
+                {
+                    "Period": period_lbl,
+                    "Period Start": p_start_dt,
+                    "Action": "🔴 SELL (Exit)",
+                    "Symbol": s,
+                    "Price": p_exit,
+                    "Return %": ret_pct,
+                    "Weight %": 0.0,
+                    "Reason / Signal": reason,
+                }
+            )
+
+        # Record Entries
+        for s in entries:
+            p_entry = _fill_price(prices, s, fwd_start)
+            rk = full_ranked.index.get_loc(s) + 1 if s in full_ranked.index else 1
+            w_val = float(wts.get(s, 0.0)) * 100
+
+            open_positions[s] = {
+                "entry_date": p_start_dt,
+                "entry_price": p_entry,
+                "entry_idx": fwd_start,
+                "entry_weight": w_val,
+                "entry_rank": rk,
+                "signal_date": dates[start_idx],
+            }
+
+            trade_records.append(
+                {
+                    "Period": period_lbl,
+                    "Period Start": p_start_dt,
+                    "Action": "🟢 BUY (Entry)",
+                    "Symbol": s,
+                    "Price": p_entry,
+                    "Return %": 0.0,
+                    "Weight %": w_val,
+                    "Reason / Signal": f"New Momentum Leader (Rank #{rk})",
+                }
+            )
+
+        # Record Holds
+        for s in holds:
+            p_curr = _fill_price(prices, s, fwd_start)
+            rk = full_ranked.index.get_loc(s) + 1 if s in full_ranked.index else "—"
+            w_val = float(wts.get(s, 0.0)) * 100
+            pos = open_positions.get(s)
+            p_entry = pos["entry_price"] if pos else p_curr
+            unrealized_ret = _round_trip_return(p_entry, p_curr)
+            trade_records.append(
+                {
+                    "Period": period_lbl,
+                    "Period Start": p_start_dt,
+                    "Action": "⚪ HOLD (Retained)",
+                    "Symbol": s,
+                    "Price": p_curr,
+                    "Return %": unrealized_ret,
+                    "Weight %": w_val,
+                    "Reason / Signal": f"Buffer Zone Retention (Rank #{rk})",
+                }
+            )
+
+        prev_holdings = holdings
+
+        # ── Measure Held Returns (fill at T+1 through the closing fill) ──────
+        # The first accrual day is T+2: the position was bought at the T+1
+        # close, so the T+1 bar itself belongs to whoever held it before.
+        #
+        # Buy and hold between fills. Each position is worth its target weight
+        # times its price growth since the fill, and the day's return is the
+        # change in the whole book's value. Applying the TARGET weights to
+        # every day's returns instead -- what this loop used to do -- is a book
+        # rebalanced back to target every session, for free, which is neither
+        # what the tradebook records nor what `_drift_holdings` and the
+        # month-to-date figure assume. Weight the caps leave uninvested is
+        # held as cash at 0%. A name with no price at its fill contributes
+        # nothing, as before.
+        period_strat_rets: list[float] = []
+        held_cols = [s for s in holdings if s in prices_ff.columns]
+        held_w = np.array([float(wts.get(s, 0.0)) for s in held_cols], dtype=float)
+        cash = max(1.0 - float(held_w.sum()), 0.0)
+        if held_cols:
+            base_px = prices_ff[held_cols].iloc[fwd_start].to_numpy(dtype=float)
+            base_ok = np.isfinite(base_px) & (base_px > 0)
+        book_value_prev = cash + float(held_w.sum())
+        for d_idx, j in enumerate(range(fwd_start + 1, exit_idx + 1)):
+            if j >= len(prices_ff):
+                break
+            if not in_report_window:
+                continue
+            equity_dates.append(prices.index[j])
+            if held_cols:
+                px = prices_ff[held_cols].iloc[j].to_numpy(dtype=float)
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    growth = np.where(base_ok & np.isfinite(px), px / base_px, 1.0)
+                book_value = cash + float((held_w * growth).sum())
+            else:
+                book_value = cash
+            gross_r = (
+                book_value / book_value_prev - 1.0 if book_value_prev > 0 else 0.0
+            )
+            book_value_prev = book_value
+
+            # Deduct friction on the first rebalance day
+            net_r = gross_r - (friction_drag if d_idx == 0 else 0.0)
+            bench_r = float(benchmark_ret.iloc[j]) if pd.notna(benchmark_ret.iloc[j]) else 0.0
+
+            strat_gross_daily.append(gross_r)
+            strat_net_daily.append(net_r)
+            bench_daily.append(bench_r)
+            period_strat_rets.append(net_r)
+
+        if period_strat_rets and in_report_window:
+            s_ret_c = float(np.prod([1 + r for r in period_strat_rets]) - 1)
+            b_rets = [
+                float(benchmark_ret.iloc[j])
+                for j in range(fwd_start + 1, min(exit_idx + 1, len(benchmark_ret)))
+                if pd.notna(benchmark_ret.iloc[j])
+            ]
+            b_ret_c = float(np.prod([1 + r for r in b_rets]) - 1) if b_rets else 0.0
+            period_records.append(
+                {
+                    "Period": period_lbl,
+                    "Period Start": p_start_dt,
+                    "Period End": p_end_dt,
+                    "Strategy Net": s_ret_c,
+                    "Benchmark": b_ret_c,
+                    "Alpha vs Benchmark": s_ret_c - b_ret_c,
+                    "Turnover %": turnover_period * 100,
+                    "Cost Drag %": friction_drag * 100,
+                    "Holdings": len(holdings),
+                    "Buys": len(entries),
+                    "Sells": len(exits),
+                }
+            )
+
+    # The first month of a system with no earlier book: nothing has been accrued
+    # yet, so there is no curve, monthly table or stats -- only the current book.
+    pending_only = not rebal_dates
+    if pending_only:
+        eq_strat_net = eq_strat_gross = eq_bench = pd.Series(dtype=float)
+        monthly_df = pd.DataFrame(columns=["Period Start"])
+        dates = pd.DatetimeIndex([])
+    else:
+        if not strat_net_daily:
+            return None
+
+        # The accrual dates are recorded as the loop runs. Rebuilding them from
+        # rebal_dates[0] assumed every rebalance contributed an unbroken run of
+        # sessions from the first fill onward -- false whenever a period is skipped
+        # -- and silently shifted the whole equity curve by the number of missing
+        # days rather than failing.
+        dates = pd.DatetimeIndex(equity_dates)
+
+        # Index every curve at 1.0 on the FILL date -- the session the first
+        # positions were bought on, one before the first day they could earn
+        # anything. Without that base point the curve's first value is already
+        # 1 + r0, and `iloc[-1] / iloc[0]` then divides that first day back out:
+        # the reported total return silently omitted one day of P&L and, with it,
+        # the entire cost of establishing the portfolio, which is charged on
+        # exactly that day (100% turnover -- the largest single drag in the run).
+        base_pos = int(prices.index.get_loc(dates[0])) - 1
+
+        def _curve(daily: list[float]) -> pd.Series:
+            series = pd.Series(daily, index=dates, dtype=float)
+            if base_pos >= 0:
+                base = pd.Series([0.0], index=[prices.index[base_pos]])
+                series = pd.concat([base, series])
+            return (1 + series).cumprod()
+
+        eq_strat_net = _curve(strat_net_daily)
+        eq_strat_gross = _curve(strat_gross_daily)
+        eq_bench = _curve(bench_daily)
+        if not period_records:
+            # Every rebalance was skipped (typically insufficient formation history).
+            # Building a frame from [] and calling dropna(subset=...) raised
+            # KeyError: ['Period Start'] rather than reporting no result.
+            return None
+        monthly_df = pd.DataFrame(period_records).dropna(subset=["Period Start"])
+
+        # Append remaining active open positions, marked at the LAST SIMULATED
+        # session. Marking them at prices.index[-1] priced them in the month still
+        # in progress -- outside the reported window and outside the equity curve --
+        # so the blotter showed a return the strategy is not credited with, on a
+        # date the header says the backtest does not cover.
+        last_dt = prices.index[last_sim_idx]
+        for s, pos in open_positions.items():
+            p_curr = _fill_price(prices, s, last_sim_idx)
+            p_entry = pos["entry_price"]
+            entry_dt = pos["entry_date"]
+            unrealized_ret = _round_trip_return(p_entry, p_curr)
+            h_days = (last_dt - entry_dt).days if (last_dt and entry_dt) else 0
+            closed_trades.append(
+                {
+                    # "Active (Aug-2026)" was read as "August is the current
+                    # month" -- on 3 Sep that looks simply stale. It never meant
+                    # that: it means still held, marked at the last session of the
+                    # REPORTED WINDOW. Say the mark date outright, because the
+                    # Return % beside it is struck at that close and not at
+                    # today's. The live mark lives in `live_book`.
+                    "Month": f"🟢 Open (as of {last_dt:%d %b %Y})",
+                    "Symbol": s,
+                    "Entry Date": f"{entry_dt:%d %b %Y}" if entry_dt else "—",
+                    "Entry Price": p_entry,
+                    "Exit Date": f"Not exited (mark {last_dt:%d %b %Y})",
+                    "Exit Price": p_curr,
+                    "Return %": unrealized_ret,
+                    "Holding (Days)": h_days,
+                    "Reason for Exit": "🟢 Still held at window close",
+                    "Status": "Open",
+                    "Sector": sec_map.get(s, ""),
+                    "Entry Signal Date": pos.get("signal_date", pd.NaT),
+                    "Entry Rank": pos["entry_rank"],
+                    "Entry Weight %": pos["entry_weight"],
+                    "Exit Signal Date": pd.NaT,
+                    "Exit Rank": float("nan"),
+                }
+            )
+
+
+    # ── Current Book & This Month's Rebalance ────────────────────────────────
+    # Everything above stops at the last completed month, on purpose. That
+    # leaves the person actually holding this portfolio with no answer to the
+    # only two questions they have: what do I hold today, and what changed.
+    #
+    # The rebalance the reported window excludes is signalled on the last
+    # session of the previous month and FILLS on the first session of this one.
+    # By the time anyone is reading this it has already happened -- on 3 Sep the
+    # 1 Sep fill is two days in the past -- so it is not a preview. Apply it:
+    # the current book is the book AFTER that fill, and the change list is what
+    # it did, not what it might do.
+    #
+    # None of this feeds the equity curve, the monthly table or the stats. It
+    # marks at the LATEST close, a date the reported window does not cover.
+    as_of_idx = len(prices) - 1
+    as_of_dt = prices.index[as_of_idx]
+
+    rebal_idx: int | None = None
+    if rebal_dates or pending_only:
+        # A signal is only real once its month has CLOSED. `last_by_month`
+        # takes the last available session of every calendar month, and for the
+        # month still in progress that is just wherever the data happens to
+        # stop -- 3 Sep, say, which is not a month end at all. Using it would
+        # invent a rebalance on an arbitrary Thursday and, being the last row,
+        # leave it with no session to fill on.
+        as_of_period = as_of_dt.to_period("M")
+        later = [
+            i
+            for i in all_signal_idx
+            if i > (rebal_dates[-1] if rebal_dates else -1)
+            and i < as_of_idx
+            and prices.index[i].to_period("M") < as_of_period
+        ]
+        rebal_idx = max(later) if later else None
+
+    change_rows: list[dict[str, Any]] = []
+    live_ranks: dict[str, Any] = {}
+    rebal_signal_dt = None
+    rebal_fill_dt = None
+    # The book as it stands today, and the position record behind it. Both
+    # start as the last in-window book and are updated by the fill below.
+    book: list[str] = list(prev_holdings)
+    book_wts = prev_weights
+    positions = dict(open_positions)
+
+    if rebal_idx is not None:
+        _pp = prices.iloc[rebal_idx]
+        _pema = _ema_at(rebal_idx, ema)
+        _phi = _high_at(rebal_idx)
+        p_above_ema = _pp > _pema
+        p_near_high = _pp >= _phi * high_pct
+        p_valid = p_above_ema & p_near_high & (_pp > 0)
+        _path = prices.iloc[: rebal_idx + 1].max() if _ath_on else None
+        _path_ok = _ath_trusted(rebal_idx) if _ath_on else None
+        p_near_ath = ((_pp >= _path * ath_pct) | ~_path_ok) if ath_pct is not None else None
+        if p_near_ath is not None:
+            p_valid &= p_near_ath
+        p_keep_ema, p_keep_high, p_keep_ath = p_above_ema, p_near_high, p_near_ath
+        if _exit_rules:
+            p_keep_ema = _pp > _ema_at(rebal_idx, ema_exit)
+            p_keep_high = _pp >= _phi * (exit_high_pct if exit_high_pct is not None else high_pct)
+            p_keep_ath = ((_pp >= _path * exit_ath_pct) | ~_path_ok) if exit_ath_pct is not None else p_near_ath
+            p_keep = p_keep_ema & p_keep_high & (_pp > 0)
+            if p_keep_ath is not None:
+                p_keep &= p_keep_ath
+            p_valid = p_valid | (p_keep & prices.columns.isin(prev_holdings))
+        p_idx_mask = _index_mask(_membership, prices.columns, prices.index[rebal_idx])
+        if p_idx_mask is not None:
+            p_valid &= p_idx_mask
+        p_liq = liquidity.passes(_traded_value, prices.columns, prices.index[rebal_idx],
+                                 liquidity_floor_cr)
+        if p_liq is not None:
+            p_valid &= p_liq
+
+        p_score = _signal_scores(
+            prices, log_ret, rebal_idx, WINDOWS, norm_w if norm_w else [0.2] * 5,
+            anchor=prices_anchor, metric=score_method, members=p_idx_mask,
+            on=prices.index[rebal_idx], members_from=members_only_scoring_from,
+        )
+        p_ranked = p_score[p_valid & p_score.notna()].sort_values(ascending=False)
+        live_ranks = {s: p_ranked.index.get_loc(s) + 1 for s in p_ranked.index}
+
+        # An empty ranking is a rebalance to cash, as in the loop above (audit,
+        # 8 Nov 2026: skipping it left the old book on Portfolio and Actions while
+        # the record, replayed, sold everything).
+        if True:
+            rebal_signal_dt = prices.index[rebal_idx]
+            fill_idx = rebal_idx + 1
+            rebal_fill_dt = prices.index[fill_idx]
+
+            new_holdings = _select_holdings(
+                p_ranked, prev_holdings, top_n, effective_buffer,
+                sector_map=sec_map or None,
+                max_per_sector=sector_slots(top_n, stock_cap, sector_cap) if sec_map else None,
+            ) if not p_ranked.empty else []
+            new_wts = _compute_weights(
+                new_holdings, log_ret, rebal_idx, weight_method,
+                sector_map=sec_map, stock_cap=stock_cap, sector_cap=sector_cap,
+            )
+            # The pending rebalance follows the same rule as the loop above, so
+            # Actions and Portfolio show the weights the record will strike.
+            if _hold_cap_on(hold_cap, hold_cap_from, rebal_signal_dt):
+                standing_p = _drift_holdings(prev_weights, prices_ff, prev_fill_idx, fill_idx)
+                if buy_size is not None:
+                    # The pending fill under the record's rule: a full reset at a
+                    # reset month's signal, else fixed buys of buy_size of the
+                    # account at the last reset (the in-window loop's own state).
+                    acct_p = acct * (1.0 + _book_return(prev_weights, prices_ff, prev_fill_idx,
+                                                        prev_fill_idx, fill_idx)) \
+                        if prev_fill_idx is not None else acct
+                    reset_p = bool(weight_reset_months) and rebal_signal_dt.month in weight_reset_months
+                    if not reset_p:
+                        new_wts = _fixed_buys(new_wts, standing_p, prev_holdings, hold_cap,
+                                              buy_size * base_acct / acct_p, sec_map or None, sector_cap)
+                else:
+                    new_wts = _let_winners_run(new_wts, standing_p, prev_holdings, hold_cap,
+                                               sec_map or None, sector_cap)
+
+            sold = [s for s in prev_holdings if s not in new_holdings]
+            bought = [s for s in new_holdings if s not in prev_holdings]
+            held = [s for s in new_holdings if s in prev_holdings]
+
+            for s in sold:
+                pos = positions.pop(s, {})
+                exit_price = _fill_price(prices, s, fill_idx)
+                entry_price = pos.get("entry_price", float("nan"))
+                change_rows.append(
+                    {
+                        "Action": "🔴 SOLD",
+                        "Symbol": s,
+                        "Industry": sec_map.get(s, "—"),
+                        "Rank at Signal": live_ranks.get(s, "—"),
+                        "Entry Date": pos.get("entry_date"),
+                        "Entry Price": entry_price,
+                        "Exit Price": exit_price,
+                        "Return %": _round_trip_return(entry_price, exit_price),
+                        "Weight %": 0.0,
+                        "Reason": _exit_reason(
+                            s, p_ranked, p_keep_ema, p_keep_high,
+                            exit_ema_period or ema_period, exit_high_pct or high_pct,
+                            effective_buffer,
+                            index_mask=p_idx_mask, liq_mask=p_liq,
+                            signal_date=prices.index[rebal_idx],
+                            near_ath=p_keep_ath, ath_pct=exit_ath_pct or ath_pct,
+                        ),
+                    }
+                )
+
+            for s in bought:
+                fill_price = _fill_price(prices, s, fill_idx)
+                rk = live_ranks.get(s, "—")
+                # A name bought at this fill is held FROM this fill: its entry
+                # date is the fill date, not whatever it was in a prior life.
+                positions[s] = {
+                    "entry_date": rebal_fill_dt,
+                    "entry_price": fill_price,
+                    "entry_idx": fill_idx,
+                    "entry_weight": float(new_wts.get(s, 0.0)) * 100,
+                    "entry_rank": rk,
+                }
+                mark = _fill_price(prices, s, as_of_idx)
+                change_rows.append(
+                    {
+                        "Action": "🟢 BOUGHT",
+                        "Symbol": s,
+                        "Industry": sec_map.get(s, "—"),
+                        "Rank at Signal": rk,
+                        "Entry Date": rebal_fill_dt,
+                        "Entry Price": fill_price,
+                        "Exit Price": mark,
+                        "Return %": _round_trip_return(fill_price, mark),
+                        "Weight %": float(new_wts.get(s, 0.0)) * 100,
+                        "Reason": f"New Momentum Leader (Rank #{rk})",
+                    }
+                )
+
+            for s in held:
+                pos = positions.get(s, {})
+                entry_price = pos.get("entry_price", float("nan"))
+                mark = _fill_price(prices, s, as_of_idx)
+                change_rows.append(
+                    {
+                        "Action": "⚪ HELD",
+                        "Symbol": s,
+                        "Industry": sec_map.get(s, "—"),
+                        "Rank at Signal": live_ranks.get(s, "—"),
+                        "Entry Date": pos.get("entry_date"),
+                        "Entry Price": entry_price,
+                        "Exit Price": mark,
+                        "Return %": _round_trip_return(entry_price, mark),
+                        "Weight %": float(new_wts.get(s, 0.0)) * 100,
+                        "Reason": (
+                            f"Buffer Zone Retention (Rank #{live_ranks.get(s, '—')})"
+                        ),
+                    }
+                )
+
+            book = new_holdings
+            book_wts = new_wts
+
+    # Month to date (owner, 2026-09-27: "what works and what didn't for the
+    # current month"). From the last close of the previous month for a name
+    # carried into this month; from its fill for a name bought this month,
+    # which was not owned before it.
+    month_start = as_of_dt.to_period("M").start_time
+    month_idx = int(prices.index.searchsorted(month_start))
+    prior_close_idx = month_idx - 1
+
+    live_rows: list[dict[str, Any]] = []
+    for s in book:
+        pos = positions.get(s, {})
+        entry_price = pos.get("entry_price", float("nan"))
+        entry_dt = pos.get("entry_date")
+        mark = _fill_price(prices, s, as_of_idx)
+        if entry_dt is not None and pd.Timestamp(entry_dt) >= month_start:
+            mtd_base = entry_price
+        elif prior_close_idx >= 0:
+            mtd_base = _fill_price(prices, s, prior_close_idx)
+        else:
+            mtd_base = float("nan")
+        live_rows.append(
+            {
+                "Symbol": s,
+                "Industry": sec_map.get(s, "—"),
+                "Entry Date": entry_dt,
+                "Entry Price": entry_price,
+                # Preserve original fill weight separately from the latest target
+                # weight. Portfolio share accounting must size shares from the
+                # weight used when this position was opened, not today's rebalance.
+                "Entry Weight %": float(pos.get("entry_weight", book_wts.get(s, 0.0) * 100.0)),
+                "Price Now": mark,
+                "Return %": _round_trip_return(entry_price, mark),
+                "MTD %": _round_trip_return(mtd_base, mark),
+                "Holding (Days)": (
+                    (as_of_dt - entry_dt).days if entry_dt is not None else 0
+                ),
+                "Weight %": float(book_wts.get(s, 0.0)) * 100,
+                "Rank at Entry": pos.get("entry_rank", "—"),
+                # Ranks come from the rebalance SIGNAL date, not from today.
+                # Calling this "Rank Now" invited reading a 31 Aug rank as a
+                # live one and acting on it.
+                "Rank at Rebalance": live_ranks.get(s, "—"),
+            }
+        )
+
+    live_book_df = pd.DataFrame(live_rows)
+    if not live_book_df.empty:
+        live_book_df = live_book_df.sort_values("Return %", ascending=False)
+
+    changes_df = pd.DataFrame(change_rows)
+    if not changes_df.empty:
+        action_order = {"🔴 SOLD": 0, "🟢 BOUGHT": 1, "⚪ HELD": 2}
+        changes_df = changes_df.sort_values(
+            by=["Action", "Symbol"],
+            key=lambda col: col.map(action_order) if col.name == "Action" else col,
+        )
+
+    # ── Month-To-Date ────────────────────────────────────────────────────────
+    # Measure it the way the engine accrues everywhere else: each book from the
+    # CLOSE it was filled at. When this month's fill has happened, that is the
+    # old book to the fill and the rebalanced book after it (below).
+    mtd_period = as_of_dt.to_period("M")
+    mtd_holdings: Sequence[str] = book
+    mtd_wts = book_wts
+    mtd_basis = "standing book"
+    mtd_base_idx: int | None = None
+
+    if (
+        rebal_idx is not None
+        and rebal_fill_dt is not None
+        and rebal_fill_dt.to_period("M") == mtd_period
+    ):
+        mtd_base_idx = rebal_idx + 1
+        mtd_basis = "rebalanced book"
+    else:
+        earlier = np.flatnonzero(
+            prices.index.to_period("M").astype("period[M]") < mtd_period
+        )
+        mtd_base_idx = int(earlier[-1]) if earlier.size else None
+
+    # Friction on the month's rebalance. Every FROZEN month in the track record
+    # is net -- it comes off `eq_strat_net`, which charges
+    # `turnover x cost_bps` on each fill. The live month-to-date charged
+    # nothing, and `summary_stats` compounds the two into one series, so
+    # "Strategy since inception" mixed a gross month with net ones and the
+    # error grew with the month's turnover -- up to a full 100% book
+    # establishment carried for free. Charge it the same way the loop does.
+    mtd_cost = 0.0
+    if mtd_basis == "rebalanced book" and len(mtd_wts):
+        _new_full = pd.Series(0.0, index=prices.columns, dtype=float)
+        _shared = [s for s in mtd_wts.index if s in _new_full.index]
+        _new_full.loc[_shared] = [float(mtd_wts[s]) for s in _shared]
+        # Same drift correction as the in-window loop: the book this fill
+        # trades out of is the last target carried forward to `mtd_base_idx`,
+        # not the target itself. Without it the in-window months and the live
+        # month would charge friction on two different quantities.
+        _standing = _drift_holdings(prev_weights, prices_ff, prev_fill_idx, mtd_base_idx)
+        mtd_turnover = float((_new_full - _standing).abs().sum() / 2.0)
+        mtd_cost = mtd_turnover * (cost_bps / 10000.0)
+
+    # The sessions before this month's fill (owner, 12 Oct 2026). A month that
+    # holds a rebalance used to be marked from the FILL close, so the session
+    # the old book earned on the fill day -- 30 Sep close to 1 Oct close, say --
+    # sat in neither the frozen month before (which ends at its last close) nor
+    # this one, for the strategy and the index alike, until the month froze:
+    # on 12 Oct 2026 the record's Nifty 500 read -7.6% against -8.5% measured
+    # from the first fill. The frozen month comes off the daily curve, where
+    # that session belongs to the old book. Mark the live month the same way:
+    # the old book from the previous month's last close to the fill, then the
+    # new book from the fill. A system's first month has no old book: both
+    # legs, and the index, start at the fill, as its frozen month does.
+    pre_fill = 0.0
+    mtd_from_idx = mtd_base_idx
+    if (
+        mtd_basis == "rebalanced book"
+        and prev_fill_idx is not None
+        and 0 <= prior_close_idx < mtd_base_idx
+        and prev_fill_idx <= prior_close_idx
+    ):
+        pre_fill = _book_return(prev_weights, prices_ff, prev_fill_idx, prior_close_idx, mtd_base_idx)
+        mtd_from_idx = prior_close_idx
+
+    strategy_mtd: float | None = None
+    benchmark_mtd: float | None = None
+    if mtd_base_idx is not None and mtd_base_idx < as_of_idx:
+        # No renormalisation over names that failed to price: a missing leg
+        # contributes nothing, exactly as it does in the daily accrual loop.
+        acc = 0.0
+        priced = 0.0
+        for s in mtd_holdings:
+            r = _round_trip_return(
+                _fill_price(prices, s, mtd_base_idx),
+                _fill_price(prices, s, as_of_idx),
+            )
+            w = float(mtd_wts.get(s, 0.0))
+            if np.isfinite(r) and w > 0:
+                acc += w * r
+                priced += w
+        # Net, like every frozen month it will sit beside.
+        strategy_mtd = ((1.0 + pre_fill) * (1.0 + acc - mtd_cost) - 1.0) if priced > 0 else None
+
+        if benchmark_level is not None:
+            b0 = benchmark_level.iloc[mtd_from_idx]
+            b1 = benchmark_level.iloc[as_of_idx]
+            if pd.notna(b0) and pd.notna(b1) and float(b0) > 0:
+                benchmark_mtd = float(b1) / float(b0) - 1.0
+
+
+    live_meta = {
+        "as_of": as_of_dt,
+        "mtd_period": str(mtd_period),
+        "mtd_from": (
+            prices.index[mtd_from_idx] if mtd_from_idx is not None else None
+        ),
+        "mtd_pre_fill": pre_fill,
+        "mtd_basis": mtd_basis,
+        "strategy_mtd": strategy_mtd,
+        "mtd_cost": mtd_cost,
+        "strategy_mtd_gross": (strategy_mtd + mtd_cost) if strategy_mtd is not None else None,
+        "benchmark_mtd": benchmark_mtd,
+        "mtd_alpha": (
+            strategy_mtd - benchmark_mtd
+            if (strategy_mtd is not None and benchmark_mtd is not None)
+            else None
+        ),
+        "prior_book_filled_on": (
+            prices.index[rebal_dates[-1] + 1] if rebal_dates else None
+        ),
+        "window_end": window_end,
+        "signal_date": rebal_signal_dt,
+        "fill_date": rebal_fill_dt,
+        "rebalanced": bool(change_rows),
+        "n_bought": sum(1 for r in change_rows if r["Action"] == "🟢 BOUGHT"),
+        "n_sold": sum(1 for r in change_rows if r["Action"] == "🔴 SOLD"),
+        "n_held": sum(1 for r in change_rows if r["Action"] == "⚪ HELD"),
+    }
+
+    if stateful_history:
+        if closed_trades:
+            # Open positions have no exit date ("Not exited (mark ...)", NaT),
+            # and NaT >= window_start is False, so this filter used to drop
+            # every one of them and "Still open" was always empty. They are
+            # held through the window, so they belong in it.
+            closed_trades = [
+                r for r in closed_trades
+                if r.get("Status") == "Open"
+                or pd.to_datetime(r.get("Exit Date"), errors="coerce") >= window_start
+            ]
+        if trade_records:
+            history_floor = (
+                pd.Timestamp(history_start).normalize()
+                if history_start is not None
+                else window_start
+            )
+            trade_records = [
+                r for r in trade_records
+                if pd.to_datetime(r.get("Period Start"), errors="coerce") >= history_floor
+            ]
+
+    # Build the rebalance blotter only AFTER the stateful history boundary is
+    # applied. trade_records is also consumed by Portfolio Rebalances; building
+    # it before the filter can leak pre-inception rows even when the backtest
+    # itself has the correct history floor.
+    tradebook_df = pd.DataFrame(trade_records)
+    closed_trades_df = pd.DataFrame(closed_trades)
+
+    return {
+        "equity_curve": eq_strat_net,
+        "equity_gross": eq_strat_gross,
+        "benchmark": eq_bench,
+        "monthly": monthly_df,
+        "tradebook": tradebook_df,
+        "closed_trades": closed_trades_df,
+        "live_book": live_book_df,
+        "month_changes": changes_df,
+        "live_meta": live_meta,
+        "stats": ({} if pending_only else _calculate_backtest_metrics(
+            eq_strat_net, eq_strat_gross, eq_bench, dates, strat_net_daily,
+            monthly_df, prices, rebal_dates, _membership, pit_periods,
+            current_universe_periods, actions_applied, scheme_neutralised_seen,
+        )) | {"cap_cash_max": cap_cash_max},
+    }
