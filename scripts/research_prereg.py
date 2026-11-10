@@ -393,7 +393,7 @@ def residual_scores(close: pd.DataFrame, ff3_m: pd.DataFrame) -> dict[pd.Period,
         y = mret.loc[win].sub(f["RF"].to_numpy(), axis=0)
         ok = y.notna().all(axis=0)
         res = pd.Series(np.nan, index=close.columns)
-        if ok.sum() >= 3:
+        if ok.any():
             Y = y.loc[:, ok].to_numpy()
             F = f[["Mkt-RF", "SMB", "HML"]].to_numpy()
             X = np.column_stack([np.ones(36), F])
