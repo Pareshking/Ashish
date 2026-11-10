@@ -986,7 +986,7 @@ def verdict(n: str, st10: dict, st20: dict) -> tuple[str, list[str]]:
     if not (g[f"{m}_h1"] > 0 and g[f"{m}_h2"] > 0):
         fails.append("halves")
     if not g[f"{m}_p"] >= 0.90:
-        fails.append(f"bootstrap {g[f'{m}_p']:.0%} < 90%")
+        fails.append(f"bootstrap {g[f'{m}_p']:.1%} < 90%")
     if not all(v > 0 for v in g[f"{m}_by_offset"].values()):
         fails.append("not ahead at every offset")
     if not g20[m] > 0:
@@ -1068,7 +1068,7 @@ def cmd_report(args) -> None:
                     L.append(
                         f"| {n}{'' if against == 'base' else ' vs S1'} | {m} | {r['cagr']:.2%} | {r['mdd']:.1%} | "
                         f"{r['sharpe']:.2f} | {r['turnover']:.0f} | {r['te']:.1%} | {r['ir']:.2f} | "
-                        f"{f(g[m])} ({f(g[m + '_lo'])} to {f(g[m + '_hi'])}) | {g[m + '_p']:.0%} | "
+                        f"{f(g[m])} ({f(g[m + '_lo'])} to {f(g[m + '_hi'])}) | {g[m + '_p']:.1%} | "
                         f"{f(g[m + '_h1'])} / {f(g[m + '_h2'])} | "
                         f"{' / '.join(f(v) for v in g[m + '_by_offset'].values())} | {pct(g['cagr'])} | "
                         f"{g['sharpe']:+.3f} | {pct(g['mdd'])} | {g['turnover']:+.1f} | {vv} |")
