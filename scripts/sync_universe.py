@@ -76,6 +76,7 @@ def parse_list(html: str, index: str) -> pd.DataFrame:
         sector = _col(cols, "sector", avoid="sub")
         sub = _col(cols, "sub-industry", "sub industry", "subindustry", "industry")
         name = _col(cols, "security", "company", "name")
+        cik = _col(cols, "cik")
         if not (sym and sector and sub) or len(t) < 100:
             continue
         out = pd.DataFrame({
@@ -84,10 +85,14 @@ def parse_list(html: str, index: str) -> pd.DataFrame:
             "Sector": t[sector].astype(str).str.strip(),
             "Industry": t[sub].astype(str).str.strip(),
         })
+        # The SEC's company number: it survives a rename, unlike the ticker or
+        # the name (Anthem -> Elevance, Alliance Data -> Bread Financial).
+        out["CIK"] = (pd.to_numeric(t[cik], errors="coerce").map(lambda v: f"{int(v):010d}" if pd.notna(v) else "")
+                      if cik else "")
         out = out[out["Symbol"].str.match(r"^[A-Z][A-Z0-9.\-]*$")]
         out["Yahoo"] = out["Symbol"].map(to_yahoo)
         out["Index"] = index
-        return out[COLUMNS]
+        return out[COLUMNS + ["CIK"]]
     raise ValueError(f"{index}: no constituent table found on the page")
 
 

@@ -22,6 +22,7 @@ with Wayback Machine snapshots of the same pages.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import re
@@ -34,7 +35,7 @@ import requests
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT)
 
-from scripts.sync_universe import EXPECTED, HEADERS, parse_list  # noqa: E402
+from scripts.sync_universe import EXPECTED, HEADERS, parse_list, to_yahoo  # noqa: E402
 
 API = "https://en.wikipedia.org/w/api.php"
 TITLES = {"S&P 500": "List of S&P 500 companies", "S&P 400": "List of S&P 400 companies",
@@ -108,6 +109,7 @@ def build(start: str) -> tuple[pd.DataFrame, list[str]]:
     today = pd.Timestamp.today().normalize()
     ends = [d for d in month_ends(start, today) if d < today.to_period("M").start_time]
     out, notes = [], []
+    skipped: dict[str, list] = {}
     for index, title in TITLES.items():
         revs = revisions(title, start, s)
         lo, hi = EXPECTED[index]
@@ -120,26 +122,97 @@ def build(start: str) -> tuple[pd.DataFrame, list[str]]:
             revid = int(before["revid"].iloc[-1])
             df = parse_list(revision_html(revid, s), index)
             if not lo - 10 <= len(df) <= hi + 10:
-                notes.append(f"{index} {d.date()}: {len(df)} rows in revision {revid}, outside {lo}-{hi}; skipped")
+                notes.append(f"{index} {d.date()}: {len(df)} rows in revision {revid}, outside {lo}-{hi}; "
+                             "rebuilt from the change log instead")
+                skipped.setdefault(index, []).append(d)
                 continue
             df["Date"], df["revid"] = d, revid
             out.append(df)
         print(f"{index}: {len(revs)} revisions, {len(ends)} month-ends", flush=True)
-    return pd.concat(out, ignore_index=True), notes
+    monthly = pd.concat(out, ignore_index=True)
+    for index, missing in skipped.items():
+        monthly = pd.concat([monthly, backfill(monthly, index, missing, changelog(index, s))], ignore_index=True)
+    return monthly, notes
+
+
+def changelog(index: str, s: requests.Session) -> pd.DataFrame:
+    """The current page's dated change log: Date, Added, Removed (Yahoo symbols)."""
+    title = TITLES[index]
+    j = _get(s, {"action": "parse", "page": title, "prop": "text", "format": "json"})
+    for t in pd.read_html(io.StringIO(j["parse"]["text"]["*"])):
+        if isinstance(t.columns, pd.MultiIndex) and len(t.columns) >= 5:
+            t = t.iloc[:, :5]
+            t.columns = ["Date", "AddT", "AddS", "RemT", "RemS"]
+            t["Date"] = pd.to_datetime(t["Date"], errors="coerce")
+            t = t.dropna(subset=["Date"])
+            return pd.DataFrame({
+                "Date": t["Date"],
+                "Added": t["AddT"].map(lambda x: to_yahoo(x) if isinstance(x, str) else None),
+                "Removed": t["RemT"].map(lambda x: to_yahoo(x) if isinstance(x, str) else None)})
+    return pd.DataFrame(columns=["Date", "Added", "Removed"])
+
+
+def backfill(monthly: pd.DataFrame, index: str, missing: list[pd.Timestamp], log: pd.DataFrame) -> pd.DataFrame:
+    """Month-ends the page could not give, rebuilt by undoing the dated change log
+    from the first good month-end after them. Checked 10 Nov 2026 on real snapshots:
+    S&P 600 Dec 2022 undone to Mar 2021 agrees on 592 of 601 names."""
+    good = sorted(set(monthly[monthly["Index"] == index]["Date"]))
+    out = []
+    for t in missing:
+        later = [g for g in good if g > t]
+        if not later:
+            continue
+        anchor = later[0]
+        base = monthly[(monthly["Index"] == index) & (monthly["Date"] == anchor)]
+        members = dict(zip(base["Yahoo"], base.to_dict("records")))
+        for r in log[(log["Date"] > t) & (log["Date"] <= anchor)].sort_values("Date", ascending=False).itertuples():
+            if r.Added:
+                members.pop(r.Added, None)
+            if r.Removed:
+                members.setdefault(r.Removed, {"Symbol": r.Removed.replace("-", "."), "Yahoo": r.Removed,
+                                               "Company": r.Removed, "Sector": "", "Industry": "", "Index": index})
+        df = pd.DataFrame(list(members.values()))
+        df["Date"], df["revid"] = t, -1
+        out.append(df)
+        print(f"  {index} {t.date()}: rebuilt from the change log ({len(df)} names, anchored {anchor.date()})")
+    return pd.concat(out, ignore_index=True) if out else monthly.iloc[0:0]
+
+
+# Name matches that are NOT the same security's history (checked by hand, 10 Nov 2026):
+REJECTED_ALIASES = {
+    "IBTX": "Independent Bank Group (Texas) is not Independent Bank Corp (INDB, Massachusetts); "
+            "both were S&P 600 members at the same time",
+    "SIX": "Six Flags merged into Cedar Fair in 2024; the survivor trades as FUN, whose earlier "
+           "prices are Cedar Fair's, not Six Flags'",
+}
 
 
 def aliases(monthly: pd.DataFrame, current: pd.DataFrame) -> dict:
-    """Old ticker -> today's, where the company name matches and the ticker differs."""
+    """Old ticker -> today's, where the company name matches, the ticker differs,
+    and the two never sat on the lists at the same month-end (a rename is a
+    hand-over; two live members with similar names are two companies)."""
     def key(name: str) -> str:
         n = re.sub(r"[^a-z0-9 ]", "", str(name).lower())
         n = re.sub(r"\b(inc|corp|corporation|co|company|ltd|plc|group|holdings|the|class [a-z])\b", "", n)
         return " ".join(n.split())
     now = {key(n): y for n, y in zip(current["Company"], current["Yahoo"])}
+    dates = monthly.groupby("Yahoo")["Date"].apply(set).to_dict()
+    # CIK first (exact across renames), the name second.
+    cik_col = monthly["CIK"] if "CIK" in monthly else pd.Series("", index=monthly.index)
+    latest = monthly.assign(CIK=cik_col.fillna("")).sort_values("Date")
+    cik_of = {s: c for s, c in zip(latest["Yahoo"], latest["CIK"]) if c}
+    now_month = latest["Date"].max()
+    cik_now = {c: s for s, c, d in zip(latest["Yahoo"], latest["CIK"], latest["Date"])
+               if c and d == now_month and s in set(current["Yahoo"])}
     out = {}
     for sym, name in monthly.drop_duplicates("Yahoo")[["Yahoo", "Company"]].itertuples(index=False):
-        new = now.get(key(name))
-        if new and new != sym and sym not in set(current["Yahoo"]):
-            out[sym] = {"new_symbol": new, "matched_on": str(name)}
+        by_cik = cik_now.get(cik_of.get(sym, ""))
+        new = by_cik or now.get(key(name))
+        if not new or new == sym or sym in set(current["Yahoo"]) or sym in REJECTED_ALIASES:
+            continue
+        if dates.get(sym, set()) & dates.get(new, set()):
+            continue    # both listed at once: not a rename
+        out[sym] = {"new_symbol": new, "matched_on": f"CIK {cik_of[sym]}" if by_cik else str(name)}
     return out
 
 
@@ -159,7 +232,9 @@ def main(argv=None) -> int:
         one["Date"] = d
         rows.append(one)
     m = pd.concat(rows, ignore_index=True)
-    m[["Date", "Index", "Symbol", "Yahoo", "Company", "Sector"]].sort_values(["Date", "Symbol"]).to_csv(
+    if "CIK" not in m:
+        m["CIK"] = ""
+    m[["Date", "Index", "Symbol", "Yahoo", "Company", "Sector", "CIK"]].sort_values(["Date", "Symbol"]).to_csv(
         MONTHLY, index=False, date_format="%Y-%m-%d")
 
     current = pd.read_csv(os.path.join(ROOT, "data", "universe.csv"), dtype=str, keep_default_na=False)
@@ -173,6 +248,7 @@ def main(argv=None) -> int:
     hist["source"] = ("Wikipedia revision history of the S&P 500/400/600 lists, the last revision "
                       "on or before each month-end close; today's snapshot from scripts/sync_universe.py")
     hist["caveats"] = notes
+    hist["rejected_aliases"] = REJECTED_ALIASES
     mem.save_history(hist, TIMELINE)
     ever = set(hist["baseline"]["symbols"]).union(*[set(c["added"]) for c in hist["changes"]])
     print(f"timeline {hist['baseline']['date']} .. {as_of}: {len(hist['changes'])} change dates, "

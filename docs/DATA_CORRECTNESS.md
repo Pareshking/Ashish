@@ -107,6 +107,34 @@ point-in-time membership can carry it. The same bias is in the replayed record
 months (Jan-Oct 2026, ten months, much less exposed than 16 years) and the
 Backtest's History mode, and both say so.
 
+## Point-in-time membership from Dec 2019 (10 Nov 2026, TODO B18)
+
+`scripts/build_membership_history.py`: the S&P 500, 400 and 600 lists as Wikipedia showed them at each
+month-end close since 31 Dec 2019 (the last revision saved by 16:00 New York that day; 1,268 / 590 / 720
+revisions read, 83 month-ends each). Result: 83 change dates, 2,111 symbols ever, 1,475-1,506 members a
+month-end (early months a little short: the 400 page then held 391-393 rows).
+
+- **S&P 600, Dec 2019 - Feb 2021 (15 month-ends):** the page then held a stale S&P 1000 list (955-1,066
+  rows, still carrying 18-22 S&P 500 names). Those month-ends are rebuilt instead by undoing the 600 page's
+  dated change log from 31 Mar 2021. Checked on real snapshots: undoing the log from Dec 2022 to Mar 2021
+  agrees on 592 of 601 names, Dec 2023 to Dec 2022 on 590, Dec 2025 to Dec 2024 on 586 of 602.
+- **Ticker renames** (51) matched on the SEC CIK in Wikipedia's tables where present (Anthem->ELV,
+  Alliance Data->BFH, FB->META, UTX->RTX...), else on the company name; a match where both tickers were
+  listed at the same month-end is rejected. Rejected by hand with reasons: IBTX (not INDB), SIX (merged
+  into Cedar Fair, FUN's earlier prices are Cedar Fair's).
+- **Former members' prices** (`scripts/sync_former_members.py`, `data/former_members.csv`): of 609, 173
+  priced from Yahoo, 51 renamed into today's members, 41 rejected as reused tickers (Yahoo's prices start
+  after the membership spell), **344 with no data at Yahoo** (acquired or delisted: CXO, XLNX, ATVI, MDC,
+  WRK, ...); Nasdaq.com serves none of the five tried. Member-months with prices: 79.1% (Jan 2020) rising
+  to 91.2% (Jan 2024), mean 88.9%. Unpriced members are left out of each month's scoring.
+- **The bias, measured again** (top-minus-bottom fifth by our score against Kenneth French's UMD, Feb 2020
+  - Sep 2026, 80 months): today's list -1.02%/month (corr 0.56) -> point-in-time **+0.26%/month against
+  UMD's +0.24 (corr 0.77)**. Most of the survivorship bias is gone; the 11% unpriced remains a lead to close
+  (Tiingo's free tier serves delisted US tickers, 500 a month: needs the owner's key; Stooq from GitHub
+  Actions, untested).
+- Not checked: the month-end lists against Wayback Machine snapshots (CDX unreachable from this session);
+  the CIK renames individually.
+
 ## Decisions
 
 - **Universe: S&P 1500, one system** (owner, 10 Nov 2026).
