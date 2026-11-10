@@ -1080,3 +1080,83 @@ Two earlier states of the data, both run before the import with the same code an
   signal could not always have used month m-1. A live S2 needs the spec's "latest published month"
   fallback. The backtest assumes m-1 was available.
 - **Walk-forward:** none was part of this pre-registration, and none was run.
+
+---
+
+## Stage 2: combinations (pre-registered 10 Nov 2026)
+
+Owner, 10 Nov 2026: "Continue testing other combinations also and let me know final results."
+This section was written before any stage-2 run. The component specifications are stage 1's,
+unchanged (`scripts/research_prereg.py`).
+
+- **Components.** Only those not rejected in stage 1 are used.
+  - **Selection:** S1 (score blend), S4 (gate) and S7 (drop), each on or off. That gives 8 selection
+    sets, including the base. S6 and C2 were rejected and are excluded.
+  - **Exposure overlay:** none, S2 or S3. They are mutually exclusive.
+  - **Tranching (S5):** off, or on as the four-offset tranched book.
+  - **Total:** 8 × 3 × 2 = 48 combinations. The base is one of them.
+- **Feasibility.** If S1, S4 and S7 cannot be active together in one engine run, the infeasible sets
+  are named and dropped, and nothing is substituted for them.
+- **Statistics.** Every combination's non-tranched statistic is the mean over the four offsets, as in
+  stage 1, at 10 bps. 20 bps is reported as a sensitivity.
+- **Selection rule.** It is applied on the in-sample period only, 3 Mar 2011 to 31 Dec 2019. The
+  chosen combination is the one with the highest CAGR among those whose max drawdown is no more than
+  2 pts worse than the base's in that period. Ties go to the combination with fewer components.
+- **Out-of-sample test.** The chosen combination is judged once, on 2 Jan 2020 to 30 Oct 2026,
+  against the base. It must pass all of these:
+  1. CAGR gap > 0, and Sharpe gap > 0.
+  2. Ahead in at least 90% of paired block bootstrap draws (63-session blocks, 2,000 draws, seed
+     20261110).
+  3. Ahead at all four offsets.
+  4. Ahead at 20 bps.
+  5. Max drawdown no more than 2 pts worse.
+  6. Deflated Sharpe ratio (Bailey & López de Prado 2014) of the chosen combination's in-sample Sharpe
+     of at least 0.95. The test uses N = the number of combinations actually evaluated, the variance of
+     the in-sample Sharpe ratios across them, and the skew and kurtosis of the chosen series.
+- **Verdict.** Pass; reject (behind out of sample on CAGR); or inconclusive.
+- **Reporting.** All 48 combinations (or the feasible number) go in a table, with in-sample and
+  out-of-sample CAGR, max drawdown and Sharpe. The out-of-sample rank of the chosen combination among
+  all of them is also reported.
+- **No additions.** No combination or rule may be added after a result is seen.
+
+### Implementation readings (fixed before the first stage-2 run)
+
+- **Feasibility.** S1, S4 and S7 can be active together. S1 is `_research_score`. S4 is
+  `_research_gate` and S7 is `_research_values` with `research_drop` 0.2. Both act through
+  `research_gate_on` "buy", which they share, and the engine applies gate and drop together. All 8
+  selection sets are therefore feasible and no set is dropped.
+- **Stage-1 runs reused.** The runs for the base, S1, S4 and S7 (store_v3, offsets 0/5/10/15, 10 and
+  20 bps) are reused, since the data are unchanged since store_v3. The 4 new selection sets add 32
+  engine runs. Whether reuse is safe is checked by rerunning one base run and comparing it bit for
+  bit.
+- **Overlays.** An overlay is applied to a selection set's daily returns exactly as stage 1 applies
+  S2 and S3 (C1 is S1 with S2).
+- **Tranched combinations.** Sub-book j is the combination at offset 5j, each worth a quarter at the
+  common start (1 Mar 2011 close), never rebalanced. Its statistic is the one series, not a mean over
+  offsets.
+- **In-sample period.** The sessions after the 1 Mar 2011 fill up to 31 Dec 2019. The first return is
+  2 Mar 2011, as in stage 1's primary sample; "3 Mar" is read as the stage-1 start, one session
+  apart.
+  - **Out-of-sample period:** 2 Jan 2020 to 30 Oct 2026.
+- **Base drawdown limit.** The limit is set by the base's in-sample max drawdown, the mean over the
+  four offsets. A combination's max drawdown is its own mean over the offsets, or its single series
+  when tranched.
+- **Components counted for ties:** S1, S4, S7, an overlay and tranching count one each.
+- **Out-of-sample checks:**
+  - Gaps are the combination minus the base (mean over offsets), on the same sessions.
+  - Check 2 uses the CAGR gap, the selection metric; the Sharpe-gap share is reported beside it.
+  - Check 3 compares the combination at offset o with the base at offset o. A tranched combination is
+    compared with the base at each offset.
+  - Check 4 is the CAGR gap at 20 bps.
+  - Check 5 is the mean max-drawdown gap.
+  - The bootstrap applies one set of block indices to every series, as in stage 1.
+- **Deflated Sharpe ratio (Bailey & López de Prado 2014).** All Sharpe ratios are daily: annualised
+  Sharpe / √252, on returns in excess of French's daily risk-free rate.
+  - Expected maximum: SR* = √V × ((1 − γ) Φ⁻¹(1 − 1/N) + γ Φ⁻¹(1 − 1/(N e))). Here γ = 0.5772
+    (Euler-Mascheroni), N = 48 (all evaluated, the base included), and V = the variance across the 48
+    in-sample Sharpe ratios.
+  - DSR = Φ((SR − SR*) √(T − 1) / √(1 − g₃ SR + (g₄ − 1)/4 SR²)). SR = the chosen combination's
+    in-sample Sharpe; T = in-sample sessions.
+  - g₃ and g₄ are the skewness and the (non-excess) kurtosis of the chosen series' daily excess
+    returns. For a non-tranched combination they are the means over the four offsets.
+- **If the base itself is chosen,** no combination is selected and the verdict is "none chosen".

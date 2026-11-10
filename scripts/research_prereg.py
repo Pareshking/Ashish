@@ -556,6 +556,15 @@ def variant_kwargs(name: str, offset: int) -> dict:
     inp = _INP
     if name == "base":
         return {}
+    if "+" in name:            # stage 2: selection components together, each unchanged
+        out: dict = {}
+        for part in name.split("+"):
+            kw = variant_kwargs(part, offset)
+            clash = set(kw) & set(out) - {"research_gate_on"}
+            if clash or kw.get("research_gate_on", "buy") != out.get("research_gate_on", "buy"):
+                raise ValueError(f"{name}: {part} cannot be combined ({sorted(clash)})")
+            out.update(kw)
+        return out
     if name == "S1":
         return dict(_research_score=s1_score_fn(_res()))
     if name == "C2":
