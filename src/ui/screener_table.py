@@ -52,7 +52,7 @@ PERIOD_WINDOWS = (1, 3, 6, 9, 12)
 # high_pct 0.80), drawn under those qualified places in rank order.
 BUY_CUT, KEEP_CUT, NEAR_HIGH_GAP_PCT = 20, 40, 20
 _ALL = {
-    "rank": ("Rank", "num"), "stock": ("Symbol", "text"), "price": ("CMP", "num"),
+    "rank": ("Rank", "num"), "stock": ("Symbol", "text"), "price": ("Price", "num"),
     "d1m": ("1M Δ", "num"), "d3m": ("3M Δ", "num"),
     # S87 (owner, 7 Nov): place among the stocks that pass both filters (the
     # list the book buys from: top 20, kept while in the top 40) and the

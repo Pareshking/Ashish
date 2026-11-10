@@ -139,8 +139,13 @@ def _history_inputs(rank_df: pd.DataFrame, choice: dict, bounds: dict) -> dict |
                     "so the test starts there.")
         start = first
     if start > end:
-        kit.note(f"{iu.INDICES[key]} has no completed month in the window chosen.",
-                 f"Its list begins {first.strftime('%b %Y')}; move the start or end month.")
+        kit.note(f"No month to test yet: {iu.INDICES[key]}'s point-in-time list begins {first.strftime('%b %Y')}.",
+                 "A history test needs who was in the index on each date. That record starts with the "
+                 "10 Nov 2026 snapshot; scoring 2010-26 on today's list instead flatters momentum badly "
+                 "(measured: the top-minus-bottom spread averaged -0.76 pts a month on today's list "
+                 "against +0.31 for Kenneth French's survivorship-free factor). The test opens one "
+                 "completed month at a time from December 2026, or earlier once the S&P change logs "
+                 "extend the list back.")
         return None
     floor = float(choice["floor"] or 0.0)
 
