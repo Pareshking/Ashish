@@ -1160,3 +1160,100 @@ unchanged (`scripts/research_prereg.py`).
   - g₃ and g₄ are the skewness and the (non-excess) kurtosis of the chosen series' daily excess
     returns. For a non-tranched combination they are the means over the four offsets.
 - **If the base itself is chosen,** no combination is selected and the verdict is "none chosen".
+
+
+### Stage 2 results (10 Nov 2026)
+
+`scripts/research_prereg_stage2.py`; store at commit c8a02ec (data identical to store_v3: a fresh
+base run matched the stored stage-1 run bit for bit, so the 96 stage-1 run files were reused and 32
+new engine runs added). All 8 selection sets were feasible; nothing was dropped. N = 48. Outputs:
+session scratchpad `prereg_runs/stage2`.
+
+Chosen in sample: **S1+S3+S5** (3 components). In-sample sessions 2224 (to 2019-12-31); out-of-sample 1717 (2 Jan 2020 to 2026-10-30). Base in-sample max drawdown -20.87%, so the limit was -22.87%; 48 of 48 combinations eligible.
+
+| | In sample: CAGR / MDD / Sharpe | Out of sample: CAGR / MDD / Sharpe | OOS at 20 bps CAGR |
+|---|---|---|---|
+| Base | 12.25% / -20.9% / 0.817 | 15.23% / -33.1% / 0.627 | 14.64% |
+| Chosen: S1+S3+S5 | 13.69% / -19.6% / 0.920 | 16.39% / -34.0% / 0.733 | 16.23% |
+
+Out of sample, chosen minus base: CAGR +1.16 pt (90% range -7.46 to +8.51; ahead in 60.0% of draws), Sharpe +0.106 (ahead in 75.8%), max drawdown -0.92 pt; by offset 0/5/10/15 CAGR -1.12 / -0.26 / +5.22 / +0.79; at 20 bps +1.59 pt.
+
+Deflated Sharpe ratio: in-sample Sharpe 0.920 a year (0.0579 a day), N = 48, variance of the 48 in-sample daily Sharpe ratios 6.996e-06, expected maximum SR* = 0.0060 a day (0.095 a year), T = 2224, skew -0.484, kurtosis 7.03: **DSR = 0.992**.
+
+Checks: 1 yes; 2 NO; 3 NO; 4 yes; 5 yes; 6 yes. **Verdict: inconclusive.** Out-of-sample CAGR rank of the chosen combination: 31 of 48.
+
+| # | Combination | Components | IS CAGR | IS MDD | IS Sharpe | Eligible | OOS CAGR | OOS MDD | OOS Sharpe | OOS rank | OOS CAGR at 20 bps |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | base | 0 | 12.25% | -20.9% | 0.817 | yes | 15.23% | -33.1% | 0.627 | 45 | 14.64% |
+| 2 | S5 | 1 | 12.27% | -18.9% | 0.830 | yes | 15.23% | -33.3% | 0.636 | 46 | 14.64% |
+| 3 | S2 | 1 | 12.56% | -20.9% | 0.838 | yes | 16.44% | -33.1% | 0.722 | 21 | 15.95% |
+| 4 | S2+S5 | 2 | 12.58% | -18.9% | 0.851 | yes | 16.41% | -33.4% | 0.729 | 29 | 15.92% |
+| 5 | S3 | 1 | 13.57% | -20.2% | 0.907 | yes | 15.98% | -33.5% | 0.722 | 37 | 15.80% |
+| 6 | S3+S5 | 2 | 13.57% | -18.7% | 0.914 | yes | 15.97% | -33.5% | 0.722 | 39 | 15.80% |
+| 7 | S1 | 1 | 12.28% | -21.2% | 0.813 | yes | 16.78% | -34.7% | 0.666 | 16 | 16.24% |
+| 8 | S1+S5 | 2 | 12.30% | -20.6% | 0.825 | yes | 16.80% | -35.0% | 0.676 | 14 | 16.26% |
+| 9 | S1+S2 | 2 | 12.56% | -21.2% | 0.833 | yes | 17.75% | -34.5% | 0.755 | 8 | 17.31% |
+| 10 | S1+S2+S5 | 3 | 12.58% | -20.6% | 0.845 | yes | 17.77% | -34.8% | 0.763 | 7 | 17.33% |
+| 11 | S1+S3 | 2 | 13.69% | -20.3% | 0.914 | yes | 16.39% | -34.0% | 0.732 | 32 | 16.23% |
+| 12 | **S1+S3+S5** | 3 | 13.69% | -19.6% | 0.920 | yes | 16.39% | -34.0% | 0.733 | 31 | 16.23% |
+| 13 | S4 | 1 | 12.19% | -20.9% | 0.813 | yes | 15.23% | -33.1% | 0.627 | 47 | 14.64% |
+| 14 | S4+S5 | 2 | 12.22% | -18.9% | 0.827 | yes | 15.21% | -33.3% | 0.635 | 48 | 14.62% |
+| 15 | S4+S2 | 2 | 12.53% | -20.9% | 0.837 | yes | 16.43% | -33.1% | 0.722 | 22 | 15.95% |
+| 16 | S4+S2+S5 | 3 | 12.56% | -18.9% | 0.850 | yes | 16.40% | -33.4% | 0.728 | 30 | 15.91% |
+| 17 | S4+S3 | 2 | 13.58% | -20.2% | 0.908 | yes | 15.97% | -33.5% | 0.721 | 38 | 15.80% |
+| 18 | S4+S3+S5 | 3 | 13.59% | -18.7% | 0.915 | yes | 15.97% | -33.5% | 0.722 | 40 | 15.79% |
+| 19 | S7 | 1 | 12.21% | -20.9% | 0.813 | yes | 15.31% | -32.4% | 0.633 | 44 | 14.72% |
+| 20 | S7+S5 | 2 | 12.23% | -18.9% | 0.827 | yes | 15.32% | -32.7% | 0.643 | 43 | 14.73% |
+| 21 | S7+S2 | 2 | 12.53% | -20.9% | 0.836 | yes | 16.49% | -32.6% | 0.728 | 18 | 16.01% |
+| 22 | S7+S2+S5 | 3 | 12.55% | -18.9% | 0.849 | yes | 16.47% | -32.8% | 0.735 | 20 | 15.98% |
+| 23 | S7+S3 | 2 | 13.56% | -20.2% | 0.906 | yes | 16.00% | -33.3% | 0.724 | 34 | 15.83% |
+| 24 | S7+S3+S5 | 3 | 13.56% | -18.7% | 0.913 | yes | 15.99% | -33.3% | 0.725 | 36 | 15.82% |
+| 25 | S1+S4 | 2 | 12.13% | -21.1% | 0.805 | yes | 16.81% | -34.7% | 0.667 | 13 | 16.27% |
+| 26 | S1+S4+S5 | 3 | 12.16% | -20.7% | 0.817 | yes | 16.85% | -35.1% | 0.678 | 11 | 16.31% |
+| 27 | S1+S4+S2 | 3 | 12.45% | -21.1% | 0.827 | yes | 17.80% | -34.5% | 0.757 | 5 | 17.36% |
+| 28 | S1+S4+S2+S5 | 4 | 12.47% | -20.7% | 0.839 | yes | 17.84% | -34.8% | 0.767 | 2 | 17.40% |
+| 29 | S1+S4+S3 | 3 | 13.66% | -20.2% | 0.912 | yes | 16.41% | -34.0% | 0.733 | 27 | 16.25% |
+| 30 | S1+S4+S3+S5 | 4 | 13.66% | -19.5% | 0.918 | yes | 16.42% | -34.0% | 0.735 | 25 | 16.26% |
+| 31 | S1+S7 | 2 | 12.24% | -21.2% | 0.811 | yes | 16.81% | -34.1% | 0.670 | 12 | 16.27% |
+| 32 | S1+S7+S5 | 3 | 12.26% | -20.6% | 0.823 | yes | 16.85% | -34.5% | 0.681 | 9 | 16.31% |
+| 33 | S1+S7+S2 | 3 | 12.52% | -21.2% | 0.831 | yes | 17.80% | -34.0% | 0.760 | 6 | 17.35% |
+| 34 | S1+S7+S2+S5 | 4 | 12.54% | -20.6% | 0.843 | yes | 17.84% | -34.3% | 0.770 | 3 | 17.39% |
+| 35 | S1+S7+S3 | 3 | 13.66% | -20.3% | 0.912 | yes | 16.41% | -33.8% | 0.735 | 28 | 16.25% |
+| 36 | S1+S7+S3+S5 | 4 | 13.66% | -19.6% | 0.918 | yes | 16.41% | -33.9% | 0.736 | 26 | 16.25% |
+| 37 | S4+S7 | 2 | 12.17% | -20.9% | 0.812 | yes | 15.36% | -32.4% | 0.635 | 41 | 14.77% |
+| 38 | S4+S7+S5 | 3 | 12.21% | -18.9% | 0.826 | yes | 15.34% | -32.7% | 0.644 | 42 | 14.75% |
+| 39 | S4+S7+S2 | 3 | 12.52% | -20.9% | 0.835 | yes | 16.52% | -32.6% | 0.729 | 17 | 16.03% |
+| 40 | S4+S7+S2+S5 | 4 | 12.54% | -18.9% | 0.849 | yes | 16.48% | -32.8% | 0.735 | 19 | 15.99% |
+| 41 | S4+S7+S3 | 3 | 13.58% | -20.2% | 0.908 | yes | 16.00% | -33.3% | 0.724 | 33 | 15.83% |
+| 42 | S4+S7+S3+S5 | 4 | 13.59% | -18.7% | 0.915 | yes | 15.99% | -33.3% | 0.725 | 35 | 15.82% |
+| 43 | S1+S4+S7 | 3 | 12.09% | -21.1% | 0.803 | yes | 16.79% | -34.2% | 0.669 | 15 | 16.26% |
+| 44 | S1+S4+S7+S5 | 4 | 12.12% | -20.7% | 0.815 | yes | 16.85% | -34.5% | 0.681 | 10 | 16.31% |
+| 45 | S1+S4+S7+S2 | 4 | 12.41% | -21.1% | 0.825 | yes | 17.82% | -34.1% | 0.762 | 4 | 17.38% |
+| 46 | S1+S4+S7+S2+S5 | 5 | 12.43% | -20.7% | 0.837 | yes | 17.88% | -34.4% | 0.772 | 1 | 17.44% |
+| 47 | S1+S4+S7+S3 | 4 | 13.63% | -20.2% | 0.910 | yes | 16.43% | -33.8% | 0.736 | 24 | 16.27% |
+| 48 | S1+S4+S7+S3+S5 | 5 | 13.63% | -19.5% | 0.917 | yes | 16.43% | -33.9% | 0.737 | 23 | 16.27% |
+
+Hindsight, not a verdict: the five highest out-of-sample CAGRs were S1+S4+S7+S2+S5 17.88% (in sample 12.43%, eligible); S1+S4+S2+S5 17.84% (in sample 12.47%, eligible); S1+S7+S2+S5 17.84% (in sample 12.54%, eligible); S1+S4+S7+S2 17.82% (in sample 12.41%, eligible); S1+S4+S2 17.80% (in sample 12.45%, eligible).
+
+Reading it:
+
+- **Chosen: S1 + S3 + S5** (residual blend, Daniel-Moskowitz weight with an SPY sleeve, four
+  tranches), the highest in-sample CAGR (13.69% against the base's 12.25%), ahead of S1 + S3
+  without tranches by 0.001 pt, so the tie rule did not apply. Every combination met the drawdown
+  limit in sample.
+- **Verdict: inconclusive.** Out of sample it is ahead on CAGR (+1.16 pt) and Sharpe (+0.106), at
+  20 bps and within the drawdown limit (−0.9 pt), and its DSR is 0.992; but it is ahead in only 60.0%
+  of bootstrap draws (90% range −7.5 to +8.5 pt) and behind the base at offsets 0 and 5 (−1.12 and
+  −0.26 pt). Its gain comes almost entirely from offset 10 (+5.22 pt), the base's worst schedule.
+- **Out-of-sample rank: 31 of 48.** What won in sample (S3's de-risking, which held SPY at a mean
+  weight of 0.44 through a strong 2011-2019 market) was mid-table after 2020; every S2-with-S1
+  combination did better out of sample. That reversal is the reason a single in-sample pick is judged
+  once and not replaced.
+- **The DSR passes but says little here.** The 48 combinations are close variants of one book (the
+  in-sample daily Sharpe ratios have a variance of 7.0e-6), so the expected maximum Sharpe of 48
+  trials is only 0.095 a year, and DSR tests the chosen Sharpe against that, not against the base.
+- **Hindsight, not a verdict:** the five best out-of-sample CAGRs all combine S1 with S2 (with S4,
+  S7 or S5 added, at 17.80-17.88% against the base's 15.23%). They ranked 24th-32nd of 48 by
+  in-sample CAGR (12.41-12.54%) and would not have been chosen by the rule.
+- **Not checked:** a walk-forward with re-selection each year; bootstrap of the selection step
+  itself; a second out-of-sample period.
