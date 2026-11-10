@@ -191,9 +191,12 @@ on 10 Jul 2018: +1.8% for the holder, +11.5% by Yahoo's factor). A dividend of
 written twice and is applied once (DHR 5 Jul 2016: split 1.319 and dividend
 24.56 for Fortive; +61% before, +3.6% now, the close's own move).
 
-Not checked: the dataset's licence (none is published; it contains Tiingo,
-Quandl WIKI and CRSP rows), so nothing from it is committed until the owner
-decides (B25).
+Licence: none is published; the dataset carries Tiingo (85 of the 153
+symbols imported), Quandl WIKI (39), CRSP (26) and other rows. The owner
+decided (10 Nov 2026) to commit it with the repository made private
+(`scripts/import_former_members_jb.py`; each symbol's sources in
+data/former_members.csv). After the import, S&P 500 member-months priced:
+99.0% for 2010-2019 (84.7% before) and 99.0% for 2020-2026 (98.5%).
 
 ## Decisions
 

@@ -2,6 +2,8 @@
 
 ## Unreleased (PR #3): S&P 500 history and data fixes
 
+- Prices for 153 former S&P 500 members Yahoo no longer serves, from the dataset Johnbrick123/sp500-data: 99% of 2010-2019 member-months now priced (85% before).
+
 - Dividends adjust prices by the total-return convention (close + dividend over the previous close); a spin-off Yahoo records as both a split and a dividend is counted once. Corrects, for example, Danaher's Fortive day in July 2016 (+61% before, +3.6% now).
 - S&P 500 month-end lists from Dec 2009 from an independent dataset (fja05680/sp500), which also corrects late Wikipedia lists at seven month-ends since 2019, including Dec 2025 (CRH, Carvana, Comfort Systems).
 
