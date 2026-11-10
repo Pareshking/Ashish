@@ -1257,3 +1257,42 @@ Reading it:
   in-sample CAGR (12.41-12.54%) and would not have been chosen by the rule.
 - **Not checked:** a walk-forward with re-selection each year; bootstrap of the selection step
   itself; a second out-of-sample period.
+
+
+---
+
+## Tranching for the live book: test before any change (10 Nov 2026)
+
+Owner, 10 Nov 2026: "Split the live book into four weekly tranches ... Test it
+first." From the stage-1 base runs (store_v3; the live configuration, whose
+forward-dated rules are off before 30 Nov 2026), Mar 2011 to Oct 2026. The
+live book signals on the month's last session: offset 0.
+
+| 10 bps | CAGR | Max DD | Sharpe | Worst calendar year | Trade tickets a year |
+|---|---|---|---|---|---|
+| Offset 0 (live) | 14.0% | −27.8% | 0.82 | −7.0% | 196 |
+| Offset 5 | 14.1% | −33.6% | 0.82 | −15.3% | 199 |
+| Offset 10 | 12.5% | −40.9% | 0.73 | −15.3% | 198 |
+| Offset 15 | 13.5% | −32.9% | 0.78 | −10.7% | 197 |
+| Four tranches | 13.6% | −33.7% | 0.80 | −11.5% | 790 |
+
+2020-2026: offset 0 17.5% (max DD −26.5%), tranches 15.2% (−33.3%), offset 10
+11.2% (−40.9%). At 20 bps every figure is about 0.6 pt lower; the ranking is
+unchanged. Turnover as a share of the book is the same (about 500% a year), so
+costs are the same in percent; trade tickets are four times as many, each a
+quarter the size ($12,500 positions on the $1M book).
+
+The spread between the best and worst schedule in a single calendar year
+averaged 9.4 pts (2020: offset 0 +16.7%, offset 10 −7.0%; 2026 to October: 27%
+to 45%).
+
+Reading: tranching does not raise the expected return; it replaces one draw
+from the four schedules with their average. The live schedule (offset 0) was
+the best of the four over 2011-2026 and 2020-2026, but it was not chosen by
+backtest (it is the month-end convention carried from Paresh), so there is no
+evidence that it will stay the best: before the fact, the expected result of
+any one schedule is about the tranched one. Against offset 0's own history,
+tranching would have cost 0.4 pt a year (2.3 pts in 2020-2026) and 6 pts of
+drawdown; against the worst schedule it would have saved 1.1 pt and 7 pts.
+Not tested: weekly rebalancing of the four tranches back to equal weight, and
+the live rules after 30 Nov 2026 (hold cap, six-monthly reset) inside tranches.

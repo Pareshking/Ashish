@@ -1,0 +1,124 @@
+{
+ "description": "S1 + S2 forward shadow (docs/MOMENTUM_PREREG.md): recorded, not traded",
+ "rule": "the record's configuration with S1's score; the book scaled by S2's weight, rest SPY with dividends; 10 bps on |dw|",
+ "live_from": "2026-11",
+ "months": {
+  "2026-01": {
+   "weight": 0.7708,
+   "s1_book": 0.183794,
+   "live_book": 0.15725,
+   "benchmark": 0.012881,
+   "shadow": 0.144498,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  },
+  "2026-02": {
+   "weight": 0.7837,
+   "s1_book": 0.070329,
+   "live_book": 0.064508,
+   "benchmark": -0.008642,
+   "shadow": 0.053236,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  },
+  "2026-03": {
+   "weight": 0.8331,
+   "s1_book": -0.074401,
+   "live_book": -0.067054,
+   "benchmark": -0.04938,
+   "shadow": -0.070274,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  },
+  "2026-04": {
+   "weight": 0.7944,
+   "s1_book": 0.197157,
+   "live_book": 0.135547,
+   "benchmark": 0.105053,
+   "shadow": 0.17818,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  },
+  "2026-05": {
+   "weight": 0.7001,
+   "s1_book": 0.052353,
+   "live_book": 0.039162,
+   "benchmark": 0.052626,
+   "shadow": 0.052341,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  },
+  "2026-06": {
+   "weight": 0.6776,
+   "s1_book": 0.097139,
+   "live_book": 0.040406,
+   "benchmark": -0.010293,
+   "shadow": 0.062477,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  },
+  "2026-07": {
+   "weight": 0.6458,
+   "s1_book": -0.154933,
+   "live_book": -0.11125,
+   "benchmark": 0.000348,
+   "shadow": -0.09996,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  },
+  "2026-08": {
+   "weight": 0.5664,
+   "s1_book": 0.025283,
+   "live_book": 0.018332,
+   "benchmark": 0.026799,
+   "shadow": 0.025861,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  },
+  "2026-09": {
+   "weight": 0.4981,
+   "s1_book": 0.03574,
+   "live_book": 0.021298,
+   "benchmark": -0.003293,
+   "shadow": 0.016083,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  },
+  "2026-10": {
+   "weight": 0.5036,
+   "s1_book": -0.00757,
+   "live_book": -0.021851,
+   "benchmark": -0.009061,
+   "shadow": -0.008316,
+   "french_vintage": "202609",
+   "note": "",
+   "replayed": true,
+   "recorded_on": "2026-11-10"
+  }
+ },
+ "log": [],
+ "totals": {
+  "live_book": 0.275705,
+  "s1_book": 0.443697,
+  "shadow": 0.373524,
+  "benchmark": 0.114835
+ }
+}

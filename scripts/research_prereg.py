@@ -32,6 +32,7 @@ import inspect
 import json
 import logging
 import math
+import os
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -45,9 +46,9 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.research_filters import block_indices, live_kwargs, max_drawdown  # noqa: E402
 
-SCRATCH = Path("/tmp/claude-0/-home-user/98ffa510-1b54-5cd0-a724-31f84e65722d/scratchpad")
+SCRATCH = Path(os.environ.get("RESEARCH_SCRATCH", "/tmp/claude-0/-home-user/98ffa510-1b54-5cd0-a724-31f84e65722d/scratchpad"))
 DEFAULT_EXTRA = SCRATCH / "research_extra_prices.parquet"
-FRENCH_DIR = SCRATCH / "french"
+FRENCH_DIR = Path(os.environ.get("FRENCH_DIR", str(SCRATCH / "french")))
 FRENCH_FILES = {
     "ff3_m": "F-F_Research_Data_Factors", "ff3_d": "F-F_Research_Data_Factors_daily",
     "mom_m": "F-F_Momentum_Factor", "mom_d": "F-F_Momentum_Factor_daily",

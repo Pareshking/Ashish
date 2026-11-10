@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased: second shadow and the tranching test
+
+- A second forward shadow, residual momentum with volatility scaling (S1 + S2), recorded monthly beside the book (data/shadow_s1s2.json); not traded.
+- Four weekly tranches for the live book tested (docs/MOMENTUM_PREREG.md); the live book is unchanged pending the owner's decision.
+
 ## Unreleased (PR #3): S&P 500 history and data fixes
 
 - Research: nine published momentum improvements tested, pre-registered, on the point-in-time S&P 500 2011-2026 (docs/MOMENTUM_PREREG.md). One passed narrowly (S2, momentum-volatility scaling into SPY); it is recorded monthly as a shadow beside the book (data/shadow_s2.json), not traded.
