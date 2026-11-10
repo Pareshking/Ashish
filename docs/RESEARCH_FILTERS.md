@@ -551,3 +551,28 @@ owner's decision.
   - The sector labels are today's.
 - **Sample:** 2020–2026 has no long bear market, so it cannot test the trend
   gates' main claim.
+
+## Main-session review (10 Nov 2026): are the negative results mistakes?
+
+Owner: "Must be mistakes because those are proven to reduce volatility and improve return." Checked:
+
+1. **Trend gates did what the literature claims:** Faber's 10-month gate cut max drawdown from -36.9% to
+   -28.7% and turnover by 7 pts. The literature's claim is drawdown reduction; 2020-26 had no long bear market,
+   so the return cost is the expected price of that insurance in a rising market.
+2. **Cash at 0% is a real flaw, and small.** The 3-month T-bill (Yahoo ^IRX) averaged 2.85% in 2020-26.
+   Paying it on cash adds about +0.5 pts a year to faber10_cash (16 months in cash: +3.2% in total) and
+   vol_target (~20% average cash). Neither -5.4 nor -5.8 is closed by it. To fix in the research code.
+3. **vol_target is unlevered:** exposure is capped at 1 and targets the book's median volatility, so it averages
+   about 80% invested. Barroso & Santa-Clara scale a long-short factor with leverage allowed; this is a
+   different and weaker test of their idea.
+4. **FIP code matches the paper's formula** (sgn(PRET) x (%neg - %pos), 12 months skipping one, lower is
+   better). Replicating the paper's set-up on our data (top-fifth 12-1 momentum winners split into FIP
+   terciles, next month, 190 months 2011-2026, TODAY's list): smooth winners +1.34%/month, jumpy +1.91%,
+   **smooth minus jumpy -0.57%/month (t = -2.3), both halves alike**: the opposite sign to the paper. The same
+   data gives winners minus losers -0.60%/month against French's UMD +0.31%. Most likely cause:
+   survivorship bias, which drops the jumpy winners that later crashed and were delisted. Not yet tested;
+   the point-in-time rerun (TODO B18) decides it.
+5. **Not addressed by any rerun:** these filters' evidence comes from long-short decile portfolios over long
+   samples (Da et al. 1927-2007), and published anomalies weaken after publication (McLean & Pontiff 2016,
+   about a third lower). This book is a 20-stock long-only portfolio that already ranks on volatility-adjusted
+   momentum, which overlaps with FIP's "smooth path" idea.
