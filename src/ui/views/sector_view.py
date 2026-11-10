@@ -122,7 +122,7 @@ def render_leadership_section(rank_df: pd.DataFrame, adj_close: pd.DataFrame, co
         # Two statistics on one page, each named (pre-launch audit F4): this
         # map's mean over its own dates, the board's median over 3 months.
         kit.caption(f"Here a sector's return is the equal-weighted mean of its stocks' price "
-                    f"returns from {then:%-d %b} to {now:%-d %b}, not an NSE sector index; the board "
+                    f"returns from {then:%-d %b} to {now:%-d %b}, not an S&P sector index; the board "
                     "above ranks by the median 3-month return. The share counts stocks with a "
                     "close and an EMA that day.")
 
@@ -277,14 +277,14 @@ def render_sector_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     against the S&P 1500, what would change it. Then the leaderboard, the
     stocks of one industry and the leadership map."""
     has_tv = [c for c in ("TV_Industry", "TV_Sector") if c in rank_df.columns]
-    tax = {"NSE industry": "Industry"}
+    tax = {"GICS sector": "Industry"}
     if "TV_Industry" in has_tv:
         tax["TradingView industry"] = "TV_Industry"
     if "TV_Sector" in has_tv:
         tax["TradingView sector"] = "TV_Sector"
 
     by = st.session_state.get("sector_rank_by") or "3M median"
-    col = tax.get(st.session_state.get("sector_tax_choice") or "NSE industry", "Industry")
+    col = tax.get(st.session_state.get("sector_tax_choice") or "GICS sector", "Industry")
     board, singles = industry_board(rank_df, col)
     if not board.empty:
         board = board.sort_values([RANK_BY[by], "3M Return"], ascending=False,

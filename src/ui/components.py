@@ -191,7 +191,7 @@ def _render_calendar_returns(grid: pd.DataFrame) -> None:
 
     month_cols = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
                   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
-    summary_cols = ["CY RETURN", "FY RETURN", "Q1", "Q2", "Q3", "Q4"]
+    summary_cols = ["CY RETURN", "Q1", "Q2", "Q3", "Q4"]
     columns = month_cols + summary_cols
 
     def cell(value, *, summary=False, points=False):

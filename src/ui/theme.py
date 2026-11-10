@@ -46,8 +46,8 @@ FORMAT_MAP: dict[str, str] = {
     "Actual Value ($)": "{:,.0f}",
     "Capital Sized": "{:,.0f}",
     "Allocated Capital": "{:,.0f}",
-    "Market Cap (Cr)": "{:,.0f}",
-    "Total MCap (Cr)": "{:,.0f}",
+    "Market Cap ($B)": "{:,.1f}",
+    "Total MCap ($B)": "{:,.1f}",
     "Total_MCap_Cr": "{:,.0f}",
     # Quantities & Counts (Integer)
     "Shares to Buy": "{:,.0f}",

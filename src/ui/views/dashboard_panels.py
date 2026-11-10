@@ -1,10 +1,7 @@
-"""Two Dashboard panels from S91 (owner, 7 Nov 2026: "build it").
+"""Dashboard panels: momentum health and the share of stocks that qualify.
 
-Momentum health reads data/momentum_health.csv (scripts/build_momentum_health.py,
-monthly; method and the IIMA check in docs/MOMENTUM_HEALTH.md). Flows reads
-data/fii_dii_flows.csv (scripts/collect_fii_dii.py, each trading evening). Both
-files are written and checked by scheduled jobs on the failure alert; a panel
-whose file is missing or too thin says so instead of drawing.
+Both read data/momentum_health.csv (scripts/build_momentum_health.py, monthly).
+A panel whose file is missing or too thin says so instead of drawing.
 """
 from __future__ import annotations
 
@@ -25,9 +22,10 @@ MOMENTUM_FILE = ROOT / "data" / "momentum_health.csv"
 # month once its return is in, so the card read September on a 9 Nov
 # page (audit U-M8); this is the same reading, a month earlier.
 QUALIFIED_LATEST = ROOT / "data" / "momentum_health_latest.json"
-FLOWS_FILE = ROOT / "data" / "fii_dii_flows.csv"
-NSDL_FILE = ROOT / "data" / "nsdl_fpi_daily.csv"
-IIMA_CHECK = "correlation 0.83 with IIM Ahmedabad's momentum factor, Feb 2010 to Dec 2025"
+# The independent check of the spread: Kenneth French's US momentum factor
+# (UMD), to be measured when data/momentum_health.csv is first built
+# (docs/TODO.md B16). Until then the captions claim no correlation.
+FACTOR_CHECK = "against Kenneth French's US momentum factor: not yet measured"
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -66,7 +64,7 @@ def bars_read(values: list[float], labels: list[str], *, money: bool = False) ->
     if not values or len(values) != len(labels):
         return ""
     def _say(v: float) -> str:
-        return f"{fmt.inr(v, plus=True)} Cr" if money else f"{fmt.signed(v)} pts"
+        return fmt.usd_short(v, plus=True) if money else f"{fmt.signed(v)} pts"
 
     hi = max(range(len(values)), key=lambda i: values[i])
     lo = min(range(len(values)), key=lambda i: values[i])
@@ -258,114 +256,6 @@ def qualified_html(spreads: pd.DataFrame | None) -> str | None:
 TREND_MIN, TREND_WINDOW = 5, 20
 
 
-def _pair_bars_svg(fii: list[float], dii: list[float], width: int = 300, height: int = 76) -> str:
-    """Daily net flows as two rows of bars on one scale (FII above, DII below)."""
-    top = max([abs(v) for v in fii + dii] + [1e-9])
-    row, w = height / 2, width / max(len(fii), 1)
-    parts = []
-    for r, vals in enumerate((fii, dii)):
-        mid = row * r + row / 2
-        parts.append(f'<line x1="0" x2="{width}" y1="{mid}" y2="{mid}" stroke="{C.rule}" stroke-width="1"/>')
-        for i, v in enumerate(vals):
-            h = abs(v) / top * (row / 2 - 2)
-            y = mid - h if v >= 0 else mid
-            parts.append(f'<rect x="{i * w + 1:.1f}" y="{y:.1f}" width="{max(w - 2, 1):.1f}" height="{max(h, 0.5):.1f}" '
-                         f'fill="{C.up if v >= 0 else C.down}"/>')
-    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
-           f'viewBox="0 0 {width} {height}">{"".join(parts)}</svg>')
-    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
-
-
-def flows_html(flows: pd.DataFrame | None) -> str | None:
-    """The trend in FII and DII net buying, never one day on its own (owner,
-    8 Nov: one day's flow is misleading). Under TREND_MIN sessions the panel
-    says how many are in and lists them small; from TREND_MIN it leads with
-    the total over the last TREND_WINDOW sessions (or all, while fewer) and
-    draws each day as a bar."""
-    if flows is None or flows.empty:
-        return None
-    f = flows.copy()
-    f["date"] = pd.to_datetime(f["date"])
-    wide = f.pivot_table(index="date", columns="category", values="net", aggfunc="last").sort_index()
-    fii = wide.get("FII/FPI", pd.Series(0.0, index=wide.index)).fillna(0.0)
-    dii = wide.get("DII", pd.Series(0.0, index=wide.index)).fillna(0.0)
-    days, first = len(wide), wide.index[0]
-    if days < TREND_MIN:
-        listed = "".join(f"<li>{d:%-d %b}: FII/FPI {fmt.inr(fii[d], plus=True)} Cr, DII {fmt.inr(dii[d], plus=True)} Cr</li>"
-                         for d in wide.index)
-        return (f'<p class="db-lede">Collecting: {days} session{"s" if days != 1 else ""} since {first:%-d %b %Y}. '
-                f'One day\'s flow swings widely and says little on its own, so the trend shows from '
-                f'{TREND_MIN} sessions.</p><ul class="db-note">{listed}</ul>')
-    n = min(days, TREND_WINDOW)
-    f_n, d_n = fii.tail(n), dii.tail(n)
-
-    def side(label: str, total: float) -> str:
-        word, tone = ("bought", "up") if total > 0 else ("sold", "down")
-        return f'<dt>{label}</dt><dd><b class="{tone}">{fmt.inr(abs(total))} Cr</b> net {word}</dd>'
-
-    img = _pair_bars_svg(f_n.tolist(), d_n.tolist())
-    alt = (f"Daily net flows, last {n} sessions: FII/FPI from {fmt.inr(f_n.min())} to {fmt.inr(f_n.max())} Cr; "
-           f"DII from {fmt.inr(d_n.min())} to {fmt.inr(d_n.max())} Cr.")
-    since = ""
-    if days > n:
-        since = (f'<p class="db-note">Since {first:%-d %b %Y} ({days} sessions): FII/FPI '
-                 f'{fmt.inr(fii.sum(), plus=True)} Cr, DII {fmt.inr(dii.sum(), plus=True)} Cr.</p>')
-    return (f'<p class="db-lede">Cash market, last {n} sessions to {wide.index[-1]:%-d %b %Y} (provisional).</p>'
-            f'<dl class="db-kv">{side("FII/FPI", float(f_n.sum()))}{side("DII", float(d_n.sum()))}</dl>'
-            f'<img src="{img}" alt="{html.escape(alt)}" width="300" height="76" style="max-width:100%;margin-top:8px">'
-            f'<p class="db-note">Bars: each session, FII/FPI above, DII below.</p>{since}')
-
-
-def _month_bars_svg(values: list[float], width: int = 300, height: int = 64) -> str:
-    return _bars_svg(values, width, height)
-
-
-def nsdl_flows_html(nsdl: pd.DataFrame | None, nse: pd.DataFrame | None) -> str | None:
-    """Foreign flows from NSDL's confirmed record: the last 20 reporting days'
-    equity net, the last 12 months as bars; domestic (DII) from our NSE
-    collection once it has TREND_MIN sessions (NSDL reports only foreign)."""
-    if nsdl is None or len(nsdl) < TREND_MIN:
-        return None
-    n = nsdl.copy()
-    n["date"] = pd.to_datetime(n["date"])
-    n = n.sort_values("date")
-    last = n["date"].iloc[-1]
-    k = min(len(n), TREND_WINDOW)
-    recent = float(n["equity_net"].tail(k).sum())
-    months = n.set_index("date")["equity_net"].resample("ME").sum().tail(12)
-    word, tone = ("bought", "up") if recent > 0 else ("sold", "down")
-    rows = (f'<dt>FII/FPI</dt><dd><b class="{tone}">{fmt.inr(abs(recent))} Cr</b> net {word}, '
-            f'last {k} reporting days</dd>')
-    year = float(months.sum())
-    rows += (f'<dt>12 months</dt><dd><b class="{"up" if year > 0 else "down"}">{fmt.inr(year, plus=True)} Cr</b> '
-             f'since {months.index[0]:%b %Y}</dd>')
-    dii_line = ""
-    if nse is not None and not nse.empty:
-        f = nse.copy()
-        f["date"] = pd.to_datetime(f["date"])
-        d = f[f["category"] == "DII"].sort_values("date")
-        if len(d) >= TREND_MIN:
-            m = min(len(d), TREND_WINDOW)
-            tot = float(d["net"].tail(m).sum())
-            rows += (f'<dt>DII</dt><dd><b class="{"up" if tot > 0 else "down"}">{fmt.inr(abs(tot))} Cr</b> net '
-                     f'{"bought" if tot > 0 else "sold"}, last {m} sessions (NSE)</dd>')
-        else:
-            dii_line = (f'<p class="db-note">DII: {len(d)} session{"s" if len(d) != 1 else ""} collected from NSE '
-                        f'since {d["date"].min():%-d %b} (NSDL reports foreign investors only); the DII trend appears once '
-                        f'{TREND_MIN} sessions are collected.</p>' if len(d) else "")
-    img = _month_bars_svg(months.tolist())
-    alt = (f"FPI equity net per month, {months.index[0]:%b %Y} to {months.index[-1]:%b %Y}: from "
-           f"{fmt.inr(months.min())} to {fmt.inr(months.max())} Cr.")
-    months_read = bars_read(months.tolist(), [f"{d:%b %Y}" for d in months.index], money=True)
-    # NSDL dates a row by its reporting day, which covers the session before
-    # (audit, 8 Nov 2026: "to 6 Nov" read as trades to 6 Nov).
-    return (f'<p class="db-lede">Foreign portfolio investors in equity, NSDL, reported to {last:%-d %b %Y} '
-            f'(each report covers the session before).</p>'
-            f'<dl class="db-kv">{rows}</dl>'
-            f'<img src="{img}" alt="{html.escape(alt)}" width="300" height="64" style="max-width:100%;margin-top:8px">'
-            f'<p class="db-note">Net per month, last 12 months: {html.escape(months_read)}.</p>{dii_line}')
-
-
 def render(kit, left, right) -> None:
     """Momentum health on the left, the qualified share on the right. (Paresh's
     third card, India's FII/DII flows, is not carried over.)"""
@@ -382,15 +272,14 @@ def render(kit, left, right) -> None:
             kit.caption("Each month-end the S&P 1500's members are ranked by this site's score and the "
                         "top 100 are held, equal weight, for the next month: what a long-only momentum "
                         "book earns. The figure is that book's 12-month return less the S&P 1500's, in "
-                        "percentage points. Since 2010 it moved with our own book's lead over the index "
-                        "(correlation 0.81; winners minus losers 0.44). The top 100 is equal weight "
-                        "and the index is not, so part of the lead is the small-stock effect. "
-                        f"Winners minus losers checked: {IIMA_CHECK}. A reading, not a forecast.")
+                        "percentage points. The top 100 is equal weight and the index is not, so part of "
+                        f"the lead is the small-stock effect. Winners minus losers {FACTOR_CHECK}. "
+                        "A reading, not a forecast.")
         else:
             st.html(out)
             kit.caption("Each month-end the S&P 1500's members are ranked by this site's score; the "
                         "spread is the next month's return of the top 100 minus the bottom 100. "
-                        f"Bars: the last 24 months. Checked: {IIMA_CHECK}. How momentum has been "
+                        f"Bars: the last 24 months. Checked {FACTOR_CHECK}. How momentum has been "
                         "paying, not a forecast.")
     with right, kit.card("How many stocks qualify?", "db_qual", "the strategy's own filters, month-ends"):
         out = qualified_html(spreads)
@@ -400,6 +289,5 @@ def render(kit, left, right) -> None:
         else:
             st.html(out)
             kit.caption("Each month-end, the share of the S&P 1500's members (as they stood then) passing the "
-                        "same filters the model applies. Line: the last 24 month-ends. The backtest is the record's "
-                        "configuration on NSE's adjusted closes over the S&P 1500 as it stood (Backtest's History "
-                        "from 2010), rebuilt each month; a reading, not a forecast.")
+                        "same filters the model applies. Line: the last 24 month-ends, on today's list before "
+                        "membership history begins (10 Nov 2026), rebuilt each month; a reading, not a forecast.")

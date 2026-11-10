@@ -98,48 +98,6 @@ def _sector_pts(v: float) -> str:
     return f"{v * 100:+.1f}".replace("-", "−")
 
 
-def sectors_lead_html(res) -> str:
-    """"Which sectors lead?" from NSE's sector indices (TODO S109)."""
-    from src.engine import sector_indices as si
-
-    verdict, sentence = si.leaders_sentence(res)
-    lc, sc = f"{si.LONG}M vs 500", f"{si.SHORT}M vs 500"
-    rows = "".join(
-        f'<tr><td>{html.escape(name)}</td>'
-        f'<td class="{"up" if r[lc] > 0 else "down"}">{_sector_pts(r[lc])}</td>'
-        f'<td class="{"up" if r[sc] > 0 else "down"}">{_sector_pts(r[sc])}</td></tr>'
-        for name, r in res.table.iterrows())
-    return (
-        f'<section class="mq" aria-label="Which sectors lead?"><h2 id="{DASH_ANCHORS["lead"]}">Which sectors lead?</h2>'
-        f'<p class="mq-v">{html.escape(verdict)}</p><p class="mq-s">{html.escape(sentence)}</p>'
-        '<table><thead><tr><th scope="col">NSE sector index</th>'
-        f'<th scope="col">{si.LONG}M vs S&P 1500</th><th scope="col">{si.SHORT}M</th></tr></thead>'
-        f'<tbody>{rows}</tbody></table>'
-        f'<p class="mq-ch">Points: the index\'s return less the S&P 1500\'s, {res.starts[si.LONG]:%-d %b} and '
-        f'{res.starts[si.SHORT]:%-d %b} to {res.end:%-d %b %Y}, price only. NSE\'s sector indices, from '
-        'Screener\'s index charts.</p></section>')
-
-
-def sectors_changing_html(res) -> str:
-    """"Is leadership changing?": the last month against the last three (TODO S109)."""
-    from src.engine import sector_indices as si
-
-    verdict, sentence = si.changing_sentence(res)
-    g = res.table["group"]
-    rows = "".join(
-        f'<tr><td>{grp.capitalize()}</td><td style="text-align:left">{len(names)} · '
-        f'{html.escape(", ".join(names) or "None")}</td></tr>'
-        for grp in si.GROUPS for names in [list(g[g == grp].index)])
-    return (
-        f'<section class="mq" aria-label="Is leadership changing?"><h2 id="{DASH_ANCHORS["change"]}">'
-        'Is leadership changing?</h2>'
-        f'<p class="mq-v">{html.escape(verdict)}</p><p class="mq-s">{html.escape(sentence)}</p>'
-        f'<table><thead><tr><th scope="col">Against the S&P 1500</th><th scope="col" style="text-align:left">'
-        f'{si.LONG}M and {si.SHORT}M</th></tr></thead><tbody>{rows}</tbody></table>'
-        f'<p class="mq-ch">Gaining: behind over {si.LONG} months, ahead over the last month; fading: the reverse.</p>'
-        f'<a class="mq-more" href="{html.escape(page_href("sectors"))}" target="_self">Sectors →</a></section>')
-
-
 def _answer_html(a: mq.Answer, kind: str, href: str, link: str) -> str:
     words = _VOTE_WORD[kind]
     rows = "".join(
@@ -175,7 +133,7 @@ def _leaders_html(ld: mq.Leaders, href: str) -> str:
         # The size indices' figures are the Size leadership block's, below.
         + ('<table><thead><tr><th scope="col">Industries, median stock against the S&P 1500</th>'
            f'<th scope="col" style="text-align:left">6M and 1M</th></tr></thead><tbody>{"".join(groups)}</tbody></table>')
-        + f'<p class="mq-ch">Industries are NSE\'s, at least five stocks each; points are the median stock\'s return less the S&P 1500\'s.</p>'
+        + f'<p class="mq-ch">Sectors are GICS\'s, at least five stocks each; points are the median stock\'s return less the S&P 1500\'s.</p>'
         f'<a class="mq-more" href="{html.escape(href)}" target="_self">Sectors →</a></section>')
 
 
@@ -205,7 +163,7 @@ def render_market_questions(rank_df: pd.DataFrame, prices: pd.DataFrame, bench: 
     """The Dashboard's answers. Returns (anchor, question) for each one drawn,
     for the page's "On this page" line.
 
-    With NSE's sector indices (`sectors`, a sector_indices.SectorRotation),
+    (`sectors` is unused: Paresh's NSE sector-index rotation),
     "Which sectors lead?" and "Is leadership changing?" replace the industry
     groups' "What is leading?" (owner, 8 Nov 2026, TODO S109); without them,
     the industries' answer stays."""
@@ -223,12 +181,9 @@ def render_market_questions(rank_df: pd.DataFrame, prices: pd.DataFrame, bench: 
     if trend is not None:
         cols.append(_answer_html(trend, "trend", page_href("breadth"), "Market breadth"))
         drawn.append((DASH_ANCHORS["trend"], trend.question))
-    if sectors is not None:
-        cols.append(sectors_lead_html(sectors))
-        drawn.append((DASH_ANCHORS["lead"], "Which sectors lead?"))
-        cols.append(sectors_changing_html(sectors))
-        drawn.append((DASH_ANCHORS["change"], "Is leadership changing?"))
-    elif leaders is not None:
+    # Paresh answered "Which sectors lead?" from NSE's sector indices when it
+    # had them; here the answer is always the GICS-sector reading below.
+    if leaders is not None:
         cols.append(_leaders_html(leaders, page_href("sectors")))
         drawn.append((DASH_ANCHORS["lead"], "What is leading?"))
     if not cols:
@@ -455,7 +410,7 @@ def _breadth_charts(bench: pd.Series, share200: pd.Series, weekly: pd.Series,
                         f"200D EMA went from {share200.loc[s0]:.0f}% to {share200.iloc[-1]:.0f}%",
                         "The index above, the share of the ranked stocks above their own 200D EMA below, "
                         "on one time axis. When the index rises while the lower line falls, fewer stocks "
-                        "are carrying it. Three years; NSE closes.")
+                        "are carrying it. Three years; Yahoo closes.")
         lw.render([
             {"height": 170, "series": [{"name": "S&P 1500", "type": "line", "color": lw.INK, "fmt": "num",
                                         "data": _pts(bench, since)}]},
@@ -501,7 +456,7 @@ def _trend_charts(bench: pd.Series, size: dict[str, pd.Series]) -> None:
             _chart_head(f"The S&P 1500's last month-end close is {abs(gap):.1f}% "
                         f"{'above' if gap >= 0 else 'below'} its 10-month average",
                         "Month-end closes against the average of the last ten. Above the average the "
-                        "10-month rule reads up. Three years; NSE closes, price only.")
+                        "10-month rule reads up. Three years; Yahoo closes, price only.")
         lw.render([{"height": 300, "series": [
             {"name": "S&P 1500, month end", "type": "line", "color": lw.INK, "fmt": "num", "data": _pts(m, since)},
             {"name": "10-month average", "type": "line", "color": lw.GREY, "fmt": "num", "data": _pts(avg, since)},
@@ -523,7 +478,7 @@ def _trend_charts(bench: pd.Series, size: dict[str, pd.Series]) -> None:
             _chart_head(f"Over the year, {best} did best against the S&P 1500 ({_fmt.signed(last[best], 1)} pts) and "
                         f"{worst} worst ({_fmt.signed(last[worst], 1)} pts)",
                         "Each size index divided by the S&P 1500, set to 100 a year ago; above 100 it has "
-                        "done better. NSE index closes, price only.")
+                        "done better. S&P index closes (Yahoo), price only.")
             colours = [lw.INK, "var(--c-up)", "var(--c-caution)", "var(--c-teal)", "var(--c-violet)"]
             lw.render([{"height": 300, "levels": [{"value": 100, "color": lw.GREY, "title": "100"}],
                         "series": [{"name": k, "type": "line", "color": colours[i % len(colours)], "fmt": "num",
@@ -711,10 +666,8 @@ def leaders_section_html(ld: mq.Leaders, months: pd.DataFrame) -> str:
             f'<div class="qp-top"><div><p class="qp-v">{html.escape(verdict)}</p>'
             f'<p class="qp-s">{html.escape(ld.sentence)}</p>{size_html}</div>'
             f'<div>{would}</div></div>{quad_html}{heat_html}'
-            '<p class="qp-note">Industries are NSE\'s, at least five stocks each, counted over the stocks '
-            'ranked today; points are the median stock\'s return less the S&P 1500\'s. The Dashboard\'s '
-            '"Which sectors lead?" reads NSE\'s sector indices instead, which weight large companies more, '
-            'so the two can name different leaders.</p></section>')
+            '<p class="qp-note">Sectors are GICS sectors, at least five stocks each, counted over the stocks '
+            'ranked today; points are the median stock\'s return less the S&P 1500\'s.</p></section>')
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -749,7 +702,7 @@ def _spark(s: pd.Series, w: int = 120, h: int = 28) -> str:
 
 def market_strip_html(series: dict[str, pd.Series]) -> str:
     """S&P 1500 and the size indices: the latest day's move, a three-month
-    line, the move over a calendar month. From NSE's index closes."""
+    line, the move over a calendar month. From the S&P index closes (Yahoo)."""
     cells = []
     for name, s in series.items():
         s = s.dropna().sort_index()
@@ -784,5 +737,5 @@ def market_strip_html(series: dict[str, pd.Series]) -> str:
             ".ix .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}"
             ".ixs-note{font-size:12px;color:var(--c-muted);margin:0 0 14px}</style>"
             f'<div class="ixs" role="group" aria-label="The indices today">{"".join(cells)}</div>'
-            f'<p class="ixs-note">NSE index closes to {when:%-d %b %Y}; the lines are the last three months, '
+            f'<p class="ixs-note">S&P index closes (Yahoo) to {when:%-d %b %Y}; the lines are the last three months, '
             'price only.</p>')

@@ -312,11 +312,9 @@ def render_record_sections(
     parts.append(f"{stats['positive_months']} of {stats['months']} months up")
     parts.append(f"largest fall from a peak {_pct(stats['max_drawdown'])} (month-end values)")
     basis = ledger.get("price_basis")
-    parts.append("Personal closes, NSE's where Personal has none; dividends not included, as in the index"
-                 if basis == "screener_primary"
-                 else "NSE closes; dividends not included, as in the index"
-                 if basis == "nse_as_published"
-                 else "dividends not included: about 1–1.5% a year of the gap to the index")
+    _ = basis
+    parts.append("Yahoo Finance closes with dividends reinvested, as in the benchmark "
+                 "(SPTM, the S&P 1500 ETF, total return)")
     kit.caption(" · ".join(parts) + ".")
 
     # How much of this record is EVIDENCE and how much is reconstruction.

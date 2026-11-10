@@ -36,7 +36,11 @@ from src.core.logger import logger
 # Nothing before this month is ever recorded. The strategy's live history
 # starts here; earlier "returns" would be pure hindsight simulation presented
 # beside real ones.
-INCEPTION = pd.Period("2026-01", freq="M")
+# US (10 Nov 2026): November 2026, the first book formed at the 30 Oct close
+# and filled on 2 Nov, seven sessions before the first membership snapshot.
+# Proposed to the owner; docs/TODO.md B10 (an earlier month could only be
+# replayed on today's list).
+INCEPTION = pd.Period("2026-11", freq="M")
 
 # Repo-root anchored: see the note on LOG_PATH in corporate_actions.py. A
 # missing ledger reads as an empty track record rather than an error.
@@ -74,7 +78,7 @@ TRACK_RECORD_CONFIG: dict[str, Any] = {
     # fingerprint and replays unchanged.
     "ema_warmup_from": "2026-11-30",
     # Six-monthly reset (owner, 8 Nov 2026: "6 monthly reset final", after TODO
-    # S111's tests of four rules with a tax estimate: S&P 1500 2010-26 after
+    # S111's tests of four rules with a tax estimate, on PARESH's Nifty 500 2010-26, after
     # tax, monthly reset 15.41% a year, six-monthly 15.30%, the owner's fixed
     # buys 14.69%, yearly 14.58%; 2026 six-monthly best). From the 30 Nov 2026
     # signal:
@@ -102,7 +106,7 @@ TRACK_RECORD_CONFIG: dict[str, Any] = {
     "stock_cap": 0.05,
     "sector_cap": 0.40,
     "caps": "hard_at_rebalance",
-    "sector_labels": "nse_index_industry_tv_fallback",
+    "sector_labels": "gics_sector_wikipedia",
     "benchmark": "SPTM_TR",
     # Not a run_backtest argument: it names the ACCOUNTING, so the fingerprint
     # changes with it. From 2026-09-25 the backtest holds each book between
@@ -115,14 +119,14 @@ TRACK_RECORD_CONFIG: dict[str, Any] = {
     # Not Yahoo's restated adjusted closes: a rebuilt month ranks on what was published,
     # and a stock that has since merged away keeps its prices.
     # scripts/update_track_record.py records the basis it actually used.
-    "prices": "screener_primary",
+    "prices": "yahoo_split_adjusted_dividends_from_actions",
 }
 
 
 # The Recommendation, recorded forward beside the live system and never traded
 # (owner, 12 Oct 2026, TODO 6 and 9; docs/REGIME_SETTINGS_2026-10-12.md): the
 # live record's setup with 30 holdings, keep while in the top 90 and a 200-day
-# EMA. On the S&P 1500, from the book signalled at the 30 Oct 2026 close.
+# EMA. On Paresh's Nifty 750; not carried into the US record (not shown on this site).
 # Reviewed after 12 months: turnover about half the live record's, max drawdown
 # no worse, return not clearly behind. The live record is not changed by it.
 SHADOW_CONFIG: dict[str, Any] = {**TRACK_RECORD_CONFIG, "top_n": 30, "buffer_n": 90,
@@ -459,11 +463,8 @@ def build_grid(
         for label, val in zip(MONTH_LABELS, monthly):
             row[label] = val
         row["CY RETURN"] = compound([v for v in monthly if v is not None])
-        # Indian financial year: Apr of this row's year through Mar of the next.
-        fy_months = [_get(y, m) for m in range(4, 13)] + [
-            _get(y + 1, m) for m in range(1, 4)
-        ]
-        row["FY RETURN"] = compound([v for v in fy_months if v is not None])
+        # Paresh's Indian financial-year column (Apr-Mar) is not carried over:
+        # the US calendar year is the CY column.
         for qi in range(4):
             q_vals = [v for v in monthly[qi * 3 : qi * 3 + 3] if v is not None]
             row[f"Q{qi + 1}"] = compound(q_vals)
@@ -534,7 +535,7 @@ def build_combined_grid(
                 blank: dict[str, Any] = {"SERIES": label, "YEAR": year}
                 for label_m in MONTH_LABELS:
                     blank[label_m] = None
-                for extra in ("CY RETURN", "FY RETURN", "Q1", "Q2", "Q3", "Q4"):
+                for extra in ("CY RETURN", "Q1", "Q2", "Q3", "Q4"):
                     blank[extra] = None
                 rows.append(blank)
                 continue
@@ -543,7 +544,7 @@ def build_combined_grid(
             block = {r["SERIES"]: r for r in rows[-len(SERIES_LABELS):] if r.get("YEAR") == year}
             strat, bench, alpha = (block.get(SERIES_LABELS[k]) for k in ("strategy", "benchmark", "alpha"))
             if strat is not None and bench is not None and alpha is not None:
-                for col in ("CY RETURN", "FY RETURN", "Q1", "Q2", "Q3", "Q4"):
+                for col in ("CY RETURN", "Q1", "Q2", "Q3", "Q4"):
                     a, b = strat.get(col), bench.get(col)
                     ok = a is not None and b is not None and np.isfinite(a) and np.isfinite(b)
                     alpha[col] = float(a) - float(b) if ok else None
@@ -554,7 +555,7 @@ def build_combined_grid(
     ordered = (
         ["SERIES", "YEAR"]
         + MONTH_LABELS
-        + ["CY RETURN", "FY RETURN", "Q1", "Q2", "Q3", "Q4"]
+        + ["CY RETURN", "Q1", "Q2", "Q3", "Q4"]
     )
     return frame[[c for c in ordered if c in frame.columns]]
 

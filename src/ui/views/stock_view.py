@@ -45,8 +45,7 @@ PERIODS = (1, 3, 6, 9, 12)
 _LONG = {1: "1 month", 3: "3 months", 6: "6 months", 9: "9 months", 12: "12 months"}
 
 INDEX_NAMES = {
-    "N50": "S&P 500", "NN50": "Nifty Next 50", "MID150": "S&P 400",
-    "SMALL250": "S&P 600", "MICRO250": "Nifty Microcap 250",
+    "SP500": "S&P 500", "SP400": "S&P 400", "SP600": "S&P 600",
 }
 
 
@@ -143,10 +142,10 @@ def _render_identity(row: pd.Series, total_stocks: int) -> None:
         chips += f'<span class="sp-tag">{_html.escape(INDEX_NAMES.get(t, t))}</span>'
 
     day = _price_day()
-    mcap = _num(row.get("Market Cap (Cr)"))
+    mcap = _num(row.get("Market Cap ($B)"))
     close_bits = [f"Close · {day:%a %-d %b %Y}" if day is not None else "Close"]
     if mcap is not None:
-        close_bits.append(f"Market cap {_fmt.inr(mcap)} Cr")
+        close_bits.append(f"Market cap ${mcap:,.1f}B")
 
     changes = ""
     for m in (1, 3, 12):

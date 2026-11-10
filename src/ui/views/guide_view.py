@@ -61,8 +61,9 @@ def _body() -> str:
 
 <h2 id="steps">The five steps</h2>
 <ol>
-<li><b>Universe.</b> About 750 stocks: the Nifty Total Market as NSE published it on each date,
-so a stock counts only while it was a member. Prices are daily closes, adjusted for splits and bonuses.</li>
+<li><b>Universe.</b> About 1,500 stocks: the S&amp;P 500, S&amp;P MidCap 400 and S&amp;P SmallCap 600.
+Membership is recorded from 10 November 2026; earlier months are scored on today's lists. Prices are
+Yahoo Finance daily closes, adjusted for splits and for the spin-offs Yahoo records, with dividends reinvested.</li>
 <li><b>Score.</b> Each stock's return over 1, 3, 6, 9 and 12 months, divided by its volatility over
 the same window; each window ranked against the other stocks; the five blended ({weights}).</li>
 <li><b>Filters.</b> Above its 50-day EMA and within 20% of its 52-week high.</li>
@@ -106,9 +107,9 @@ No liquidity filter is applied, in the record or by default in the Backtest.</p>
 <ul>
 <li><b>Size:</b> {top_n} stocks, each 1/{top_n} of the account at the rebalance, then held as they
 move until the next one.</li>
-<li><b>Caps:</b> a new buy is never above {stock_cap:.0%} of the account and no NSE industry is above
-{sector_cap:.0%} of the book at a rebalance, so at most {per_industry} of the {top_n} from one industry; the
-next-ranked stock from another industry takes the place. From the 30 Nov 2026 rebalance a holding that
+<li><b>Caps:</b> a new buy is never above {stock_cap:.0%} of the account and no GICS sector is above
+{sector_cap:.0%} of the book at a rebalance, so at most {per_industry} of the {top_n} from one sector; the
+next-ranked stock from another sector takes the place. From the 30 Nov 2026 rebalance a holding that
 is kept is trimmed only above 15%, not back to {stock_cap:.0%} (see Weighting), so a name the market has
 carried up sits above the buy size until a reset. Between rebalances prices can carry an industry past
 its cap until the next rebalance trims it.</li>
@@ -126,10 +127,9 @@ holding back to 1/{top_n}, selling some of a winner and topping up a laggard. Fr
 twice a year, at the March and September rebalances. In between, a holding that stays is left as the
 market moved it unless it is above 15%, when it is cut to 15%, and each new buy is 5% of the account
 as it stood at the last reset, paid from cash; when cash is short the new names get fewer shares, and
-no holding is sold to pay for them. No industry is above 40% after a rebalance. Tested on the
-S&P 1500 from 2010 with an estimate of tax: the monthly reset earned 15.4% a year after tax and the
-six-monthly 15.3%, with far fewer trades between resets; in 2026 the six-monthly reset did best.
-Months before the change keep the old rule.</p>
+no holding is sold to pay for them. No sector is above 40% after a rebalance. The rule was chosen
+on the original Indian version of this strategy (Nifty 500, 2010&ndash;26); it has not been re-tested
+on US data. Months before the change keep the old rule.</p>
 <p><b>Inverse volatility</b> can be tried in the Backtest: each holding's weight is proportional to
 one over its volatility over the last 63 sessions.</p>
 <pre>w_i = (1 / σ_i) / Σ_j (1 / σ_j)</pre>
@@ -152,8 +152,7 @@ through them clockwise. The graph is a picture of rotation; it does not feed the
 <h2 id="acting">Acting on it</h2>
 <ol>
 <li>After the month's last close, open <b>Actions</b>: it lists what to sell and what to buy.</li>
-<li>Place the sells by hand, in full. Then download the Kite basket there (buy orders only, each at its
-target weight of the capital you enter) and import it in Zerodha Kite under Orders, Baskets, Import.</li>
+<li>Place the sells in full, then the buys at their target weights, with your own broker.</li>
 <li>Place the orders on the next session. The record fills at that session's close, so orders near
 the close follow it most closely.</li>
 <li>Hold until the next month-end. <b>Actions</b> shows during the month how close each holding is to
@@ -164,8 +163,8 @@ a rule; nothing is sold before the rebalance.</li>
 <dl>
 <dt>Are the returns after tax?</dt>
 <dd>No. "Net" means after the modelled trading costs only. A monthly rebalance realises most gains
-within twelve months, which in India are short-term capital gains, so after tax the outcome is lower
-than every figure shown.</dd>
+within twelve months, which in the US are short-term capital gains taxed as ordinary income, so
+after tax the outcome is lower than every figure shown.</dd>
 <dt>Why is a stock ranked 14th not in the book?</dt>
 <dd>Either it fails a filter (the rank counts every stock; the book takes only those passing both), or
 the book is full of holdings still inside the buffer of {buffer_n}. New stocks enter only as holdings

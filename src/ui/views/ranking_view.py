@@ -192,7 +192,7 @@ DISPLAY_COLS = [
     "Volume",
     "Stop Loss",
     "Chand Exit",
-    "Market Cap (Cr)",
+    "Market Cap ($B)",
     "Above 50 EMA",
     "Near 52W High",
     "At ATH",

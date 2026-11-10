@@ -1057,13 +1057,14 @@ def _page_backtest() -> None:
             + _record_start(),
         )
         return
+    # US (10 Nov 2026): the record starts Nov 2026, so clipping the backtest at
+    # inception (Paresh's rule) would leave "Last 6 completed months" empty
+    # until December. It reports the six completed months before today, as
+    # a backtest on today's list (said on the page); TODO B10.
     extra_args = ({
         "months": months,
         "membership": systems.membership_for(system),
-        "history_start": systems.inception(system).start_time,
-    } if months is not None else {
-        "history_start": systems.inception(system).start_time,
-    })
+    } if months is not None else {})
     render_backtest_view(
         rank_df=rank_df,
         # Depth, not freshness: the 12-month formation window is warm-up only.

@@ -59,7 +59,7 @@ _ALL = {
     # composite score the ranking is sorted by.
     "qrank": ("Qualified #", "num"), "score": ("Score", "num"),
     "idx": ("Index", "text"), "ind": ("Industry", "text"),
-    "mcap": ("MCAP (Cr)", "num"),
+    "mcap": ("MCAP ($B)", "num"),
     "hi": ("From 52W high", "num"), "ath": ("% ATH", "num"), "ema": ("vs 50D EMA", "num"),
     "vol": ("Volume", "text"),
     "above": ("Above 50D EMA", "num"), "near": ("Near 52W high", "num"), "athf": ("At ATH", "num"),
@@ -201,7 +201,7 @@ def _signed(v: float, digits: int = 1, plus: bool = True) -> str:
 
 def _price_html(v: float | None) -> str:
     """The price with paise, and beside it the price rounded to the rupee for
-    the phone's compact list (rounded, not cut: ₹2,373.50 reads ₹2,374)."""
+    the phone's compact list (rounded, not cut: $2,373.50 reads $2,374)."""
     if v is None:
         return "—"
     return (f'<span class="px-d">{_fmt.inr(v, 2)}</span>'
@@ -284,9 +284,9 @@ def _row_html(row: dict, cols: list, paths: dict, highlight: str = "") -> str:
         else:
             chip = ("up", f"▲ {int(d)}") if d > 0 else ("down", f"▼ {abs(int(d))}") if d < 0 else ("flat", "— 0")
             cells[key] = f'<td class="n" data-v="{d}"><span class="chip {chip[0]}">{chip[1]}</span></td>'
-    mc = _num(row.get("Market Cap (Cr)"))
+    mc = _num(row.get("Market Cap ($B)"))
     cells["mcap"] = (f'<td class="n" data-v="{"" if mc is None else mc}">'
-                     f'{"—" if mc is None else _fmt.inr(mc)}</td>')
+                     f'{"—" if mc is None else f"{mc:,.1f}"}</td>')
     for w in PERIOD_WINDOWS:
         cells[f"r{w}"] = _pct_cell(_num(row.get(f"{w}M Return")))[0]
         sh = _num(row.get(f"{w}M Sharpe"))

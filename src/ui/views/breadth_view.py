@@ -73,7 +73,7 @@ def render_breadth_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     with its verdict, evidence, what changed and what would change it. Then
     today's charts and the stocks making new highs and lows."""
     kit.page_head("Market breadth",
-                  "Two questions, answered from the ranked stocks and NSE's index closes; then today's charts.")
+                  "Two questions, answered from the ranked stocks and the S&P index closes; then today's charts.")
     levels, bench = fetch_index_levels(), nse_benchmarks()
     size_ok = False
     if levels is not None and bench is not None and "sp500" in bench:

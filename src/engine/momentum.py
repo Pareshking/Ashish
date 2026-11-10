@@ -419,7 +419,7 @@ class MomentumEngine:
         # Market cap & data-quality flags
         _mc_d = market_caps.to_dict()
         mcap_s = pd.Series(
-            {s: (_mc_d[s] / 1e7) if pd.notna(_mc_d.get(s)) else np.nan
+            {s: (_mc_d[s] / 1e9) if pd.notna(_mc_d.get(s)) else np.nan  # $ billions
              for s in latest_close.index},
             index=latest_close.index,
         )
@@ -453,7 +453,7 @@ class MomentumEngine:
                 "Chand Exit": atr_df["Chand Exit"],
                 "Persistence": pers,
                 "Volume": vol_label,
-                "Market Cap (Cr)": mcap_s,
+                "Market Cap ($B)": mcap_s,
                 "Short History": short_hist_s,
                 "Horizons Scored": horizons_s,
                 "FFill %": ffill_s,

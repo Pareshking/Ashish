@@ -32,7 +32,7 @@ PORTFOLIO_STARTING_CAPITAL = MODEL_BOOK_CAPITAL
 def live_month_state(live_period: str | None, today: pd.Timestamp | None = None) -> str:
     """Is the latest marked month still running, or closed but not yet frozen?
 
-    "mtd"     the marked month is the calendar month in India now.
+    "mtd"     the marked month is the calendar month in New York now.
     "closed"  the calendar has moved on (1 Oct, with the 30 Sep close the
               latest price): the marked month is finished, but the Track
               Record freezes it only in the first days of the next month.
@@ -160,7 +160,7 @@ def build_portfolio_tracker(
     # but Portfolio exposure must not silently replace the NSE taxonomy here.
     out["Sector / Industry"] = mapped("Industry", "—").replace("", np.nan).fillna("—")
     out["Current Rank"] = pd.to_numeric(mapped("Rank"), errors="coerce")
-    out["Market Cap (Cr)"] = pd.to_numeric(mapped("Market Cap (Cr)"), errors="coerce")
+    out["Market Cap ($B)"] = pd.to_numeric(mapped("Market Cap ($B)"), errors="coerce")
 
     for months in (1, 3, 6, 12):
         out[f"{months}M Return"] = pd.to_numeric(

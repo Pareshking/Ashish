@@ -90,21 +90,18 @@ HISTORICAL_INDUSTRIES = Path(__file__).resolve().parents[3] / "data" / "referenc
 
 @st.cache_data(show_spinner=False)
 def _historical_industries() -> dict[str, str]:
-    """NSE sector (the 22-name level the app ranks on) for stocks no current list labels."""
-    try:
-        frame = pd.read_csv(HISTORICAL_INDUSTRIES)
-    except (OSError, ValueError):
-        return {}
-    return dict(zip(frame["NSE_SYMBOL"], frame["SECTOR"]))
+    """GICS sector for every symbol ever on the list (data/sector_history.csv)."""
+    from src.loaders import former_members
+
+    return dict(former_members.index_frame().values.tolist())
 
 
 def _history_bounds() -> dict | None:
     """The long file and the months it can test, before any choice is made."""
     loaded = _long_file()
     if loaded is None:
-        kit.note("The long price file is not available yet.",
-                 "It is built weekly from NSE's bhavcopy by the 'NSE long price file' workflow "
-                 "and published to the data-latest release.")
+        kit.note("The long price history is not available.",
+                 "It is read from the committed price store (data/prices).")
         return None
     close, _value, report = loaded
     # A year of prices before the first month, for the 12-month lookback and the EMA.
@@ -248,7 +245,7 @@ def _settings_form(weights: tuple[float, ...], liquidity_floor_cr: float,
                 "Trading cost (bps a round trip)", min_value=0.0, max_value=300.0,
                 value=float(DEFAULT_TRANSACTION_COST_BPS), step=1.0, key="bt_cost",
                 help="Round-trip cost (STT + stamp duty + brokerage + slippage). "
-                     "Standard NSE equity is about 25-35 bps.")
+                     "US large and mid caps trade at a few bps of spread with no commission; 30 bps is conservative.")
 
             st.markdown("**Rules** · to buy, a stock must pass every buy rule; a holding is "
                         "kept while it passes every keep rule (blank = same as buy)")
@@ -331,7 +328,7 @@ def _backtest_body(
     history_mode = st.session_state.get("bt_mode", MODE_LIVE) == MODE_HISTORY
     actions = kit.page_head(
         "Backtest",
-        "Any index, any months from 2010, on NSE's own prices" if history_mode else
+        "Any months from 2010, on the committed Yahoo prices" if history_mode else
         f"Last {months} completed month{'s' if months != 1 else ''}",
         actions=True,
     )
@@ -391,8 +388,8 @@ def _backtest_tab(
         membership, months = history["membership"], history["months"]
         history_start = history["start"].start_time
         liquidity_floor_cr, traded_value = history["floor"], history["traded_value"]
-        price_basis = ("NSE closes, adjusted for splits, bonuses and demergers, for rights issues of "
-                       "index stocks, and for dividends of 10% or more of the price")
+        price_basis = ("Yahoo Finance closes, adjusted for splits and recorded spin-offs, dividends "
+                       "reinvested; today's S&P 1500 list before 10 Nov 2026")
         kit.caption(
             f"{history['name']}, point in time · Prices: {price_basis} · file built "
             f"{_day(history.get('built'))}, last session {_day(history.get('last_session'))}."
@@ -405,16 +402,12 @@ def _backtest_tab(
         if history_start is not None:
             months = max(months, int((pd.Period(adj_close.index[-1], freq="M")
                                       - pd.Period(history_start, freq="M")).n))
-        price_basis = (
-            "Personal closes, NSE's where Personal has none; no dividends"
-            if _nse_info.get("basis") == "screener_primary" else
-            "NSE closes, adjusted for splits, bonuses and demergers; no dividends"
-        )
+        price_basis = "Yahoo Finance closes, adjusted for splits and recorded spin-offs, dividends reinvested"
         kit.caption(f"Prices: {price_basis}.")
     else:
         adj_close = former_members.with_former_members(adj_close, membership)
         _events = load_events()
-        price_basis = "Personal closes, adjusted for splits and bonuses; no dividends"
+        price_basis = "Yahoo Finance closes, adjusted for splits and recorded spin-offs, dividends reinvested"
         kit.caption(f"Prices: {price_basis}.")
     ph = f"{price_fingerprint(adj_close)}_{actions_digest(_events)}"
     if liquidity_floor_cr:
@@ -679,7 +672,7 @@ def _backtest_tab(
     with kit.card("Download", "bt_export", "The rules this run used and every trade it made"):
         try:
             _trades = trades_table(bt_res.get("closed_trades"))
-            _universe = history["name"] if history else "Nifty Total Market (the live 750 system)"
+            _universe = history["name"] if history else "S&P 1500 (the live system)"
             _rules = rules_table(RunSpec(
                 mode=MODE_HISTORY if history else MODE_LIVE,
                 universe=_universe, benchmark=bench_name,

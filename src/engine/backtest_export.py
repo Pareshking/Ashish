@@ -40,7 +40,7 @@ TRADE_COLUMNS = [
 COLUMN_NOTES = {
     "Trade #": "1, 2, 3 ... in order of entry date, then symbol",
     "Status": "Closed = sold at an exit fill; Open = still held at the last session of the reported window",
-    "Symbol": "NSE trading symbol (today's ticker where the stock was renamed)",
+    "Symbol": "Ticker as Yahoo Finance writes it (BRK-B for BRK.B)",
     "Sector": "The industry the industry cap used for this stock; blank when none is on record",
     "Entry signal date": "Session T the stock was ranked on; every filter and score reads T and nothing later",
     "Entry date": "Session T+1: the close the stock was bought at",
@@ -216,7 +216,7 @@ def rules_table(spec: RunSpec, trades: pd.DataFrame) -> pd.DataFrame:
         add("Entry rules", "All-time-high filter", f"Close at least {_pct(spec.ath_pct)} of the highest close on file",
             f"Applied once a stock has {spec.ath_min_years:g} years of prices on file")
     add("Entry rules", "4. Liquidity floor",
-        f"20-day average traded value of Rs {spec.liquidity_floor_cr:g} Cr or more" if spec.liquidity_floor_cr else "None",
+        f"20-day average traded value of ${spec.liquidity_floor_cr:g}M or more" if spec.liquidity_floor_cr else "None",
         "On the value known at T" if spec.liquidity_floor_cr else "Switched off for this run")
     add("Entry rules", "5. Rank", "Composite momentum score, best first",
         ("Z-scored Sharpe ratios" if spec.score_method == "sharpe" else "Z-scored plain returns")

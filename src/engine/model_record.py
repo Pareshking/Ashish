@@ -140,8 +140,9 @@ def record_run_uncached(adj_close: pd.DataFrame, benchmark_close: pd.Series | No
     if pd.Period(as_of, freq="M") < start:
         return {}
     months = months_to_cover(as_of, start)
-    if system != SYSTEM_750:
-        months = max(months, 1)
+    # At least the inception month itself, so the first book (signalled at
+    # the close before inception) exists from inception's first session.
+    months = max(months, 1)
     if months <= 0:
         return {}
     cfg = TRACK_RECORD_CONFIG
@@ -161,10 +162,7 @@ def record_run_uncached(adj_close: pd.DataFrame, benchmark_close: pd.Series | No
     # Recounted on the aligned frame, so the first-month floor applies again:
     # without it Nano Cap and Combined asked for 0 months in October 2026 and
     # Actions and Portfolio raised "months must be positive".
-    if system != SYSTEM_750:
-        months = max(months, 1)
-    if months <= 0:
-        return {}
+    months = max(months, 1)
 
     result = run_backtest(
         f"trackrec_{system}_{price_fingerprint(prices)}_{actions_digest(events)}_{months}"

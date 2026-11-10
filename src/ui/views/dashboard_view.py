@@ -166,7 +166,7 @@ def book_risk_html(res, as_of_record: pd.Timestamp | None) -> str:
 
     # Figures as rows, label left and figure right on hairlines, the same as
     # the market questions' tables and the reference site (owner, 8 Nov 2026).
-    small = res.tiers.get("S&P 600", 0.0) + res.tiers.get("Microcap 250", 0.0)
+    small = res.tiers.get("S&P 600", 0.0)
     rows, lede = [], ""
 
     def row(label: str, figure: str, against: str = "", tone: str = "") -> None:
@@ -176,7 +176,7 @@ def book_risk_html(res, as_of_record: pd.Timestamp | None) -> str:
     if res.beta is not None:
         lede = (f"The book as it stands moves about {res.beta:.2f} for each 1 of the S&P 1500 but swings "
                 f"{'more' if res.vol > res.bench_vol else 'less'}: {res.vol * 100:.1f}% a year against "
-                f"{res.bench_vol * 100:.1f}%. {small * 100:.0f}% of it is in small and micro caps"
+                f"{res.bench_vol * 100:.1f}%. {small * 100:.0f}% of it is in small caps (the S&P 600)"
                 + (f", and {res.cash * 100:.0f}% is in cash." if getattr(res, "cash", 0.0) > 0.0005 else "."))
         row("Volatility, a year", f"{res.vol * 100:.1f}%", f"{res.bench_vol * 100:.1f}%")
     if res.drawdown is not None:
@@ -185,7 +185,7 @@ def book_risk_html(res, as_of_record: pd.Timestamp | None) -> str:
         bdd = fmt.pct(res.bench_drawdown) if res.bench_drawdown is not None else ""
         row(when, fmt.pct(res.drawdown), bdd, "down" if res.drawdown < 0 else "")
         row("Worst month-end drawdown since the record began", fmt.pct(res.max_drawdown))
-    for t in ("Nifty 100", "S&P 400", "S&P 600", "Microcap 250", "Outside"):
+    for t in ("S&P 500", "S&P 400", "S&P 600", "Outside"):
         if res.tiers.get(t):
             row(f"Weight in the {t}" if t != "Outside" else "Weight outside these indices", f"{res.tiers[t] * 100:.0f}%")
     # Cash is part of the book, and it is why the beta above is what it is
@@ -282,7 +282,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
         eq_end = pd.Timestamp(eq_series.index[-1]) if len(eq_series) else None
         st.html(book_risk_html(res, eq_end))
         kit.caption(f"Beta and volatility: today's book at today's weights over the last {br.WINDOW} sessions, "
-                    "against the S&P 1500's daily returns. Size: NSE's latest index lists. Drawdown: the "
+                    "against the S&P 1500's daily returns. Size: today's S&P 500, 400 and 600 lists. Drawdown: the "
                     "record's equity, to its last month-end. Exit: a position's value at the model book's "
                     f"capital over {br.PARTICIPATION:.0%} of its 20-day average traded value; that share is a "
                     "common rule of thumb, an assumption, not a measured figure.")
@@ -303,7 +303,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
                          page_href("actions"), "Actions")
 
     size_drawn = False
-    with low_l, kit.card("Size leadership", "db_size", "price return, NSE index closes"):
+    with low_l, kit.card("Size leadership", "db_size", "price return, S&P index closes"):
         res = None
         if levels is None or bench is None or "sp1500_tr" not in bench or "sp500" not in bench:
             kit.caption("Index levels are not available right now, so this table is left out.")

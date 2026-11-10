@@ -268,7 +268,7 @@ def badge(label: str, tone: str = "") -> None:
 
 def tradingview_url(symbol: str) -> str:
     """The symbol's chart on TradingView: an external site, so a new tab is right."""
-    return "https://www.tradingview.com/chart/?symbol=" + quote(f"NSE:{symbol}", safe="")
+    return "https://www.tradingview.com/chart/?symbol=" + quote(str(symbol).replace("-", "."), safe="")
 
 
 def caption(text: str) -> None:

@@ -25,20 +25,19 @@ from src.engine.exit_watch import (
     WATCH,
     Rules,
     assess,
-    holdings_from_kite_csv,
     nearest_rule,
     parse_holdings,
     qualified_ranks,
 )
 from src.core.config import MODEL_BOOK_CAPITAL
-from src.engine.actions import buy_orders, plan_rebalance
+from src.engine.actions import plan_rebalance
 from src.engine.track_record import TRACK_RECORD_CONFIG
 from src.ui import holdings_store
 from src.ui import page_kit as kit
 from src.ui.components import gap_count, render_data_quality_footer
 from src.ui.views.qualified_view import render_qualified_view
 from src.ui.canonical_book import current_book
-from src.ui.widget_state import remember, resolve
+from src.ui.widget_state import resolve
 from src.ui import formats as _fmt
 
 SOURCES = ["Model book", "My holdings"]
@@ -174,23 +173,9 @@ def _edit_holdings() -> None:
         st.session_state["_xw_shown"] = current
     with st.container(horizontal=True, vertical_alignment="bottom", key="xw_editbar"):
         st.text_input("Your holdings", key="xw_text",
-                      placeholder="Symbols with an optional buy price, e.g. HFCL 126.5, QUESS@340, TCS",
+                      placeholder="Symbols with an optional buy price, e.g. AAPL 230.5, MSFT@410, NVDA",
                       help="Kept in this browser only, like the watchlist. Nothing is sent to the server.")
         st.button("Save", type="primary", key="xw_save", on_click=_save_text)
-        with st.popover("Upload from Kite", icon=":material/upload:"):
-            st.caption("Kite Console → Portfolio → Holdings → Download (CSV). Symbols and "
-                       "average cost are read; quantities are not stored.")
-            up = st.file_uploader("Holdings CSV", type=["csv"], key="xw_csv",
-                                  label_visibility="collapsed")
-            if up is not None:
-                try:
-                    got = holdings_from_kite_csv(pd.read_csv(up))
-                except Exception as exc:  # a wrong file is reported, not raised
-                    st.error(f"Could not read that file: {exc}")
-                else:
-                    if st.button(f"Use these {len(got)} holdings", key="xw_csv_use"):
-                        holdings_store.save(got)
-                        st.rerun()
 
 
 def _held_since(book: pd.DataFrame | None, sym: str) -> str:
@@ -291,7 +276,7 @@ def render_actions_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     if not symbols:
         if source == "My holdings":
             kit.empty("Add your holdings above,",
-                      "or upload the holdings CSV from Kite, to see what to do with them.")
+                      "to see what to do with them.")
         else:
             kit.empty("The model book is not available:",
                       "the strategy needs about 18 months of price history to form one.")
@@ -333,25 +318,6 @@ def render_actions_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
             kit.note(f"{n_unknown} holding{'s are' if n_unknown != 1 else ' is'} not ranked; "
                      "no rule can be checked.")
 
-        # The basket used to read a Portfolio capital input removed on 30 Sep, so
-        # it sized every basket on ₹10 lakh against Portfolio's ₹20 lakh. Now the
-        # reader sets it here, starting at Portfolio's (owner, 12 Oct 2026).
-        with head, st.popover("Kite basket", icon=":material/download:", type="primary"):
-            capital = float(st.number_input(
-                "Capital ($)", min_value=KITE_MIN_CAPITAL, max_value=KITE_MAX_CAPITAL,
-                step=100_000, value=kite_capital(), key=KITE_CAPITAL_KEY,
-                help=f"{_fmt.inr(MODEL_BOOK_CAPITAL)} is the model book on Portfolio. "
-                     "For your own holdings, enter your account's size.",
-            ))
-            remember(KITE_CAPITAL_KEY, int(capital))
-            orders = buy_orders(plan, rank_df, capital)
-            st.download_button(
-                "Download basket CSV", orders.to_csv(index=False).encode(),
-                f"kite_actions_{ny_now():%Y%m%d}.csv", "text/csv", type="primary",
-                key="dl_actions_basket", icon=":material/download:", disabled=orders.empty,
-            )
-            kit.caption(f"Buy orders only, each at its target weight of {_fmt.inr(capital)}.")
-
         with kit.card("Sell", "ac_sell"):
             if plan.sells:
                 st.html(sells_html(a, plan.sells, since, entries))
@@ -359,7 +325,7 @@ def render_actions_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
                 # (design audit, 9 Nov 2026: it was dropped silently).
                 st.html('<p class="db-note ac-more">On a wider screen each row '
                         'also shows how long the holding has been held.</p>')
-                kit.caption("Sell in full; sells are not in the Kite basket.")
+                kit.caption("Sell in full.")
             else:
                 kit.caption("None.")
 
