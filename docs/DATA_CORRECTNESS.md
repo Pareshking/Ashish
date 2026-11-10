@@ -50,6 +50,22 @@ _Last updated: 2026-11-10_
 - Nasdaq.com API: a window whose end date is in the past returns no rows;
   windows must end today (handled in both scripts).
 
+## Nasdaq cross-check, first run (10 Nov 2026): FAILED
+
+150 random members, 336,125 (symbol, session) closes since Nov 2016:
+**96.60% within 0.5%** of Nasdaq.com's official close; the pass mark is 99.5%.
+3 symbols not served by Nasdaq. Worst agreement (closes within / compared):
+HON 94/2512, FTV 344/2512, CBSH 988/2512, ADEA 1029/2512, O 1251/2512,
+ZWS 1280/2512, HWM 1661/2512, TRN 2015/2512; SIRI worst 925% on 2024-09-10.
+
+Lead, not yet evidence: these are companies with spin-offs, mergers or stock
+dividends (Honeywell: Resideo/Garrett 2018, Solstice 2025; Fortive: Vontier
+2020; Realty Income: Orion 2021; Howmet: Arconic 2020; Commerce Bancshares:
+annual 5% stock dividends; Sirius XM: Liberty merger 2024). Nasdaq's series
+appears adjusted for them and Yahoo's is not. **Open (B3): measure agreement
+inside the last 400 sessions (what the ranking reads) and name each recent
+event; decide a correction source before the site is linked.**
+
 ## Decisions
 
 - **Universe: S&P 1500, one system** (owner, 10 Nov 2026).

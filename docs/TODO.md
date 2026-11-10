@@ -19,7 +19,7 @@ iterations from 16:01 IST.
 |---|---|---|---|
 | B1 | Probe sources; universe with GICS; storage plan | Findings in DATA_CORRECTNESS; `data/universe.csv` with 1,500±10 rows | [x] 10 Nov: 1,502 symbols; sizes measured |
 | B2 | Price store and nightly sync (yfinance, NYSE calendar, yearly/monthly/daily files) | Backfill committed; a rerun of the same night changes nothing; audit of jumps vs actions passes or lists each exception | [ ] |
-| B3 | Cross-check against Nasdaq.com official closes | Sample of ≥100 symbols × 10 years: share of closes within 0.5%, every exception named | [ ] |
+| B3 | Cross-check against Nasdaq.com official closes | Sample of ≥100 symbols × 10 years: share of closes within 0.5%, every exception named | [ ] 10 Nov first run FAILED: 96.6% within 0.5% (bar 99.5%); worst are spin-off/merger names (HON, FTV, O, HWM, JNJ, SIRI). Next: agreement inside the last 400 sessions, each recent event named, correction source decided |
 | B4 | Engine and core ported, India modules removed | `pytest` green on the ported engine tests | [ ] |
 | B5 | Website ported (11 pages less India features), $1M book | Every page and a stock page render in headless Chromium with no exception; screenshots | [ ] |
 | B6 | Workflows in New York time | Each runs green once by hand; double-cron guard tested for EST and EDT | [ ] |
