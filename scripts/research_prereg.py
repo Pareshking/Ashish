@@ -276,9 +276,12 @@ def load_inputs(extra_path: str | None) -> dict:
     from src.loaders import benchmark_store
     from src.loaders import price_store as ps
 
-    hist = iu.index_history("sp500")
+    # RESEARCH_INDEX (default sp500) runs the same study on another point-in-time
+    # timeline (sp400, sp600: lists from Dec 2019 only).
+    key = os.environ.get("RESEARCH_INDEX", "sp500")
+    hist = iu.index_history(key)
     if not hist:
-        raise SystemExit("No point-in-time S&P 500 timeline (index_history('sp500')).")
+        raise SystemExit(f"No point-in-time timeline for {key} (index_history).")
     ever = sorted(iu.ever_members(hist))
     w = ps.read_wide(["Close", "Volume"], start=PRICE_START, symbols=ever)
     close = ps.adjusted_close(w["Close"], ps.read_actions())
@@ -705,7 +708,10 @@ def cmd_run(args) -> None:
             "choices": CHOICES, "run_date": pd.Timestamp.now().isoformat(timespec="seconds")}
     sh, sh_asof = shares_proxy(inp["close"])
     meta["s4_shares_asof"] = sh_asof
-    meta["s4_proxy_check"] = s4_proxy_check(inp, sh)
+    try:
+        meta["s4_proxy_check"] = s4_proxy_check(inp, sh)
+    except KeyError:          # a timeline without 2011 (RESEARCH_INDEX sp400/sp600)
+        meta["s4_proxy_check"] = "not applicable: no 2011 membership"
     (out / "meta.json").write_text(json.dumps(meta, indent=2, default=str))
     s2c = meta["section2"]
     print(f"m0 {s2c['m0']}, d0 {s2c['common_first_fill_d0']}, end {s2c['end_date']}; "
