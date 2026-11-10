@@ -150,6 +150,51 @@ month-end (early months a little short: the 400 page then held 391-393 rows).
 - Not checked: the month-end lists against Wayback Machine snapshots (CDX unreachable from this session);
   the CIK renames individually.
 
+## S&P 500 from Dec 2009; independent cross-checks (10 Nov 2026, TODO B24-B28)
+
+**Membership.** The month-end lists now come from github:fja05680/sp500
+(`scripts/import_sp500_history.py`): Andreas Clenow's list from *Trading
+Evolved* to 2019, then maintained from S&P's announcements. Against our
+Wikipedia revisions for Dec 2019 - Aug 2026 the two agree on 99.97% of
+member-months; the 7 month-ends that differ are in
+`reports/sp500_source_check.csv`. Where checked, S&P Dow Jones's own releases
+side with the dataset: Etsy, Teradyne and Catalent joined before the open on
+21 Sep 2020 (press.spglobal.com, 4 Sep 2020) and CRH, Carvana and Comfort
+Systems on 22 Dec 2025 (press.spglobal.com, 5 Dec 2025), but the Wikipedia
+revisions at those month-ends still listed the stocks they replaced. A hand-edited
+page lags; a month-end snapshot inherits the lag. The 2020 June change (BIO,
+TDY, TYL) and Nov 2025 (SNDK for IPG) were not checked against a release.
+After the dataset's last date (18 Aug 2026) our Wikipedia/nightly snapshots
+carry on. The S&P 400 and 600 timelines are still Wikipedia's and probably
+lag the same way (not measured).
+
+**Prices, checked against github:Johnbrick123/sp500-data** (prices for every
+S&P 500 member since 1996; it states each member-day 1970-2024 was compared
+with CRSP's daily total return). Its claims were tested here, not taken:
+- Cash takeovers end at the offer, within cents: Whole Foods 41.99 (offer 42),
+  Monsanto 127.95 (128), Tiffany 131.46 (131.50), Sigma-Aldrich 139.76 (140),
+  Pall 127.11 (127.20), XL 57.59 (57.60). The offer prices are from memory,
+  not re-read from filings.
+- Over each 2010-2019 S&P 500 former member's spell, 643 of 649 symbols agree
+  with our Yahoo/Stonks prices (daily-return correlation ≥0.95). The 5 that do
+  not are OUR error: CPWR, EP, KG, GENZ, LSI are another company's prices under
+  a reused ticker whose new owner's history starts before the old spell, which
+  our start-date test cannot see (B26).
+- Over 1,604,302 S&P 500 member-days 2010-2024, 126 differ by more than 0.5
+  pt after the dividend fix below (136 before).
+
+**Dividend adjustment changed** (B27): the ex-date return is now
+(close + dividend) / previous close, the CRSP and S&P convention, not Yahoo's
+factor 1 - D / previous close, which overstates a large special (KDP's $103.75
+on 10 Jul 2018: +1.8% for the holder, +11.5% by Yahoo's factor). A dividend of
+2% or more beside a split ratio no board would declare is a spin-off Yahoo has
+written twice and is applied once (DHR 5 Jul 2016: split 1.319 and dividend
+24.56 for Fortive; +61% before, +3.6% now, the close's own move).
+
+Not checked: the dataset's licence (none is published; it contains Tiingo,
+Quandl WIKI and CRSP rows), so nothing from it is committed until the owner
+decides (B25).
+
 ## Decisions
 
 - **Universe: S&P 1500, one system** (owner, 10 Nov 2026).

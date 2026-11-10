@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (PR #3): S&P 500 history and data fixes
+
+- Dividends adjust prices by the total-return convention (close + dividend over the previous close); a spin-off Yahoo records as both a split and a dividend is counted once. Corrects, for example, Danaher's Fortive day in July 2016 (+61% before, +3.6% now).
+- S&P 500 month-end lists from Dec 2009 from an independent dataset (fja05680/sp500), which also corrects late Wikipedia lists at seven month-ends since 2019, including Dec 2025 (CRH, Carvana, Comfort Systems).
+
 ## Unreleased (PR #1): the US Momentum Terminal
 
 - The main book is the S&P 500 (owner, 10 Nov 2026), measured against the S&P 500 with dividends; the S&P 400 and 600 remain selectable in Configuration and synced nightly.

@@ -1,4 +1,5 @@
-"""Prices for stocks that were in the S&P 1500 since 2020 but are not today.
+"""Prices for stocks that were in the S&P 1500 since 2020, or the S&P 500 since
+2010, but are not today.
 
     python scripts/sync_former_members.py
 
@@ -46,16 +47,30 @@ def spells(history: dict) -> pd.DataFrame:
     return df.groupby("Symbol")["Date"].agg(FirstMember="min", LastMember="max").reset_index()
 
 
+def all_spells(history: dict) -> pd.DataFrame:
+    """Spells on the combined timeline and on each index's own (the S&P 500's
+    reaches back to Dec 2009), one row per symbol, the widest spell."""
+    from src.engine import index_universe as iu
+    parts = [spells(history)]
+    for key in (history.get("indices") or {}):
+        sub = iu.index_history(key, history)
+        if sub:
+            parts.append(spells(sub))
+    sp = pd.concat(parts, ignore_index=True)
+    return sp.groupby("Symbol").agg(FirstMember=("FirstMember", "min"), LastMember=("LastMember", "max")).reset_index()
+
+
 def main() -> int:
     history = mem.load_history()
     current = set(pd.read_csv(os.path.join(ROOT, "data", "universe.csv"))["Yahoo"])
     aliases = history.get("aliases") or {}
-    sp = spells(history)
+    sp = all_spells(history)
     former = sp[~sp["Symbol"].isin(current)].copy()
     former["Yahoo"] = former["Symbol"].map(lambda s: aliases.get(s, {}).get("new_symbol", s))
-    stored = set(ps.read_columns(["Close"], start="2026-01-01")["Symbol"].astype(str).unique())
+    # Every symbol with any history (a member delisted in 2015 has none in 2026).
+    stored = set(ps.read_columns([])["Symbol"].astype(str).unique())
     todo = sorted(set(former["Yahoo"]) - stored - current)
-    print(f"{len(former)} former members since {history['baseline']['date']}; "
+    print(f"{len(former)} former members (S&P 1500 since {history['baseline']['date']}, S&P 500 since its first list); "
           f"{len(former) - len(todo)} already priced or renamed into today's list; fetching {len(todo)}")
     target = mt.last_downloadable_session()
     prices, actions = fetch(todo, START) if todo else (ps.normalise(None), pd.DataFrame(columns=ps.ACTION_COLS))
