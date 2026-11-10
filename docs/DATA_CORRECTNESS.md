@@ -157,7 +157,7 @@ month-end (early months a little short: the 400 page then held 391-393 rows).
 Evolved* to 2019, then maintained from S&P's announcements. Against our
 Wikipedia revisions for Dec 2019 - Aug 2026 the two agree on 99.97% of
 member-months; the 7 month-ends that differ are in
-`reports/sp500_source_check.csv`. Where checked, S&P Dow Jones's own releases
+`docs/data_checks/sp500_source_check.csv`. Where checked, S&P Dow Jones's own releases
 side with the dataset: Etsy, Teradyne and Catalent joined before the open on
 21 Sep 2020 (press.spglobal.com, 4 Sep 2020) and CRH, Carvana and Comfort
 Systems on 22 Dec 2025 (press.spglobal.com, 5 Dec 2025), but the Wikipedia

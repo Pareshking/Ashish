@@ -99,6 +99,15 @@ def main() -> int:
         else:
             status.append("priced"); detail.append(""); keep.add(y)
     former["Status"], former["FirstPrice"], former["LastPrice"], former["Detail"] = status, first, last, detail
+    # A row already priced keeps what the earlier run recorded (its source:
+    # Stonks/tickers rows are not Yahoo's).
+    if os.path.exists(OUT):
+        before = pd.read_csv(OUT, dtype=str, keep_default_na=False).set_index("Symbol")
+        cols = [c for c in ("Status", "FirstPrice", "LastPrice", "Detail", "Source") if c in before]
+        for i, r in former.iterrows():
+            if r["Detail"] == "already in the store" and r["Symbol"] in before.index:
+                for c in cols:
+                    former.loc[i, c] = before.loc[r["Symbol"], c]
     accepted = prices[prices["Symbol"].isin(keep)]
     written = ps.store(accepted, mt.ny_today())
     acts = pd.concat([ps.read_actions(), actions[actions["Symbol"].isin(keep)]], ignore_index=True)

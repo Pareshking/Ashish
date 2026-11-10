@@ -22,7 +22,7 @@ revisions, scripts/build_membership_history.py).
 
 Rule: each month-end from --start up to the dataset's last date is the
 dataset's list on that date; after it, our Wikipedia/nightly snapshots. Every
-month-end where the two disagree is written to reports/sp500_source_check.csv
+month-end where the two disagree is written to docs/data_checks/sp500_source_check.csv
 so a difference is visible, not silently resolved. Only ``indices.sp500`` in
 data/membership_history.json is replaced; the combined S&P 1500 timeline (a
 research universe) is left as built.
@@ -47,7 +47,21 @@ from src.engine import membership as mem  # noqa: E402
 
 URL = ("https://raw.githubusercontent.com/fja05680/sp500/master/"
        "S%26P%20500%20Historical%20Components%20%26%20Changes%20(Updated).csv")
-REPORT = os.path.join(ROOT, "reports", "sp500_source_check.csv")
+REPORT = os.path.join(ROOT, "docs", "data_checks", "sp500_source_check.csv")
+# A ticker that named another company before a date (data/reused_tickers.csv,
+# each row with its evidence): month-ends up to Until list it as StoredAs.
+REUSED = os.path.join(ROOT, "data", "reused_tickers.csv")
+
+
+def reused() -> pd.DataFrame:
+    if not os.path.exists(REUSED):
+        return pd.DataFrame(columns=["Symbol", "Until", "StoredAs"])
+    return pd.read_csv(REUSED, parse_dates=["Until"])
+
+
+def epoch(symbols: list[str], when: pd.Timestamp, table: pd.DataFrame) -> list[str]:
+    swap = {r.Symbol: r.StoredAs for r in table.itertuples() if when <= r.Until}
+    return sorted(swap.get(s, s) for s in symbols)
 
 
 def to_yahoo(t: str) -> str:
@@ -69,6 +83,7 @@ def build(lists: pd.Series, ours: dict, start: str, today: pd.Timestamp) -> tupl
     last = lists.index.max()
     month_ends = pd.date_range(pd.Period(start, "M").end_time.normalize(), today, freq="ME")
     sub = mem.empty_history("S&P 500")
+    table = reused()
     report = []
     for me in month_ends:
         wiki = mem.members_on(ours, me) if pd.Timestamp(ours["baseline"]["date"]) <= me else None
@@ -79,7 +94,7 @@ def build(lists: pd.Series, ours: dict, start: str, today: pd.Timestamp) -> tupl
                                "WikipediaOnly": " ".join(sorted(set(wiki) - set(syms))), "Used": "dataset"})
         else:
             syms = sorted(wiki or [])
-        sub, _ = mem.record_snapshot(sub, me.date(), syms)
+        sub, _ = mem.record_snapshot(sub, me.date(), epoch(syms, me, table))
     # After the last month-end: the nightly snapshots already recorded.
     for c in ours.get("changes") or []:
         d = pd.Timestamp(c["date"])
@@ -101,7 +116,7 @@ def main(argv=None) -> int:
     full.setdefault("indices", {})["sp500"] = {"baseline": sub["baseline"], "changes": sub["changes"]}
     full["sp500_source"] = (f"github:fja05680/sp500 month-end lists {args.start} .. {lists.index.max().date()} "
                             f"(file sha256 {sha[:12]}); Wikipedia revisions and nightly snapshots after; "
-                            "disagreements in reports/sp500_source_check.csv")
+                            "disagreements in docs/data_checks/sp500_source_check.csv")
     mem.save_history(full, mem.HISTORY_PATH)
     os.makedirs(os.path.dirname(REPORT), exist_ok=True)
     report.to_csv(REPORT, index=False)
