@@ -285,6 +285,7 @@ def load_inputs(extra_path: str | None) -> dict:
     ever = sorted(iu.ever_members(hist))
     w = ps.read_wide(["Close", "Volume"], start=PRICE_START, symbols=ever)
     close = ps.adjusted_close(w["Close"], ps.read_actions())
+    split_close = w["Close"]
     volume = w["Volume"]
     store_cols = set(close.columns)
     extra_added: list[str] = []
@@ -300,13 +301,15 @@ def load_inputs(extra_path: str | None) -> dict:
         volume = pd.concat([volume, ev.reindex(columns=extra_added).reindex(idx)], axis=1)
     close = close.dropna(axis=1, how="all")
     volume = volume.reindex(columns=close.columns)
+    split_close = split_close.reindex(index=close.index, columns=close.columns)
     spy = pd.to_numeric(benchmark_store.history("max", "SPY_TR"), errors="coerce").dropna()
     as_of = min(close.index[-1], spy.index[-1])
     close, volume, spy = close.loc[:as_of], volume.loc[:as_of], spy.loc[:as_of]
     end_month = pd.Period(as_of, freq="M") - 1        # the last complete month
     end_date = close.index[close.index <= end_month.end_time][-1]
     sector_map = record_sector_map(close.columns)
-    return {"close": close, "volume": volume, "spy": spy, "membership": hist,
+    split_close = split_close.loc[:as_of]
+    return {"close": close, "split_close": split_close, "volume": volume, "spy": spy, "membership": hist,
             "sector_map": sector_map, "end_month": end_month, "end_date": end_date,
             "ever": ever, "store_cols": store_cols, "extra_added": extra_added,
             "extra_path": extra_path}
@@ -585,7 +588,22 @@ def variant_kwargs(name: str, offset: int) -> dict:
         cells = s4_cells(inp["close"], inp["volume"], inp["membership"], offset, _CACHE["shares"])
         gate = cells.fillna(0.0) < 0.5                # True = may buy
         return dict(_research_gate=gate, research_gate_on="buy")
+    if name == "F1":                                   # stage 3: raw momentum
+        return dict(score_method="return")
+    if name == "F2":                                   # stage 3: size-weighted book
+        if "tv" not in _CACHE:
+            _CACHE["tv"] = traded_value(inp["split_close"], inp["volume"])
+        return dict(weight_method="Traded Value", _research_size=_CACHE["tv"], stock_cap=0.15)
+    if name == "F3":                                   # stage 3: fifty names
+        return dict(top_n=50, buffer_n=100)
     raise KeyError(name)
+
+
+def traded_value(split_close: pd.DataFrame, volume: pd.DataFrame, window: int = 63) -> pd.DataFrame:
+    """Stage 3 F2: mean daily traded value (split-adjusted close x volume) over
+    the last ``window`` sessions with both, to each date; NaN where none."""
+    tv = (split_close * volume.reindex_like(split_close)).where(lambda x: x > 0)
+    return tv.rolling(int(window), min_periods=1).mean()
 
 
 def base_kwargs(cost: float) -> dict:
@@ -609,10 +627,12 @@ def _run_one(name: str, offset: int, cost: float, out: str) -> tuple[str, float]
     months = (inp["end_month"] - pd.Period(hs, freq="M")).n + 1
     extra = variant_kwargs(name, offset)
     raw = inspect.unwrap(run_backtest)
+    kw = base_kwargs(cost)
+    kw.update(extra)                     # a variant may replace a base keyword (stage 3)
     res = raw(f"prereg-{label}", inp["close"], _benchmark_close=inp["spy"], sector_map=inp["sector_map"],
               _membership=inp["membership"], backtest_months=months, stateful_history=True,
               history_start=hs, _actions=[], signal_offset=int(offset),
-              research_label=f"prereg-{label}", **base_kwargs(cost), **extra)
+              research_label=f"prereg-{label}", **kw)
     if not res or not res.get("stats"):
         raise RuntimeError(f"{label}: no result")
     runs = Path(out) / "runs"
