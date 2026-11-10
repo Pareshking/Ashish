@@ -576,3 +576,19 @@ Owner: "Must be mistakes because those are proven to reduce volatility and impro
    samples (Da et al. 1927-2007), and published anomalies weaken after publication (McLean & Pontiff 2016,
    about a third lower). This book is a 20-stock long-only portfolio that already ranks on volatility-adjusted
    momentum, which overlaps with FIP's "smooth path" idea.
+
+## S&P 500 book with stacked filters (10 Nov 2026, owner: "S&P 500 with more filters")
+
+`scripts/research_sp500_combos.py`. Combinations fixed before any result, from the sources' recipes; point-in-time
+S&P 500 members (`data/membership_monthly.csv`), Jan 2020 - Oct 2026, the record's configuration otherwise.
+
+| Variant | A year | Max DD | Sharpe | vs base | H1 / H2 | Bootstrap 90% | Ahead in |
+|---|---|---|---|---|---|---|---|
+| S&P 500 book, no extra filter | 18.6% | -23.6% | 0.72 | - | - | - | - |
+| C1 + FIP (drop worse half) | 17.8% | -20.1% | 0.71 | -0.8 | -3.6 / +2.2 | -5.5 to +2.9 | 30% |
+| C2 = C1 + Faber 10-month gate on the S&P 500 | 15.2% | -20.1% | 0.63 | -3.4 | -6.9 / +0.4 | -10.5 to +0.8 | 9% |
+| C3 = C2 + sector top half + own 12-month return > 4% | 13.6% | -24.6% | 0.54 | -5.0 | -7.5 / -2.3 | -12.5 to 0.0 | 5% |
+
+S&P 1500 total return over the same sessions: 14.6% a year, max drawdown -34.7%. Each added layer cost return; only
+FIP reduced the drawdown (by 3.5 pts) at a small, unreliable cost. Context (same data, `docs/TODO.md`): the same
+book on S&P 600 members only made 5.2% a year, on S&P 400 13.5%, on the whole S&P 1500 13.4%.
