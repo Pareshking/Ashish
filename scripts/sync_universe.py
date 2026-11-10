@@ -42,6 +42,9 @@ EXPECTED = {"S&P 500": (495, 510), "S&P 400": (395, 405), "S&P 600": (595, 610)}
 HEADERS = {"User-Agent": "us-momentum-terminal/1.0 (index membership sync)"}
 UNIVERSE_FILE = os.path.join(ROOT, "data", "universe.csv")
 HISTORY_FILE = os.path.join(ROOT, "data", "membership_history.csv")
+# The engine's point-in-time timeline (Paresh's format: baseline + dated
+# changes), in Yahoo symbols, for the whole S&P 1500.
+TIMELINE_FILE = os.path.join(ROOT, "data", "membership_history.json")
 COLUMNS = ["Symbol", "Yahoo", "Company", "Sector", "Industry", "Index"]
 
 
@@ -117,6 +120,15 @@ def main(argv=None) -> int:
     current = fetch()
     hist = pd.read_csv(HISTORY_FILE, dtype=str, keep_default_na=False) if os.path.exists(HISTORY_FILE) else pd.DataFrame()
     hist = update_history(hist, current, as_of)
+
+    from src.engine import membership as mem
+
+    timeline = mem.load_history(TIMELINE_FILE) if os.path.exists(TIMELINE_FILE) else mem.empty_history("S&P 1500")
+    first, last = mem.coverage(timeline)
+    if last is None or date.fromisoformat(as_of) > last:
+        timeline, changed = mem.record_snapshot(timeline, as_of, current["Yahoo"])
+        if changed:
+            mem.save_history(timeline, TIMELINE_FILE)
 
     current.assign(AsOf=as_of).to_csv(UNIVERSE_FILE, index=False)
     hist.to_csv(HISTORY_FILE, index=False)

@@ -1,0 +1,229 @@
+"""The committed US price store.
+
+Layout under ``data/prices/`` (git is the store; owner, 10 Nov 2026):
+
+  YYYY.parquet          closed years
+  YYYY-MM.parquet       closed months of the current year
+  daily/YYYY-MM-DD.parquet  each session of the current month
+  actions.csv           Date, Symbol, Dividend, Split (from Yahoo)
+
+Rows are long: Date, Symbol, High, Low, Close, Volume. Close/High/Low are
+Yahoo's SPLIT-adjusted prices. Dividend adjustment is computed on load from
+``actions.csv`` (``adjusted_close``) rather than stored, because Yahoo's
+dividend-adjusted close restates every earlier row on every ex-date: storing it
+would rewrite every year's file several times a week. A split also restates the
+history; the sync handles that by rewriting the symbol everywhere it appears.
+
+Open is not stored: nothing in the strategy reads it (Paresh's sources were
+close-only, and the charts draw closes).
+"""
+
+from __future__ import annotations
+
+import glob
+import os
+import re
+
+import numpy as np
+import pandas as pd
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+PRICES_DIR = os.path.join(ROOT, "data", "prices")
+DAILY_DIR = os.path.join(PRICES_DIR, "daily")
+ACTIONS_FILE = os.path.join(PRICES_DIR, "actions.csv")
+
+PRICE_COLS = ["High", "Low", "Close"]
+COLUMNS = ["Date", "Symbol", *PRICE_COLS, "Volume"]
+ACTION_COLS = ["Date", "Symbol", "Dividend", "Split"]
+
+_YEAR = re.compile(r"^(\d{4})\.parquet$")
+_MONTH = re.compile(r"^(\d{4})-(\d{2})\.parquet$")
+_DAY = re.compile(r"^(\d{4})-(\d{2})-(\d{2})\.parquet$")
+
+
+# ── shape ────────────────────────────────────────────────────────────────────
+def normalise(df: pd.DataFrame) -> pd.DataFrame:
+    """Canonical dtypes and order, so two writes of the same data are the same
+    bytes and a rerun of the sync commits nothing."""
+    if df is None or df.empty:
+        return pd.DataFrame({c: pd.Series(dtype=t) for c, t in
+                             zip(COLUMNS, ["datetime64[ns]", "str", "float32", "float32", "float32", "int64"])})
+    out = df[COLUMNS].copy()
+    out["Date"] = pd.to_datetime(out["Date"]).dt.tz_localize(None).astype("datetime64[ns]").dt.normalize()
+    out["Symbol"] = out["Symbol"].astype(str)
+    for c in PRICE_COLS:
+        out[c] = out[c].astype("float32")
+    out["Volume"] = pd.to_numeric(out["Volume"], errors="coerce").fillna(0).astype("int64")
+    out = out.dropna(subset=["Close"])
+    out = out.drop_duplicates(["Date", "Symbol"], keep="last")
+    return out.sort_values(["Date", "Symbol"]).reset_index(drop=True)
+
+
+def write(df: pd.DataFrame, path: str) -> bool:
+    """Write ``df`` to ``path`` only if the content changed. Returns True if written."""
+    df = normalise(df)
+    if os.path.exists(path):
+        try:
+            if normalise(pd.read_parquet(path)).equals(df):
+                return False
+        except Exception:  # noqa: BLE001 - an unreadable file is rewritten
+            pass
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    df.to_parquet(tmp, index=False, compression="zstd", compression_level=9)
+    os.replace(tmp, path)
+    return True
+
+
+# ── files ────────────────────────────────────────────────────────────────────
+def files(prices_dir: str = PRICES_DIR) -> dict[str, list[str]]:
+    years, months, days = [], [], []
+    for p in sorted(glob.glob(os.path.join(prices_dir, "*.parquet"))):
+        n = os.path.basename(p)
+        if _YEAR.match(n):
+            years.append(p)
+        elif _MONTH.match(n):
+            months.append(p)
+    for p in sorted(glob.glob(os.path.join(prices_dir, "daily", "*.parquet"))):
+        if _DAY.match(os.path.basename(p)):
+            days.append(p)
+    return {"years": years, "months": months, "days": days}
+
+
+def file_for(day: pd.Timestamp, today: pd.Timestamp, prices_dir: str = PRICES_DIR) -> str:
+    """Where a session's rows belong, given which periods are closed by ``today``."""
+    day, today = pd.Timestamp(day), pd.Timestamp(today)
+    if day.year < today.year:
+        return os.path.join(prices_dir, f"{day.year}.parquet")
+    if (day.year, day.month) < (today.year, today.month):
+        return os.path.join(prices_dir, f"{day:%Y-%m}.parquet")
+    return os.path.join(prices_dir, "daily", f"{day:%Y-%m-%d}.parquet")
+
+
+def read_long(prices_dir: str = PRICES_DIR, start: str | None = None) -> pd.DataFrame:
+    f = files(prices_dir)
+    paths = f["years"] + f["months"] + f["days"]
+    if start:
+        y0 = pd.Timestamp(start).year
+        paths = [p for p in paths if int(os.path.basename(p)[:4]) >= y0]
+    if not paths:
+        return normalise(None)
+    return normalise(pd.concat([pd.read_parquet(p) for p in paths], ignore_index=True))
+
+
+def store(long: pd.DataFrame, today, prices_dir: str = PRICES_DIR) -> list[str]:
+    """Write ``long`` into the partition files it belongs to, merged with what is
+    there (new rows win). Returns the paths written."""
+    long = normalise(long)
+    if long.empty:
+        return []
+    written = []
+    keys = long["Date"].map(lambda d: file_for(d, today, prices_dir))
+    for path, part in long.groupby(keys, sort=True):
+        old = pd.read_parquet(path) if os.path.exists(path) else None
+        merged = part if old is None else pd.concat([normalise(old), part], ignore_index=True)
+        if write(merged, path):
+            written.append(path)
+    return written
+
+
+def replace_symbol(symbol: str, history: pd.DataFrame, today, prices_dir: str = PRICES_DIR) -> list[str]:
+    """Replace every stored row of ``symbol`` with ``history`` (after a split
+    restated it). Files the symbol is in but ``history`` does not reach lose
+    the symbol's rows."""
+    history = normalise(history)
+    written = []
+    f = files(prices_dir)
+    for path in f["years"] + f["months"] + f["days"]:
+        df = normalise(pd.read_parquet(path))
+        if not (df["Symbol"] == symbol).any():
+            continue
+        if write(df[df["Symbol"] != symbol], path):
+            written.append(path)
+    written += store(history, today, prices_dir)
+    return sorted(set(written))
+
+
+def roll_up(today, prices_dir: str = PRICES_DIR) -> list[str]:
+    """Merge closed days into their month and closed months into their year.
+    Idempotent: a period is merged only once it is closed by ``today``."""
+    today = pd.Timestamp(today)
+    changed: list[str] = []
+    f = files(prices_dir)
+    for path in f["days"] + f["months"]:
+        n = os.path.basename(path)
+        y = int(n[:4])
+        m = int(n[5:7])
+        closed_month = (y, m) < (today.year, today.month)
+        is_day = path in f["days"]
+        if is_day and closed_month or (not is_day and y < today.year):
+            target = file_for(pd.Timestamp(year=y, month=m, day=1), today, prices_dir)
+            old = pd.read_parquet(target) if os.path.exists(target) else None
+            part = pd.read_parquet(path)
+            merged = part if old is None else pd.concat([old, part], ignore_index=True)
+            write(merged, target)
+            os.remove(path)
+            changed += [target, path]
+    return changed
+
+
+# ── actions ──────────────────────────────────────────────────────────────────
+def read_actions(path: str = ACTIONS_FILE) -> pd.DataFrame:
+    if not os.path.exists(path):
+        return pd.DataFrame(columns=ACTION_COLS)
+    a = pd.read_csv(path, parse_dates=["Date"])
+    return a[ACTION_COLS]
+
+
+def write_actions(actions: pd.DataFrame, path: str = ACTIONS_FILE) -> bool:
+    a = actions[ACTION_COLS].copy()
+    a["Date"] = pd.to_datetime(a["Date"]).dt.tz_localize(None).dt.normalize()
+    a["Dividend"] = a["Dividend"].astype(float).round(6)
+    a["Split"] = a["Split"].astype(float).round(6)
+    a = a[(a["Dividend"] != 0) | (a["Split"] != 0)]
+    a = a.drop_duplicates(["Date", "Symbol"], keep="last").sort_values(["Symbol", "Date"])
+    text = a.to_csv(index=False, date_format="%Y-%m-%d")
+    if os.path.exists(path) and open(path).read() == text:
+        return False
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as fh:
+        fh.write(text)
+    return True
+
+
+# ── wide frames for the engine ───────────────────────────────────────────────
+def wide(long: pd.DataFrame, column: str) -> pd.DataFrame:
+    w = long.pivot(index="Date", columns="Symbol", values=column)
+    w.index.name = "Date"
+    w.columns.name = None
+    return w.sort_index()
+
+
+def adjusted_close(close: pd.DataFrame, actions: pd.DataFrame) -> pd.DataFrame:
+    """Total-return close: split-adjusted close scaled back by every later
+    dividend, Yahoo's method (factor 1 - D / previous close on each ex-date).
+
+    A dividend whose ex-date is not a row of ``close`` is applied at the next
+    row; one on the first row (no previous close) is ignored.
+    """
+    close = close.astype("float64")
+    if actions is None or actions.empty:
+        return close.copy()
+    div = actions[actions["Dividend"] > 0]
+    factors = pd.DataFrame(1.0, index=close.index, columns=close.columns)
+    prev = close.ffill().shift(1)
+    idx = close.index
+    for sym, g in div.groupby("Symbol"):
+        if sym not in close.columns:
+            continue
+        for d, amount in zip(g["Date"], g["Dividend"]):
+            pos = idx.searchsorted(pd.Timestamp(d))
+            if pos <= 0 or pos >= len(idx):
+                continue
+            p = prev[sym].iloc[pos]
+            if not np.isfinite(p) or p <= 0 or amount >= p:
+                continue
+            factors.iloc[pos, factors.columns.get_loc(sym)] *= 1.0 - amount / p
+    # Each row is scaled by the product of the factors strictly AFTER it.
+    after = factors[::-1].cumprod()[::-1].shift(-1).fillna(1.0)
+    return close * after

@@ -30,6 +30,26 @@ _Last updated: 2026-11-10_
 - `^SP1500`: 1 row. `^SP1000`: rejects `period=max`. `^SP400`/`^MID` from 1981,
   `^SP600` from 1989, `^GSPC` from 1927.
 
+## Backfill and audit, 10 Nov 2026
+
+- Backfill from 2008-01-02 to 2026-11-09: 1,501 of 1,502 symbols, 6,043,329 rows,
+  70 MB on disk (18 year files, 10 month files, 6 day files). **CWEN-A**
+  (Clearway Energy class A): Yahoo returns no data under that ticker; not yet
+  resolved.
+- `scripts/audit_prices.py`, first run: 0 bounds faults; 402 one-day moves
+  beyond 45% (24 in the last 400 sessions), reported not failed; 13 spikes, all
+  before the last 400 sessions; 27 split-ratio moves, 25 old, 2 recent.
+- The two recent ones, CORT 2025-12-31 (x0.496) and PRIM 2026-05-06 (x0.499),
+  are real: Nasdaq.com shows -50.4% and -50.1% on the same sessions.
+- Old split-day findings show Yahoo **does not adjust spin-offs**: EXPE
+  2011-12-21 (TripAdvisor spin-off) has a 1-for-2 split and a $15.125
+  "dividend" recorded, and the price still halves; SBRA 2010-11-16 likewise.
+  IVT 2021-08-06 is junk from before the listing (zero volume). They cannot
+  reach the 12-month ranking or the 6-month backtest; they would reach a long
+  research backtest. Listed in the audit report, not corrected.
+- Nasdaq.com API: a window whose end date is in the past returns no rows;
+  windows must end today (handled in both scripts).
+
 ## Decisions
 
 - **Universe: S&P 1500, one system** (owner, 10 Nov 2026).

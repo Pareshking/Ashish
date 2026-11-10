@@ -85,3 +85,6 @@ Thumbs.db
 # never commit: worktrees are full duplicate source trees used transiently
 # by background subagents, not project content.
 .claude/
+
+# Audit reports: uploaded as workflow artifacts, summarised in docs
+reports/

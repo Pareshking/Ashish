@@ -26,3 +26,8 @@ iterations from 16:01 IST.
 | B7 | Membership history before 10 Nov 2026 from the 400/600 change logs | Rebuilt list on a dated past day matches an independent snapshot (fund holdings or archive) | [ ] |
 | B8 | Owner: free Polygon and Alpaca keys as repo secrets | Secrets present; nightly cross-check runs | [ ] owner |
 | B9 | Owner links Streamlit Cloud | Site loads on the owner's phone | [ ] after B1-B6 |
+| B10 | Owner decision: track-record inception. Paresh's record starts Jan 2026 (replayed months). Here a month before Dec 2026 can only be replayed on today's list (survivorship). Proposal: live record from December 2026 (signal 30 Nov, the first after the build); Backtest page shows the last 6 completed months as Paresh's does | Owner says which month | [ ] owner |
+
+## Iteration log
+
+- **Iteration 1 (10 Nov, from 16:01 IST):** probes; universe (1,502); `market_time` on XNYS; price store (`src/loaders/price_store.py`), nightly/backfill sync, Nasdaq cross-check and internal price audit scripts; engine, core and website copied from Paresh with the India-only engine modules removed (sector indices, results calendar, source check, reconcile, parity audit); `systems.py` reduced to one system; `corporate_actions.py` reduced to a confirmed-events hook. Backfill from 2008 running.
