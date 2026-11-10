@@ -164,7 +164,7 @@ def _period_matrix(series, keys, cost, start, end):
         for o in R.OFFSETS:
             cols.append(series[(*k, cost)][o])
             idx.append((k, o))
-    X = pd.concat(cols, axis=1, keys=range(len(cols)))
+    X = pd.concat(cols, axis=1, keys=range(len(cols)), sort=True)
     X = X[(X.index > start) & (X.index <= end)]
     if X.isna().any().any():
         raise RuntimeError("gaps in a combination's series")
