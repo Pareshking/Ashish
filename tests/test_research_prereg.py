@@ -66,3 +66,17 @@ def test_residual_score_excludes_the_intercept_and_needs_36_months():
     # The intercept absorbs E's extra 1% a month; residuals exclude it, so E scores higher.
     assert np.isfinite(last["D"]) and last["E"] > last["D"]
     assert np.isnan(last["F"])
+
+
+def test_stage2_has_48_combinations_and_a_sane_deflated_sharpe():
+    from scripts.research_prereg_stage2 import combo_name, combos, deflated_sharpe, n_components
+
+    ks = combos()
+    assert len(ks) == 48 and len(set(ks)) == 48
+    assert combo_name("base", "none", False) == "base"
+    assert combo_name("S1+S7", "S2", True) == "S1+S7+S2+S5" and n_components("S1+S7", "S2", True) == 4
+    # More trials with the same spread raise the bar; a normal series of Sharpe 1 over 9 years passes alone.
+    few = deflated_sharpe(1.0, [0.9, 1.0, 1.1], 2268, 0.0, 3.0)
+    many = deflated_sharpe(1.0, [0.9, 1.0, 1.1] * 16, 2268, 0.0, 3.0)
+    assert many["sr0_daily"] > few["sr0_daily"] and many["dsr"] < few["dsr"]
+    assert 0.0 < many["dsr"] < 1.0
