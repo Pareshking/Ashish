@@ -11,14 +11,14 @@ import streamlit as st
 
 from src.core.config import RISK_FREE_RATE
 from src.core.config import DEFAULT_TRANSACTION_COST_BPS
-from src.core.market_time import ist_now
+from src.core.market_time import ny_now
 from src.engine.backtester import DEFAULT_BACKTEST_MONTHS, run_backtest
 from src.engine.corporate_actions import load_events
 from src.engine.membership import load_history_or_none
 from src.engine import compute_gate
 from src.engine.pipeline import price_fingerprint
 from src.loaders.price_loader import fetch_benchmark_history
-from src.loaders import former_members, nse_prices
+from src.loaders import former_members
 from src.loaders.ranking_store import actions_digest
 from src.ui import page_kit as kit
 from src.ui import formats as _fmt
@@ -178,9 +178,9 @@ def _history_inputs(rank_df: pd.DataFrame, choice: dict, bounds: dict) -> dict |
     return {
         "close": frame, "membership": membership, "start": start, "end": end,
         "months": (end - start).n + 1, "floor": floor,
-        # The Nifty 50 against its own index; the others against the Nifty 500,
+        # The S&P 500 against its own index; the others against the S&P 1500,
         # the broadest index on file (data/benchmarks.csv holds the two).
-        "benchmark": ("^NSEI", "Nifty 50") if key == "nifty_50" else ("^CRSLDX", "Nifty 500"),
+        "benchmark": ("^NSEI", "S&P 500") if key == "nifty_50" else ("^CRSLDX", "S&P 1500"),
         "traded_value": traded,
         "sector_map": sec, "unlabelled": len(unlabelled), "name": iu.INDICES[key],
         "built": report.get("built"), "last_session": report.get("last_session"),
@@ -385,7 +385,7 @@ def _backtest_tab(
     # Prices as NSE published them (loaders/nse_prices.py): a past month ranks
     # on what was known then, not on a vendor's later restatement. Where the
     # file does not reach back far enough, the long Personal (Screener) history stands.
-    _nse, _nse_info = (None, {}) if history else nse_prices.basis_frame(adj_close, membership, months=months)
+    _nse, _nse_info = None, {}   # Paresh's NSE basis; one price basis here
     if history:
         adj_close, _events = history["close"], []
         membership, months = history["membership"], history["months"]
@@ -423,7 +423,7 @@ def _backtest_tab(
                     + ("." if history else " (Configuration)."))
         if traded_value is not None:
             ph += f"_{price_fingerprint(traded_value)}"
-    bench_symbol, bench_name = history["benchmark"] if history else ("^CRSLDX", "Nifty 500")
+    bench_symbol, bench_name = history["benchmark"] if history else ("^CRSLDX", "S&P 1500")
     benchmark_close = fetch_benchmark_history(period="max" if history else "2y", symbol=bench_symbol)
     if benchmark_close.empty:
         st.error(f"{bench_name} benchmark ({bench_symbol}) data is unavailable. Backtest stopped to "
@@ -664,7 +664,7 @@ def _backtest_tab(
         if _grid.empty:
             kit.empty("No full month in this window yet.")
         else:
-            _grid["SERIES"] = _grid["SERIES"].replace({"Nifty 500": bench_name})
+            _grid["SERIES"] = _grid["SERIES"].replace({"S&P 1500": bench_name})
             # Year by year first (owner, 9 Oct 2026): the CY column of each block below.
             _render_yearly_summary(_grid, bench_name)
             _render_calendar_returns(_grid)
@@ -694,7 +694,7 @@ def _backtest_tab(
                 ath_min_years=float(ath_min_years), score_method=score_method,
                 exit_ema_period=exit_rules["exit_ema_period"],
                 exit_high_pct=exit_rules["exit_high_pct"], exit_ath_pct=exit_rules["exit_ath_pct"],
-                generated=f"{ist_now():%Y-%m-%d %H:%M}",
+                generated=f"{ny_now():%Y-%m-%d %H:%M}",
             ), _trades)
             _slug = "".join(c if c.isalnum() else "_" for c in _universe).strip("_").lower()
             _span = f"{eq.index[0]:%Y%m}_{eq.index[-1]:%Y%m}" if len(eq) else "empty"
@@ -767,7 +767,7 @@ def _backtest_tab(
                     c_dl.download_button(
                         "Export months CSV",
                         m_df[active_cols].to_csv(index=False).encode(),
-                        f"monthly_performance_{ist_now():%Y%m%d}.csv",
+                        f"monthly_performance_{ny_now():%Y%m%d}.csv",
                         "text/csv",
                         key="dl_bt_monthly_csv",
                     )
@@ -863,7 +863,7 @@ def _backtest_tab(
                     c_dl.download_button(
                         "Export trades CSV",
                         closed_trades[active_ct_cols].to_csv(index=False).encode(),
-                        f"realised_trades_{ist_now():%Y%m%d}.csv",
+                        f"realised_trades_{ny_now():%Y%m%d}.csv",
                         "text/csv",
                         key="dl_bt_realized_trades_csv",
                     )
@@ -919,7 +919,7 @@ def _backtest_tab(
                     c_dl.download_button(
                         "Export rebalance log CSV",
                         tradebook[active_tb_cols].to_csv(index=False).encode(),
-                        f"rebalance_log_{ist_now():%Y%m%d}.csv",
+                        f"rebalance_log_{ny_now():%Y%m%d}.csv",
                         "text/csv",
                         key="dl_bt_tradebook_csv",
                     )

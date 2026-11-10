@@ -64,3 +64,14 @@ def test_adjusted_close_matches_yahoo_method():
 def test_adjusted_close_without_actions_is_close():
     close = pd.DataFrame({"A": [1.0, 2.0]}, index=pd.to_datetime(["2026-01-02", "2026-01-05"]))
     assert ps.adjusted_close(close, pd.DataFrame(columns=ps.ACTION_COLS)).equals(close)
+
+
+def test_read_wide_equals_long_pivot(tmp_path):
+    today = pd.Timestamp("2026-11-10")
+    df = pd.concat([_rows(["2025-12-30", "2026-10-30", "2026-11-09"]), _rows(["2025-12-31", "2026-11-09"], sym="BBB", start=5.0)])
+    ps.store(df, today, str(tmp_path))
+    w = ps.read_wide(["Close", "High"], str(tmp_path), symbols=["BBB", "AAA"])
+    ref = ps.wide(ps.read_long(str(tmp_path)), "Close")[["BBB", "AAA"]].astype("float64")
+    assert list(w["Close"].columns) == ["BBB", "AAA"]
+    assert w["Close"].equals(ref)
+    assert ps.read_wide(["Close"], str(tmp_path), start="2026-01-01")["Close"].index.min() == pd.Timestamp("2026-10-30")

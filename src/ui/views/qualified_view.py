@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src.core.market_time import ist_now
+from src.core.market_time import ny_now
 from src.ui import formats as _fmt
 from src.ui import page_kit as kit
 from src.ui.components import gap_count, render_data_quality_footer, to_bool_mask
@@ -102,7 +102,7 @@ def render_qualified_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame, *,
                              key="qual_top_n", format_func=lambda n: f"Top {n}",
                              label_visibility="collapsed")
         st.download_button("Export CSV", view.to_csv(index=False).encode(),
-                           f"qualified_{ist_now():%Y%m%d}.csv", "text/csv",
+                           f"qualified_{ny_now():%Y%m%d}.csv", "text/csv",
                            key="dl_qual_csv", icon=":material/download:",
                            disabled=view.empty)
 
@@ -119,10 +119,10 @@ def render_qualified_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame, *,
         kit.readings([
             kit.Reading("Qualified", f"{len(view)}", f"of {len(passing)} that pass both filters"),
             kit.Reading("Average 3M return", _pct(avg3),
-                        f"Nifty 500 {_pct(bench[3])} over the same 3 months" if 3 in bench else "calendar 3 months",
+                        f"S&P 1500 {_pct(bench[3])} over the same 3 months" if 3 in bench else "calendar 3 months",
                         _tone(avg3)),
             kit.Reading("Average 6M return", _pct(avg6),
-                        f"Nifty 500 {_pct(bench[6])}" if 6 in bench else "calendar 6 months",
+                        f"S&P 1500 {_pct(bench[6])}" if 6 in bench else "calendar 6 months",
                         _tone(avg6)),
             kit.Reading("Average correlation", "—" if corr_mean is None else f"{corr_mean:.2f}",
                         correlation_note(corr_mean)),

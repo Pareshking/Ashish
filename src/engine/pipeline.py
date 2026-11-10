@@ -61,11 +61,7 @@ def _settings_digest() -> str:
     the contract as their own field, and change per session. These are the
     build-time constants behind them, which change only with a deploy.
     """
-    from src.core.config import (
-        HIGH_52W_MIN_OBSERVATIONS,
-        MOMENTUM_MONTHS,
-        SCREENER_WEEKLY_NSE_FILL,
-    )
+    from src.core.config import HIGH_52W_MIN_OBSERVATIONS, MOMENTUM_MONTHS
     from src.engine.calendar_momentum import ANCHOR_STALENESS_LIMIT
     from src.engine.momentum import MIN_OBSERVATIONS
 
@@ -77,19 +73,6 @@ def _settings_digest() -> str:
         RANKING_COVERAGE_FLOOR,
         list(RANK_HISTORY_MONTHS),
     ]
-    # The price frame itself changes with the weekly fill (TODO S23), and the
-    # price fingerprint would see that; the setting is named here as well so a
-    # table built with the fill on is never accepted by an app with it off (or
-    # under other splice rules), whatever the frame happens to hash to.
-    if SCREENER_WEEKLY_NSE_FILL:
-        from src.loaders.price_source import (
-            WEEKLY_FILL_DAILY_RUN,
-            WEEKLY_FILL_MIN_COVERAGE,
-            WEEKLY_FILL_TOLERANCE,
-        )
-
-        parts.append(f"weekly_nse_fill:{WEEKLY_FILL_TOLERANCE}:{WEEKLY_FILL_DAILY_RUN}"
-                     f":{WEEKLY_FILL_MIN_COVERAGE}")
     payload = "|".join(str(x) for x in parts)
     return hashlib.md5(payload.encode()).hexdigest()[:8]
 
@@ -177,7 +160,7 @@ def symbols_fingerprint(symbols) -> str:
 #
 # That is correct per symbol and wrong for the universe, because Yahoo
 # publishes an Indian session over about two days. Measured on the live
-# snapshot for 2026-09-17: 20% of the universe at 23:30 IST that night, 50% by
+# snapshot for 2026-09-17: 20% of the universe at 23:30 ET that night, 50% by
 # the next morning, 100% a day later. Ranking on that session does not produce
 # a fresher table, it produces a table of whichever half the vendor happened to
 # publish first -- 378 names instead of 750, selected by vendor latency.

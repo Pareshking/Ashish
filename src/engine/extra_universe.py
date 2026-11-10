@@ -1,5 +1,5 @@
 """System constants. The US terminal runs ONE system, the S&P 1500 (owner,
-10 Nov 2026). Paresh's three-system machinery (Nifty 750, Nano Cap, Combined)
+10 Nov 2026). Paresh's three-system machinery (S&P 1500, Nano Cap, Combined)
 is not carried over; the names below keep the ported engine and pages working
 with a single entry. ``SYSTEM_750`` is kept as the identifier the code passes
 around; its value and display name are the S&P 1500's.

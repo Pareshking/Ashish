@@ -45,6 +45,9 @@ HISTORY_FILE = os.path.join(ROOT, "data", "membership_history.csv")
 # The engine's point-in-time timeline (Paresh's format: baseline + dated
 # changes), in Yahoo symbols, for the whole S&P 1500.
 TIMELINE_FILE = os.path.join(ROOT, "data", "membership_history.json")
+# Every symbol ever on the list with the GICS sector it last carried, so a
+# member that leaves can still be placed by the backtest's sector cap.
+SECTOR_HISTORY_FILE = os.path.join(ROOT, "data", "sector_history.csv")
 COLUMNS = ["Symbol", "Yahoo", "Company", "Sector", "Industry", "Index"]
 
 
@@ -129,6 +132,11 @@ def main(argv=None) -> int:
         timeline, changed = mem.record_snapshot(timeline, as_of, current["Yahoo"])
         if changed:
             mem.save_history(timeline, TIMELINE_FILE)
+
+    sh = pd.read_csv(SECTOR_HISTORY_FILE, dtype=str, keep_default_na=False) if os.path.exists(SECTOR_HISTORY_FILE) else pd.DataFrame(columns=["Symbol", "Sector", "LastSeen"])
+    now = pd.DataFrame({"Symbol": current["Yahoo"], "Sector": current["Sector"], "LastSeen": as_of})
+    sh = pd.concat([sh[~sh["Symbol"].isin(now["Symbol"])], now]).sort_values("Symbol")
+    sh.to_csv(SECTOR_HISTORY_FILE, index=False)
 
     current.assign(AsOf=as_of).to_csv(UNIVERSE_FILE, index=False)
     hist.to_csv(HISTORY_FILE, index=False)

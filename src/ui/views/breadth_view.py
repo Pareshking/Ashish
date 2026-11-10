@@ -76,10 +76,10 @@ def render_breadth_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
                   "Two questions, answered from the ranked stocks and NSE's index closes; then today's charts.")
     levels, bench = fetch_index_levels(), nse_benchmarks()
     size_ok = False
-    if levels is not None and bench is not None and "nifty50" in bench:
-        size_ok, _ = sl.cross_check(levels, bench["nifty50"])
+    if levels is not None and bench is not None and "sp500" in bench:
+        size_ok, _ = sl.cross_check(levels, bench["sp1500"])
     nifty500 = (benchmark_close if benchmark_close is not None and len(benchmark_close)
-                else _series_of(bench, "nifty500"))
+                else _series_of(bench, "sp1500_tr"))
     render_breadth_questions(rank_df, history_prices if history_prices is not None else adj_close,
                              nifty500, size_closes(levels, size_ok))
 
@@ -128,7 +128,7 @@ def render_breadth_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
                 _participation_chart(breadth_df[_pct_cols], ma_type)
         else:
             rows = []
-            for idx_name in ("NIFTY 50", "NIFTY NEXT 50", "NIFTY MIDCAP 150",
+            for idx_name in ("S&P 500", "NIFTY NEXT 50", "NIFTY MIDCAP 150",
                              "NIFTY SMALLCAP 250", "NIFTY MICROCAP 250"):
                 # Exact tags, as indices_loader writes them (config.SHORT_FORMS).
                 valid_syms = [s for s in index_members(rank_df, idx_name) if s in adj_close.columns]

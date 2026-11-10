@@ -9,7 +9,7 @@ Order, top to bottom:
   5. LADDER     where the price sits: 52-week range, filter line, EMA, ATH,
                 stop levels when the source has intraday highs and lows
   6. RETURNS    gain vs pain: each window's return beside the fall it took,
-                with the Nifty 500 and the typical stock on the same bars
+                with the S&P 1500 and the typical stock on the same bars
   7. PEERS      the industry's best-ranked stocks, in the Screener's table
   8. CHECKS     data caveats; opens itself when one needs reading
 """
@@ -45,8 +45,8 @@ PERIODS = (1, 3, 6, 9, 12)
 _LONG = {1: "1 month", 3: "3 months", 6: "6 months", 9: "9 months", 12: "12 months"}
 
 INDEX_NAMES = {
-    "N50": "Nifty 50", "NN50": "Nifty Next 50", "MID150": "Nifty Midcap 150",
-    "SMALL250": "Nifty Smallcap 250", "MICRO250": "Nifty Microcap 250",
+    "N50": "S&P 500", "NN50": "Nifty Next 50", "MID150": "S&P 400",
+    "SMALL250": "S&P 600", "MICRO250": "Nifty Microcap 250",
 }
 
 
@@ -135,7 +135,7 @@ def _render_identity(row: pd.Series, total_stocks: int) -> None:
 
     # Exact tags, as indices_loader writes them (config.SHORT_FORMS). A
     # substring test ("50" in tag) once gave every MID150/SMALL250/MICRO250
-    # stock a Nifty 50 badge.
+    # stock a S&P 500 badge.
     chips = f'<span class="sp-sym">{_html.escape(sym)}</span>'
     for t in tags:
         if t in ("—", "NAN"):
@@ -431,7 +431,7 @@ def _render_price_ladder(row: pd.Series, year_low: float | None = None) -> None:
 # ── 6. RETURNS: GAIN VS PAIN ─────────────────────────────────────────────────
 
 def _benchmark_returns(day: pd.Timestamp | None) -> dict[int, float]:
-    """Nifty 500 price return over each calendar window ending on the price day."""
+    """S&P 1500 price return over each calendar window ending on the price day."""
     try:
         from src.loaders.price_loader import fetch_benchmark_history
 
@@ -500,7 +500,7 @@ def _render_gain_vs_pain(row: pd.Series, rank_df: pd.DataFrame) -> None:
         else:
             top, good = f"Bottom {max(1, int(np.ceil(pct)))}%", "poor"
         dd_txt = f"−{abs(dd):.1f}%" if dd is not None else "—"
-        nb_txt = f"Nifty 500 {_signed_pct(nb)}" if nb is not None else ""
+        nb_txt = f"S&P 1500 {_signed_pct(nb)}" if nb is not None else ""
         rows_html.append(
             '<div class="gp-row">'
             f'<span class="gp-w"><b>{m}M</b><i>{_LONG[m]}</i></span>'
@@ -532,7 +532,7 @@ def _render_gain_vs_pain(row: pd.Series, rank_df: pd.DataFrame) -> None:
         '<section class="sp-card sp-gp" aria-label="Returns and risk">'
         '<div class="gp-head"><h2>Returns and risk by window</h2>'
         '<span class="gp-legend"><span><i class="k-dd"></i>Max drawdown</span>'
-        '<span><i class="k-ret"></i>Return</span><span><i class="k-nb"></i>Nifty 500</span>'
+        '<span><i class="k-ret"></i>Return</span><span><i class="k-nb"></i>S&P 1500</span>'
         '<span><i class="k-med"></i>Typical stock</span></span></div>'
         '<div class="gp-row gp-hdr"><span>Window</span><span class="r">Max drawdown</span><span></span>'
         '<span>Return</span><span class="r">Sharpe</span><span class="r">Among all</span></div>'

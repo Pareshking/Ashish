@@ -1,10 +1,10 @@
 """
-Sector leadership: did a sector beat the Nifty 500 over the last month, and do
+Sector leadership: did a sector beat the S&P 1500 over the last month, and do
 most of its stocks agree?
 
 Two readings per sector, a month apart:
 
-- x: the sector's 1-month return less the Nifty 500's over the same closes.
+- x: the sector's 1-month return less the S&P 1500's over the same closes.
   The sector return is the equal-weighted mean of its stocks' price returns
   (adjusted closes), not an NSE sector index: we hold no sector index series,
   and an equal weight shows the breadth an index can hide.
@@ -63,7 +63,7 @@ def sector_leadership(
     """One row per sector: where it is today and where it was a month ago.
 
     prices: adjusted closes, dates x symbols. groups: symbol -> sector.
-    bench: Nifty 500 closes by date (read as of each session, so a benchmark a
+    bench: S&P 1500 closes by date (read as of each session, so a benchmark a
     day ahead of the prices does not matter).
     """
     cols = ["Sector", "Stocks", "Then", "Now", "x_then", "x_now", "y_then", "y_now",

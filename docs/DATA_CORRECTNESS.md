@@ -66,6 +66,26 @@ appears adjusted for them and Yahoo's is not. **Open (B3): measure agreement
 inside the last 400 sessions (what the ranking reads) and name each recent
 event; decide a correction source before the site is linked.**
 
+## Nasdaq cross-check, recent window (10 Nov 2026, iteration 2)
+
+Same 150 symbols, last 400 sessions: 58,493 closes, **99.38% within 0.5%**
+(bar 99.5%). Only two symbols disagree, and the earlier lead ("Yahoo does
+not adjust spin-offs") is **wrong for both**:
+
+- **HON**: Nasdaq.com's close goes 464.42 (2026-06-26) to 227.80
+  (2026-06-29); Yahoo's is continuous (243.53 to 227.80) and records a split
+  on 2026-06-29. Yahoo has adjusted the history for a separation, Nasdaq.com
+  has not. For momentum the adjusted series is the right one (a holder kept
+  the distributed shares). Event name not confirmed against a filing.
+- **FTV**: Ralliant spin-off 2025-06-30; both adjust, factors 3.7% apart
+  (Yahoo records a 1.327 split). Which is right is not checked.
+
+Yahoo records recent spin-offs as fractional splits and adjusts by them; the
+old unadjusted cases (EXPE 2011) predate that. Both are listed in
+`data/nasdaq_exceptions.csv` with their evidence; the check reports their
+earlier closes apart. Also: INTC's 2026-06-30 high 142.35 in
+`data/all_time_highs.csv` equals Nasdaq.com's high for that session.
+
 ## Decisions
 
 - **Universe: S&P 1500, one system** (owner, 10 Nov 2026).

@@ -292,7 +292,7 @@ def render_lightweight_chart(
                 "options": {
                     "color": C.muted, "lineWidth": 2,
                     "priceLineVisible": False,
-                    "title": "RS vs Nifty 500",
+                    "title": "RS vs S&P 1500",
                     "lastValueVisible": True,
                 },
             }],

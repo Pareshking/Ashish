@@ -111,6 +111,74 @@ def read_long(prices_dir: str = PRICES_DIR, start: str | None = None) -> pd.Data
     return normalise(pd.concat([pd.read_parquet(p) for p in paths], ignore_index=True))
 
 
+def read_columns(columns: list[str], prices_dir: str = PRICES_DIR, start: str | None = None,
+                 symbols=None) -> pd.DataFrame:
+    """A light read for the app: only ``columns`` (plus Date, Symbol), rows from
+    ``start``, only ``symbols``; no re-sorting or dtype normalisation, which on
+    the whole store doubles the peak memory of a cold start."""
+    f = files(prices_dir)
+    paths = f["years"] + f["months"] + f["days"]
+    if start:
+        y0 = pd.Timestamp(start).year
+        paths = [p for p in paths if int(os.path.basename(p)[:4]) >= y0]
+    cols = ["Date", "Symbol", *[c for c in columns if c not in ("Date", "Symbol")]]
+    keep = set(symbols) if symbols is not None else None
+    import pyarrow as pa
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+
+    tables = []
+    for p in paths:
+        # Symbol as a dictionary column: six million short strings as Python
+        # objects were most of a cold start's peak memory.
+        t = pq.read_table(p, columns=cols, read_dictionary=["Symbol"])
+        if start:
+            t = t.filter(pc.greater_equal(t["Date"], pa.scalar(pd.Timestamp(start), type=t.schema.field("Date").type)))
+        if keep is not None:
+            t = t.filter(pc.is_in(pc.cast(t["Symbol"], pa.string()), value_set=pa.array(sorted(keep))))
+        tables.append(t)
+    if not tables:
+        return pd.DataFrame(columns=cols)
+    return pa.concat_tables(tables).unify_dictionaries().combine_chunks().to_pandas()
+
+
+def read_wide(columns: list[str], prices_dir: str = PRICES_DIR, start: str | None = None,
+              symbols=None, dtype: str = "float64") -> dict[str, pd.DataFrame]:
+    """Wide frames (Date x Symbol) for each of ``columns``, pivoted one partition
+    file at a time so the six-million-row long table never exists at once (on
+    the whole store that table was 400 MB of a cold start's peak)."""
+    f = files(prices_dir)
+    paths = f["years"] + f["months"] + f["days"]
+    if start:
+        y0 = pd.Timestamp(start).year
+        paths = [p for p in paths if int(os.path.basename(p)[:4]) >= y0]
+    keep = list(dict.fromkeys(symbols)) if symbols is not None else None
+    pieces: dict[str, list[pd.DataFrame]] = {c: [] for c in columns}
+    for p in paths:
+        df = pd.read_parquet(p, columns=["Date", "Symbol", *columns])
+        if start:
+            df = df[df["Date"] >= pd.Timestamp(start)]
+        if keep is not None:
+            df = df[df["Symbol"].isin(set(keep))]
+        for c in columns:
+            pieces[c].append(df.pivot(index="Date", columns="Symbol", values=c))
+        del df
+    out = {}
+    for c in columns:
+        if not pieces[c]:
+            out[c] = pd.DataFrame()
+            continue
+        w = pd.concat(pieces[c], axis=0, sort=False)
+        pieces[c] = []
+        if keep is not None:
+            w = w.reindex(columns=[s for s in keep if s in w.columns])
+        w = w[~w.index.duplicated(keep="last")].sort_index().astype(dtype)
+        w.index.name = "Date"
+        w.columns.name = None
+        out[c] = w
+    return out
+
+
 def store(long: pd.DataFrame, today, prices_dir: str = PRICES_DIR) -> list[str]:
     """Write ``long`` into the partition files it belongs to, merged with what is
     there (new rows win). Returns the paths written."""
@@ -193,6 +261,18 @@ def write_actions(actions: pd.DataFrame, path: str = ACTIONS_FILE) -> bool:
 
 # ── wide frames for the engine ───────────────────────────────────────────────
 def wide(long: pd.DataFrame, column: str) -> pd.DataFrame:
+    if isinstance(long["Symbol"].dtype, pd.CategoricalDtype):
+        # A pivot on a categorical builds every category, observed or not, and
+        # unstack keeps them; one code per row is far lighter than a string.
+        sym = long["Symbol"].cat.remove_unused_categories()
+        dates, d_codes = pd.factorize(long["Date"], sort=True)
+        import numpy as np
+
+        arr = np.full((len(d_codes), len(sym.cat.categories)), np.nan, dtype="float64")
+        arr[dates, sym.cat.codes.to_numpy()] = long[column].to_numpy(dtype="float64")
+        w = pd.DataFrame(arr, index=pd.DatetimeIndex(d_codes, name="Date"), columns=list(sym.cat.categories))
+        w.columns.name = None
+        return w.sort_index()
     w = long.pivot(index="Date", columns="Symbol", values=column)
     w.index.name = "Date"
     w.columns.name = None
@@ -209,21 +289,19 @@ def adjusted_close(close: pd.DataFrame, actions: pd.DataFrame) -> pd.DataFrame:
     close = close.astype("float64")
     if actions is None or actions.empty:
         return close.copy()
-    div = actions[actions["Dividend"] > 0]
-    factors = pd.DataFrame(1.0, index=close.index, columns=close.columns)
-    prev = close.ffill().shift(1)
+    div = actions[(actions["Dividend"] > 0) & actions["Symbol"].isin(close.columns)]
     idx = close.index
-    for sym, g in div.groupby("Symbol"):
-        if sym not in close.columns:
-            continue
-        for d, amount in zip(g["Date"], g["Dividend"]):
-            pos = idx.searchsorted(pd.Timestamp(d))
-            if pos <= 0 or pos >= len(idx):
-                continue
-            p = prev[sym].iloc[pos]
-            if not np.isfinite(p) or p <= 0 or amount >= p:
-                continue
-            factors.iloc[pos, factors.columns.get_loc(sym)] *= 1.0 - amount / p
+    pos = idx.searchsorted(pd.to_datetime(div["Date"]).values)
+    col = close.columns.get_indexer(div["Symbol"])
+    ok = (pos > 0) & (pos < len(idx))
+    pos, col, amount = pos[ok], col[ok], div["Dividend"].to_numpy(dtype="float64")[ok]
+    prev = close.ffill().shift(1).to_numpy()
+    p = prev[pos, col]
+    good = np.isfinite(p) & (p > 0) & (amount < p)
+    f = np.ones(close.shape, dtype="float64")
+    # Two dividends landing on one row multiply (np.multiply.at is unbuffered).
+    np.multiply.at(f, (pos[good], col[good]), 1.0 - amount[good] / p[good])
+    factors = pd.DataFrame(f, index=idx, columns=close.columns)
     # Each row is scaled by the product of the factors strictly AFTER it.
     after = factors[::-1].cumprod()[::-1].shift(-1).fillna(1.0)
     return close * after

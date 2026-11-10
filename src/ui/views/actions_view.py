@@ -16,8 +16,8 @@ import pandas as pd
 import streamlit as st
 
 from src.ui.system_param import stock_href
-from src.core.market_time import ist_now
-from src.loaders.nse_calendar import published_holidays
+from src.core.market_time import ny_now
+from src.loaders.market_calendar import published_holidays
 from src.engine.exit_watch import (
     RANK_SCALE,
     STATUS_LABEL,
@@ -259,10 +259,10 @@ def render_actions_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     cfg = TRACK_RECORD_CONFIG
     rules = Rules(buffer_n=int(cfg["buffer_n"]), high_pct=float(cfg["high_pct"]))
 
-    as_of = pd.Timestamp(adj_close.index[-1]) if adj_close is not None and len(adj_close) else pd.Timestamp(ist_now().date())
+    as_of = pd.Timestamp(adj_close.index[-1]) if adj_close is not None and len(adj_close) else pd.Timestamp(ny_now().date())
     check, fill = next_rebalance(as_of)
     n_sess = _sessions_between(as_of, check)
-    timing_note = fill_due_note(as_of, fill, pd.Timestamp(ist_now().date()))
+    timing_note = fill_due_note(as_of, fill, pd.Timestamp(ny_now().date()))
 
     # The dates are in the "Next rebalance" tile; the subtitle does not repeat them.
     head = kit.page_head("Actions", "If today's prices hold.", actions=True)
@@ -347,7 +347,7 @@ def render_actions_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
             orders = buy_orders(plan, rank_df, capital)
             st.download_button(
                 "Download basket CSV", orders.to_csv(index=False).encode(),
-                f"kite_actions_{ist_now():%Y%m%d}.csv", "text/csv", type="primary",
+                f"kite_actions_{ny_now():%Y%m%d}.csv", "text/csv", type="primary",
                 key="dl_actions_basket", icon=":material/download:", disabled=orders.empty,
             )
             kit.caption(f"Buy orders only, each at its target weight of {_fmt.inr(capital)}.")

@@ -18,10 +18,10 @@ from src.ui.components import gap_count, render_data_quality_footer
 
 
 # The benchmarks, named once so the selector and the dispatch cannot disagree.
-# Real NSE indices, as every other page measures against (Nifty 500 is the
+# Real NSE indices, as every other page measures against (S&P 1500 is the
 # portfolio's benchmark). Value: the Yahoo symbol of the index.
-BENCHMARK_N500: str = "Nifty 500"
-BENCHMARK_N50: str = "Nifty 50"
+BENCHMARK_N500: str = "S&P 1500"
+BENCHMARK_N50: str = "S&P 500"
 BENCHMARK_SYMBOLS: dict[str, str] = {BENCHMARK_N500: "^CRSLDX", BENCHMARK_N50: "^NSEI"}
 BENCHMARK_OPTIONS: list[str] = list(BENCHMARK_SYMBOLS)
 

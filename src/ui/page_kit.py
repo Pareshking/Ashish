@@ -81,7 +81,7 @@ def _series_of(frame, column: str):
     whether it is true.
 
     `nse_benchmarks()` returns a DataFrame or None, and three views wrote
-    `(bench or {}).get("nifty500")`. Python evaluates that branch only when
+    `(bench or {}).get("sp1500_tr")`. Python evaluates that branch only when
     the primary series is empty -- the degraded case -- so on a short or
     half-written benchmarks.csv the Dashboard, Breadth and Sectors each died
     with "The truth value of a DataFrame is ambiguous" and served Streamlit's
@@ -296,7 +296,7 @@ def equity_chart(
     dates,
     strategy: list[float],
     benchmark: list[float] | None,
-    names: tuple[str, str] = ("Strategy", "Nifty 500"),
+    names: tuple[str, str] = ("Strategy", "S&P 1500"),
     key: str = "equity",
     fmt: str = "rupee",
     drawdown: list[float] | None = None,
@@ -326,7 +326,7 @@ def growth_chart(
     dates,
     strategy: list[float],
     benchmark: list[float] | None,
-    names: tuple[str, str] = ("Strategy", "Nifty 500"),
+    names: tuple[str, str] = ("Strategy", "S&P 1500"),
     key: str = "growth",
 ) -> None:
     """Growth of 100: `strategy` and `benchmark` are growth factors (1.0 = the

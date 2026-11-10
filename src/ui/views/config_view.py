@@ -14,7 +14,6 @@ import streamlit as st
 
 from src.ui import page_kit as kit
 from src.ui import formats as _fmt
-from src.ui import system_param
 from src.engine.liquidity import DEFAULT_FLOOR_CR
 
 from src.core.config import (
@@ -27,11 +26,8 @@ from src.core.config import (
     TV_CLASSIFICATION_FILE,
 )
 from src.engine.corporate_actions import load_events
-from src.engine.extra_universe import (
-    SYSTEM_750, SYSTEM_COMBINED, SYSTEM_NAMES, SYSTEM_NANO, SYSTEMS,
-)
-from src.loaders.extra_universe_loader import membership_summary
-from src.loaders.indices_loader import get_sync_metadata, sync_official_nse_indices
+from src.engine.extra_universe import SYSTEM_750, SYSTEM_NAMES
+from src.loaders.indices_loader import get_sync_metadata
 from src.ui.components import age_phrase, data_freshness, gap_count, render_data_quality_footer
 from src.ui.widget_state import forget, remember, resolve
 from src.ui.theme import render_saas_table
@@ -71,7 +67,7 @@ def _refused_refresh(wait: float) -> None:
 # index and the section headers, so the two cannot disagree.
 _SECTIONS = [
     ("cfg-universe", "Universe",
-     "Which stocks are ranked, from the official NSE lists.", "every page"),
+     "Which stocks are ranked: the S&P 500, 400 and 600 lists.", "every page"),
     ("cfg-score", "Momentum score",
      "How much each lookback window counts.",
      "ranks on every page, and the backtest's starting weights"),
@@ -167,41 +163,17 @@ def _section_data_sync(sync_meta: dict, tot_stk: int, engine_stocks: int) -> Non
             "last complete sync.",
         )
 
-    # Owner, 2026-09-27: three systems in one app; every page follows this.
-    nano = membership_summary()
-    options = list(SYSTEMS) if nano else [SYSTEM_750]
-    count = f"{nano.get('count', '?')} stocks · " if nano else ""
-    captions = {
-        SYSTEM_750: "Default · record since Jan 2026",
-        SYSTEM_NANO: f"₹2,000 Cr+ outside the 750 · {count}record from Oct 2026",
-        SYSTEM_COMBINED: "Both, ranked together · record from Oct 2026",
-    }
-    current = system_param.current()
-    chosen = st.segmented_control(
-        "System", options,
-        default=current if current in options else options[0],
-        required=True,
-        format_func=SYSTEM_NAMES.get,
-        key="cfg_system_radio",
-        help="Every page follows this choice. Nano Cap is every stock of ₹2,000 Cr "
-             "or more outside the 750, fixed at each month-end"
-             + (f" (list of {nano.get('as_of')})" if nano else "")
-             + ", ranked among themselves; Combined ranks both as one list.",
-    ) or (current if current in options else options[0])
-    st.caption(captions[chosen])
-    if chosen != current:
-        st.session_state["cfg_system"] = chosen
-        st.rerun()
-
     # Which indices feed the ranking. Chosen first, synced second.
     available_indices = list(INDICES_URLS.keys())
-    curr_indices = st.session_state.get("cfg_indices", ["NIFTY TOTAL MARKET"])
+    curr_indices = st.session_state.get("cfg_indices", [])
     new_indices = st.multiselect(
         "Indices to rank",
         available_indices,
         default=curr_indices,
-        format_func=str.title,
+        placeholder="All of the S&P 1500",
         key="cfg_indices_multiselect",
+        help="Leave empty to rank the whole S&P 1500. The lists are synced nightly from "
+             "Wikipedia's S&P 500, 400 and 600 pages.",
     )
     if new_indices != curr_indices:
         st.session_state["cfg_indices"] = new_indices
@@ -219,36 +191,6 @@ def _section_data_sync(sync_meta: dict, tot_stk: int, engine_stocks: int) -> Non
     if not owner_mode():
         return
     with st.container(horizontal=True, vertical_alignment="center", key="cfg_sync_row"):
-        if st.button("Sync from niftyindices.com", type="primary", key="btn_sync_indices",
-                     help="Fetch the latest official constituent lists. One sync at a time, "
-                          "app-wide."):
-            _wait = _claim_global_refresh()
-            if _wait:
-                _refused_refresh(_wait)
-            else:
-                with st.status("Syncing NSE constituents…", expanded=True) as _sync_status:
-                    _sync_status.write("Downloading index CSV files from niftyindices.com…")
-                    res = sync_official_nse_indices(force=True)
-                    st.session_state["force_refresh"] = True
-                    st.session_state.pop("data_loaded_key", None)
-                    st.cache_data.clear()
-                    st.cache_resource.clear()  # the shared price frames (app.py _shared)
-                    if res.get("last_attempt_ok"):
-                        n = res["total_stocks"]
-                        _sync_status.update(
-                            label=f"Synced {n} constituents successfully",
-                            state="complete",
-                            expanded=False,
-                        )
-                    else:
-                        fetched = res.get("last_attempt_fetched", 0)
-                        errors = len(res.get("last_attempt_errors") or {})
-                        _sync_status.update(
-                            label=f"Sync incomplete — {fetched} downloaded, {errors} failed",
-                            state="error",
-                            expanded=False,
-                        )
-                    st.rerun()
         if st.button("Clear cached files", type="secondary", key="btn_purge_cache",
                      help="Drop the cached prices and index lists and load them again."):
             _wait = _claim_global_refresh()

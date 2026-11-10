@@ -127,7 +127,7 @@ twice a year, at the March and September rebalances. In between, a holding that 
 market moved it unless it is above 15%, when it is cut to 15%, and each new buy is 5% of the account
 as it stood at the last reset, paid from cash; when cash is short the new names get fewer shares, and
 no holding is sold to pay for them. No industry is above 40% after a rebalance. Tested on the
-Nifty 500 from 2010 with an estimate of tax: the monthly reset earned 15.4% a year after tax and the
+S&P 1500 from 2010 with an estimate of tax: the monthly reset earned 15.4% a year after tax and the
 six-monthly 15.3%, with far fewer trades between resets; in 2026 the six-monthly reset did best.
 Months before the change keep the old rule.</p>
 <p><b>Inverse volatility</b> can be tried in the Backtest: each holding's weight is proportional to
@@ -174,7 +174,7 @@ leave.</dd>
 <dd>The rank places it among all stocks in the universe; the qualified rank, among those passing both
 filters. The book and the buffer use the qualified rank.</dd>
 <dt>Does the market trend change the model?</dt>
-<dd>No. The header's "Nifty 500 ... % above its 200D EMA" (or below) compares the index with its 200-day EMA for context.
+<dd>No. The header's "S&P 1500 ... % above its 200D EMA" (or below) compares the index with its 200-day EMA for context.
 The model holds {top_n} stocks in every market and keeps no cash target.</dd>
 <dt>What do the costs cover?</dt>
 <dd>{cost:.0f} basis points a round trip, meant to cover brokerage, exchange and SEBI fees, GST on them,

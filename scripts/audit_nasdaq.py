@@ -55,13 +55,35 @@ def nasdaq_history(sym: str, start: str, end: str, session=None) -> pd.Series:
     return out.sort_index()
 
 
-def compare(stored: pd.Series, official: pd.Series) -> dict:
+EXCEPTIONS = os.path.join(ROOT, "data", "nasdaq_exceptions.csv")
+RECENT = 400   # sessions: what the 12-month ranking and the 6-month backtest read
+
+
+def exceptions() -> dict[str, pd.Timestamp]:
+    """Reviewed adjustment differences: closes before ``Before`` are reported
+    apart, with their reason, and do not count against the pass mark."""
+    if not os.path.exists(EXCEPTIONS):
+        return {}
+    e = pd.read_csv(EXCEPTIONS, dtype=str)
+    return {s: pd.Timestamp(b) for s, b in zip(e["Symbol"], e["Before"])}
+
+
+def compare(stored: pd.Series, official: pd.Series, before: pd.Timestamp | None = None) -> dict:
+    excluded = 0
+    if before is not None:
+        excluded = int((stored.index < before).sum())
+        stored = stored[stored.index >= before]
     j = pd.concat([stored.rename("ours"), official.rename("nasdaq")], axis=1, join="inner").dropna()
     if j.empty:
         return {"compared": 0, "within": 0, "worst_date": "", "worst_pct": float("nan"), "ours_only": len(stored), "nasdaq_only": len(official)}
     d = (j["ours"] / j["nasdaq"] - 1).abs()
     w = d.idxmax()
+    rec = d.iloc[-RECENT:]
     return {
+        "excluded": excluded,
+        "recent_compared": int(len(rec)),
+        "recent_within": int((rec <= TOLERANCE).sum()),
+        "recent_worst_pct": round(float(rec.max()) * 100, 3),
         "compared": int(len(j)),
         "within": int((d <= TOLERANCE).sum()),
         "worst_date": str(w.date()),
@@ -88,11 +110,12 @@ def main(argv=None) -> int:
         syms = syms[: args.sample]
 
     s = requests.Session()
+    ex = exceptions()
     rows = []
     for i, sym in enumerate(syms):
         try:
             off = nasdaq_history(sym, start, str(today), s)
-            res = compare(close[sym].dropna() if sym in close else pd.Series(dtype=float), off)
+            res = compare(close[sym].dropna() if sym in close else pd.Series(dtype=float), off, ex.get(sym))
             res["error"] = "" if len(off) else "no rows"
         except Exception as exc:  # noqa: BLE001
             res = {"compared": 0, "within": 0, "error": f"{type(exc).__name__}"}
@@ -108,14 +131,31 @@ def main(argv=None) -> int:
     rep.to_csv(out)
     n, w = int(rep["compared"].sum()), int(rep["within"].sum())
     share = w / n if n else 0.0
+    for c in ("recent_compared", "recent_within"):
+        if c not in rep:
+            rep[c] = 0
+    rep[["recent_compared", "recent_within"]] = rep[["recent_compared", "recent_within"]].fillna(0)
+    rn, rw = int(rep["recent_compared"].sum()), int(rep["recent_within"].sum())
+    rshare = rw / rn if rn else 0.0
     bad = rep[(rep["compared"] > 0) & (rep["within"] < rep["compared"])].sort_values("worst_pct", ascending=False)
     print(f"Nasdaq cross-check {today}: {len(rep)} symbols, {n:,} closes compared, "
           f"{share:.4%} within {TOLERANCE:.1%}; {int((rep['error'] != '').sum())} symbols not served")
+    if "excluded" in rep and rep["excluded"].fillna(0).sum():
+        exc = rep[rep["excluded"].fillna(0) > 0]
+        print("reviewed exceptions (data/nasdaq_exceptions.csv), closes left out: "
+              + ", ".join(f"{i} {int(v)}" for i, v in exc["excluded"].items()))
+    print(f"last {RECENT} sessions: {rn:,} closes compared, {rshare:.4%} within {TOLERANCE:.1%}")
+    rbad = rep[rep["recent_within"] < rep["recent_compared"]].sort_values("recent_worst_pct", ascending=False)
+    if len(rbad):
+        print("recent disagreements:")
+        print(rbad[["recent_compared", "recent_within", "recent_worst_pct"]].to_string())
     if len(bad):
         print("symbols with closes outside tolerance (worst first):")
         print(bad.head(30).to_string())
     print(f"report: {out}")
-    return 0 if share >= PASS_SHARE else 1
+    # The pass mark applies to the window the site reads; the full ten years
+    # are reported (spin-offs Yahoo never adjusted sit there).
+    return 0 if rshare >= PASS_SHARE else 1
 
 
 if __name__ == "__main__":

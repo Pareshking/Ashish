@@ -66,7 +66,7 @@ class RunSpec:
     """What the run was, as the Backtest tab set it."""
 
     mode: str                    # "History from 2010" or "Live"
-    universe: str                # e.g. "Nifty 500", "Nifty Total Market"
+    universe: str                # e.g. "S&P 1500", "Nifty Total Market"
     benchmark: str
     first_fill: pd.Timestamp | None
     last_session: pd.Timestamp | None
@@ -90,7 +90,7 @@ class RunSpec:
     exit_ath_pct: float | None = None
     score_method: str = "sharpe"
     stats: dict[str, Any] = field(default_factory=dict)
-    generated: str = ""          # IST time stamp, supplied by the caller
+    generated: str = ""          # ET time stamp, supplied by the caller
 
 
 def _engine_default(name: str):
@@ -183,7 +183,7 @@ def rules_table(spec: RunSpec, trades: pd.DataFrame) -> pd.DataFrame:
     add("Run", "Last session reported", _date(spec.last_session),
         "Only completed calendar months are reported; the month in progress is left out")
     add("Run", "Trades in trades file", f"{len(trades)}", f"{n_closed} closed, {n_open} still open")
-    add("Run", "Generated (IST)", spec.generated)
+    add("Run", "Generated (ET)", spec.generated)
 
     add("Timing", "Rebalance",
         "Monthly" if monthly else f"Every {spec.rebal_freq} trading sessions",

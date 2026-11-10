@@ -61,7 +61,6 @@ with app_import_guard():
         DEFAULT_LOOKBACK_WEIGHTS,
         DEFAULT_SECTOR_CAP,
         DEFAULT_STOCK_CAP,
-        MCAP_PR_FILE,
         MCAPS_FILE,
         PRICES_FILE,
         REPO_MCAP_FILE,
@@ -72,10 +71,7 @@ with app_import_guard():
     from src.engine import pipeline
     from src.engine.corporate_actions import adjust_ohlc, load_events
     from src.loaders.indices_loader import fetch_indices_data
-    from src.loaders import extra_universe_loader as extra_loader
-    from src.engine.extra_universe import (
-        SYSTEM_750, SYSTEM_INCEPTION, SYSTEM_NAMES, SYSTEM_NANO,
-    )
+    from src.engine.extra_universe import SYSTEM_750, SYSTEM_NAMES
     from src.core.universe_reconciliation import reconcile_symbols
     from src.loaders.mcap_loader import fetch_market_caps
     from src.loaders.price_loader import (
@@ -83,16 +79,13 @@ with app_import_guard():
         get_market_regime,
     )
     from src.loaders.tv_loader import load_tv_classification
-    from src.loaders.screener_cache import fetch_screener_store as _fetch_screener_store
     # Imported HERE, on the script thread, before load_all_data's thread pool.
     # The pool's ranking download imported src.storage.reader lazily while
     # the script thread imported it through r2_streamlit, and Python's import
     # lock raised _DeadlockError on the race: every cold start logged "R2
     # rankings unavailable (_DeadlockError ...)" and fell back to the release
     # file. Already in sys.modules, the lazy imports below are lookups.
-    from src.storage import reader as _r2_reader  # noqa: F401
     from src.loaders import ranking_store as _ranking_store  # noqa: F401
-    from r2.consumers import r2_streamlit as _r2_streamlit  # noqa: F401
 
     # UI Design System, Components & Views
     from src.ui.ema_utils import count_above_ema
@@ -118,7 +111,7 @@ with app_import_guard():
     
     # Page Config: 100% Widescreen, Sidebar Collapsed
     st.set_page_config(
-        page_title="Paresh Patel",
+        page_title="US Momentum Terminal",
         page_icon="📈",
         layout="wide",
         initial_sidebar_state="collapsed",
@@ -159,7 +152,7 @@ except Exception as _exc:
 
 # ── State Initialization ─────────────────────────────────────────────────────
 if "cfg_indices" not in st.session_state:
-    st.session_state["cfg_indices"] = ["NIFTY TOTAL MARKET"]
+    st.session_state["cfg_indices"] = []   # [] = the whole S&P 1500
 # Every cfg_* setting is read through one resolver: the widget's own value
 # while it exists, then a mirror key that Streamlit's widget-state garbage
 # collection cannot evict, then the documented default. Seeding session state
@@ -477,94 +470,44 @@ def _precomputed_ranking(
     return frame
 
 
-def _price_inputs_key() -> str:
-    """When the NSE fill's inputs last changed: data/nse_prices and data/reference.
-
-    middle_close and the weekly splice read these committed files, and the
-    nightly sync rewrites them under a running process, so the shared price
-    frames are keyed on them as well as on the Screener revision. A stat of a
-    few dozen files; nothing is read.
-    """
+def _store_revision() -> str:
+    """When the committed price store last changed (file names, sizes, mtimes)."""
     from pathlib import Path
 
     parts = []
-    for folder in ("nse_prices", "reference"):
-        root = Path(__file__).resolve().parent / "data" / folder
+    root = Path(PRICES_FILE)
+    for path in sorted(list(root.glob("*")) + list(root.glob("daily/*"))):
         try:
-            for path in sorted(root.iterdir()):
-                st_ = path.stat()
-                parts.append(f"{folder}/{path.name}:{st_.st_mtime_ns}:{st_.st_size}")
+            st_ = path.stat()
+            parts.append(f"{path.name}:{st_.st_mtime_ns}:{st_.st_size}")
         except OSError:
-            parts.append(f"{folder}:missing")
+            pass
     return "|".join(parts)
 
 
-@st.cache_resource(show_spinner=False, ttl=3600, max_entries=4)
-def _resolved_prices_shared(store_revision: str, symbols_key: str, inputs_key: str,
-                            _store: pd.DataFrame | None, _symbols: list[str]):
-    """Shape the store and fill it from NSE, once per revision, universe and NSE files.
-
-    This used to run on every rerun: the shaped store came back as a 35 MB
-    cache_data copy and the NSE fill and weekly splice rebuilt ~50 MB more,
-    every click, in every session. Shared now; _resolve_price_source hands
-    each rerun shallow copies. keep_and_fill rewrites the PriceFrames it is
-    given, which is why from_screener is called here, on a private object,
-    and never on one another session can see.
-    """
-    from src.loaders import nse_prices as _nse
+@st.cache_resource(show_spinner=False, ttl=3600, max_entries=2)
+def _loaded_prices_shared(store_revision: str, symbols_key: str, _symbols: list[str]):
+    """The store's frames for these symbols, once per store revision and universe."""
     from src.loaders import price_source as _ps
 
-    metrics.incr("memo_miss_screener_shape")
-    chosen = _ps.from_screener(_store) if _store is not None else None
-    deep = None
-    if chosen is not None:
-        keep = [c for c in chosen.close.columns if c in set(_symbols)]
-        deep = chosen.close[keep].copy() if keep else None
-    src = _ps.frames_from(chosen, _symbols, _nse.middle_close(_symbols))
-    if src is not None and deep is None:
-        deep = src.close
-    return chosen is not None, src, deep
+    metrics.incr("memo_miss_price_store")
+    return _ps.load(_symbols)
 
 
 def _resolve_price_source(symbols):
-    """(frames the engine scores, the deep close history) -- Screener, then NSE.
-
-    No Yahoo (owner, 2026-10-02). Screener carries no intraday high, so the
-    52-week high is measured on closes and the ATR columns are dropped. A
-    store that cannot reach the 12-month lookback is refused, and NSE's own
-    closes rank instead; (None, None) when neither can serve.
-
-    The deep history is Screener's whole store for these symbols (about ten
-    years): the backtest and the track record want depth, not the ranking's
-    400-day fill window.
-    """
+    """(frames the engine scores, the deep adjusted close) from data/prices/.
+    (None, None) when the store cannot reach the 12-month lookback."""
     import copy
 
-    from r2.consumers import r2_streamlit
-    from src.loaders import price_source as _ps
-
-    _ps.preferred()  # reports a stale UMIYA_PRICE_SOURCE setting
-    # Memory at each boundary (ported from #417). After #420 the shaping, the
-    # NSE fill and the deep history all happen inside _resolved_prices_shared,
-    # once per data state, so a warm rerun shows ~0 between these two points.
-    metrics.memory_checkpoint("resolve_price_source:before_screener")
-    store_result = _fetch_screener_store(r2_streamlit.configuration_key())
-    store, store_revision = store_result if store_result is not None else (None, "none")
-    metrics.memory_checkpoint("resolve_price_source:after_screener_fetch")
     symbols = list(symbols)
-    usable, src, deep = _resolved_prices_shared(
-        store_revision, _symbols_hash(symbols), _price_inputs_key(), store, symbols,
-    )
-    metrics.memory_checkpoint("resolve_price_source:after_resolved_prices")
-    if not usable and r2_streamlit.enabled():
-        raise RuntimeError("Configured immutable Screener dataset is not usable")
+    src, deep = _loaded_prices_shared(_store_revision(), _symbols_hash(symbols), symbols)
     if src is not None:
         src = copy.copy(src)  # the dataclass is rewritten below, never the shared one
         for name in ("adj_close", "close", "high", "low", "volume"):
             setattr(src, name, _shared(getattr(src, name)))
         src.notes = list(src.notes)
-        if src.weekly_fill is not None:
-            src.weekly_fill = dict(src.weekly_fill)
+        for note in src.notes:
+            metrics.note("price_source_note", note)
     return src, _shared(deep)
 
 
@@ -656,10 +599,8 @@ def run_momentum_pipeline(
 
 
 def _system_universe(system: str, indices: list[str]) -> pd.DataFrame:
-    """The stocks a system ranks: the 750, Nano Cap, or both as one list."""
-    base = fetch_indices_data(indices) if system != SYSTEM_NANO else pd.DataFrame(columns=["Symbol"])
-    extra = extra_loader.fetch_members() if system != SYSTEM_750 else pd.DataFrame(columns=["Symbol"])
-    return extra_loader.system_universe(system, base, extra)
+    """The stocks ranked: the S&P 1500, or the named S&P indices of it."""
+    return fetch_indices_data(indices)
 
 
 def load_all_data(indices: list[str], system: str = SYSTEM_750):
@@ -682,7 +623,6 @@ def load_all_data(indices: list[str], system: str = SYSTEM_750):
     metrics.record_cache_presence({
         "prices": PRICES_FILE,
         "market_caps": MCAPS_FILE,
-        "mcap_pr": MCAP_PR_FILE,
     })
 
     with metrics.stage("universe"):
@@ -693,13 +633,9 @@ def load_all_data(indices: list[str], system: str = SYSTEM_750):
     symbols = idx_info["Symbol"].unique().tolist()
     metrics.note("universe_symbols", len(symbols))
     sym_key = _symbols_hash(symbols)
-    # The part of the list the 750's caches serve, and the part they do not.
-    core_syms, extra_syms = extra_loader.split_symbols(system, idx_info)
-    core_key = sym_key if not extra_syms else _symbols_hash(core_syms)
 
     def _mcaps_for_system() -> pd.Series:
-        caps = load_mcaps_cached(core_key, core_syms) if core_syms else pd.Series(dtype=float)
-        return pd.concat([caps, extra_loader.list_market_caps(extra_syms)]) if extra_syms else caps
+        return load_mcaps_cached(sym_key, symbols)
 
     # mcaps + regime have no dependency on price_history — submit them to
     # background threads so the three fetches overlap on cold start.
@@ -893,7 +829,7 @@ with st.spinner("Loading market data…"):
             logger.warning("%s failed to load (%s).", system, type(exc).__name__)
         if system != SYSTEM_750 and (not data or data["rank_df"].empty):
             st.warning(f"{SYSTEM_NAMES[system]} could not be loaded just now, so the app shows "
-                       "Nifty 750.")
+                       "S&P 1500.")
             system = SYSTEM_750
             data = load_all_data(selected_indices, system)
         # The chosen system, not a fallback, is what the address keeps.
@@ -937,6 +873,13 @@ adj_close = data["adj_close"]
 deep_adj_close = data.get("deep_adj_close")
 if deep_adj_close is None or deep_adj_close.empty:
     deep_adj_close = adj_close
+# The full history (from 2010) is for the Backtest page only. Every other page
+# replays at most the record since inception plus the 12-month lookback, and
+# handing it 2010-on (1,500 stocks) cost a cold Dashboard ~300 MB more peak
+# memory than Streamlit Cloud's ~1 GB allows for comfortably.
+full_adj_close = deep_adj_close
+_record_from = (systems.inception(system) - 24).start_time
+deep_adj_close = full_adj_close.loc[full_adj_close.index >= _record_from]
 high_prices = data["high_prices"]
 low_prices = data["low_prices"]
 volume_data = data["volume_data"]
@@ -1014,31 +957,17 @@ system_name = SYSTEM_NAMES[system]
 
 
 def _system_line() -> None:
-    """The Screener's footnote for Nano Cap and Combined: what is ranked."""
-    if system == SYSTEM_750:
-        return
-    members = set(data["idx_info"]["Symbol"]) if data.get("idx_info") is not None else set()
-    unranked = sorted(members - set(rank_df["Symbol"]))
-    kit.note(
-        f"{system_name} · {len(rank_df)} of {len(members)} stocks ranked"
-        + (" among themselves." if system == SYSTEM_NANO else " as one list."),
-        (f"{len(unranked)} too new to rank (under three months of prices): "
-         + ", ".join(unranked[:12]) + (" and more." if len(unranked) > 12 else "."))
-        if unranked else "",
-    )
+    """Paresh's footnote for its secondary systems; one system here."""
+    return
 
 
 def _before_inception() -> bool:
-    """Nano Cap and Combined before their first book (the 30 Sep 2026 close)."""
-    if system == SYSTEM_750:
-        return False
-    as_of = pd.Timestamp(adj_close.index[-1]) if adj_close is not None and len(adj_close) else pd.Timestamp.now()
-    return pd.Period(as_of, freq="M") < pd.Period(SYSTEM_INCEPTION[system], freq="M")
+    """Paresh's secondary systems had a later first book; the S&P 1500 does not."""
+    return False
 
 
 def _record_start() -> str:
-    """For Nano Cap and Combined: when their book and record begin."""
-    start = pd.Period(SYSTEM_INCEPTION[system], freq="M")
+    start = systems.inception(system)
     return (f"The {system_name} model book forms at the close of "
             f"{(start - 1).strftime('%B %Y')}'s last session and its record starts "
             f"with {start.strftime('%B %Y')}.")
@@ -1139,7 +1068,7 @@ def _page_backtest() -> None:
         # Depth, not freshness: the 12-month formation window is warm-up only.
         # The reported portfolio history starts at canonical inception and
         # expands one completed month at a time.
-        adj_close=deep_adj_close,
+        adj_close=full_adj_close,
         stock_cap=stock_cap,
         sector_cap=sector_cap,
         weights=weights,

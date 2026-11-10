@@ -12,7 +12,10 @@ Checks, per symbol, on the split-adjusted close:
   * gaps    -- NYSE sessions between the symbol's first and last row with no
                row (halts exist, but each one is listed);
   * stale   -- STALE or more sessions in a row with the same close and zero volume;
-  * bounds  -- High < Close or Low > Close, or a non-positive price.
+  * bounds  -- High < Close or Low > Close, or a non-positive price;
+  * last    -- a CURRENT member whose latest row is more than LAST_LAG sessions
+               behind the store (acquired or delisted while still on the
+               Wikipedia list: QRVO, last row 2026-10-02, seen 10 Nov 2026).
 
 Writes ``reports/price_audit_<date>.csv``. Exit 1 on any unexplained ratio,
 spike or bounds finding in the last RECENT sessions (what the ranking and the
@@ -41,6 +44,7 @@ from src.loaders import price_store as ps  # noqa: E402
 JUMP = 0.45
 STALE = 5
 RECENT = 400
+LAST_LAG = 5
 SPLIT_RATIOS = [2, 3, 4, 5, 10, 20, 1 / 2, 1 / 3, 1 / 4, 1 / 5, 1 / 10, 1 / 20]
 RATIO_TOL = 0.01
 EXCEPTIONS_FILE = os.path.join(ROOT, "data", "price_exceptions.csv")
@@ -90,6 +94,14 @@ def audit(long: pd.DataFrame, actions: pd.DataFrame) -> pd.DataFrame:
         if run.max() >= STALE:
             d = run.idxmax()
             out.append((sym, str(d.date()), "stale", f"{int(run.max())} sessions unchanged with no volume"))
+
+    newest = close.index.max()
+    lag_from = sessions[sessions <= newest][-(LAST_LAG + 1)] if len(sessions) > LAST_LAG else newest
+    universe = set(pd.read_csv(os.path.join(ROOT, "data", "universe.csv"))["Yahoo"])
+    for sym in sorted(universe & set(close.columns)):
+        last = close[sym].last_valid_index()
+        if last is not None and last < lag_from:
+            out.append((sym, str(last.date()), "last", f"latest row {last.date()}, store at {newest.date()}"))
 
     bad = long[(long["Close"] <= 0) | (long["High"] < long["Close"] * 0.999) | (long["Low"] > long["Close"] * 1.001)]
     for sym, d in zip(bad["Symbol"], bad["Date"]):
@@ -152,7 +164,7 @@ def main() -> int:
     rep.to_csv(out, index=False)
     print(f"{long['Symbol'].nunique()} symbols, {len(long):,} rows, {long['Date'].min().date()} to {long['Date'].max().date()}")
     print(rep.groupby(["Check", "Recent", "Explained"]).size().to_string() if len(rep) else "no findings")
-    failing = rep[rep["Check"].isin(["ratio", "spike", "bounds"]) & rep["Recent"] & ~rep["Explained"]]
+    failing = rep[(rep["Check"].isin(["ratio", "spike", "bounds"]) & rep["Recent"] | (rep["Check"] == "last")) & ~rep["Explained"]]
     if len(failing):
         print("unexplained:")
         print(failing.head(60).to_string(index=False))

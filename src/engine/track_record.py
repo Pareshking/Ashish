@@ -74,7 +74,7 @@ TRACK_RECORD_CONFIG: dict[str, Any] = {
     # fingerprint and replays unchanged.
     "ema_warmup_from": "2026-11-30",
     # Six-monthly reset (owner, 8 Nov 2026: "6 monthly reset final", after TODO
-    # S111's tests of four rules with a tax estimate: Nifty 500 2010-26 after
+    # S111's tests of four rules with a tax estimate: S&P 1500 2010-26 after
     # tax, monthly reset 15.41% a year, six-monthly 15.30%, the owner's fixed
     # buys 14.69%, yearly 14.58%; 2026 six-monthly best). From the 30 Nov 2026
     # signal:
@@ -122,7 +122,7 @@ TRACK_RECORD_CONFIG: dict[str, Any] = {
 # The Recommendation, recorded forward beside the live system and never traded
 # (owner, 12 Oct 2026, TODO 6 and 9; docs/REGIME_SETTINGS_2026-10-12.md): the
 # live record's setup with 30 holdings, keep while in the top 90 and a 200-day
-# EMA. On the Nifty 750, from the book signalled at the 30 Oct 2026 close.
+# EMA. On the S&P 1500, from the book signalled at the 30 Oct 2026 close.
 # Reviewed after 12 months: turnover about half the live record's, max drawdown
 # no worse, return not clearly behind. The live record is not changed by it.
 SHADOW_CONFIG: dict[str, Any] = {**TRACK_RECORD_CONFIG, "top_n": 30, "buffer_n": 90,
@@ -474,7 +474,7 @@ def build_grid(
 
 SERIES_LABELS: dict[str, str] = {
     "strategy": "Strategy",
-    "benchmark": "Nifty 500",
+    "benchmark": "S&P 1500",
     "alpha": "Alpha",
 }
 
@@ -493,7 +493,7 @@ def build_combined_grid(
     being asked of this table is almost always "how did we do against the index
     in June", and that should be one glance down a column.
 
-    Rows are grouped by year, then Strategy / Nifty 500 / Alpha, so a year reads
+    Rows are grouped by year, then Strategy / S&P 1500 / Alpha, so a year reads
     as a block. Each row is built by `build_grid`, so the CY/FY/quarter
     conventions cannot drift between the combined and per-series views.
 

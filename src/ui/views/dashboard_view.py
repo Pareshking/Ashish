@@ -6,7 +6,7 @@ comes from something another page already computes, from the same function:
 the model book and its month from the Track Record replay (as Portfolio), the
 rules and the rebalance plan from Actions, the industry board from Sectors.
 The one new input is NSE's index levels (src/loaders/index_levels.py), shown
-only when their Nifty 50 matches NSE's own daily closes.
+only when their S&P 500 matches NSE's own daily closes.
 
 The market line (regime, breadth) is in the header on every page, so it is
 not repeated here.
@@ -18,7 +18,7 @@ import html
 import pandas as pd
 import streamlit as st
 
-from src.core.market_time import ist_now
+from src.core.market_time import ny_now
 from src.engine import size_leadership as sl
 from src.engine.actions import plan_rebalance
 from src.engine.exit_watch import (
@@ -68,7 +68,7 @@ def answer_line(mtd, bench_mtd, n_watch: int, n_sell: int, check: pd.Timestamp) 
     parts = []
     if mtd is not None and pd.notna(mtd):
         parts.append(f"The book is {_pct(mtd)} this month"
-                     + (f" against {_pct(bench_mtd)} for the Nifty 500" if pd.notna(bench_mtd) else ""))
+                     + (f" against {_pct(bench_mtd)} for the S&P 1500" if pd.notna(bench_mtd) else ""))
     risk = []
     if n_sell:
         risk.append(f"{n_sell} would be sold if the month ended today")
@@ -88,7 +88,7 @@ def headline_parts(mtd, bench_mtd, n_watch: int, n_sell: int, check: pd.Timestam
     if mtd is not None and pd.notna(mtd):
         title = f"The book {moved(mtd)} this month"
         if bench_mtd is not None and pd.notna(bench_mtd):
-            title += f"; the Nifty 500 {moved(bench_mtd)}"
+            title += f"; the S&P 1500 {moved(bench_mtd)}"
     else:
         title = "The book this month"
     risk = []
@@ -131,18 +131,18 @@ def _size_html(res: sl.SizeLeadership) -> str:
     cols = [w for w in sl.WINDOWS if w in res.starts]
     head = "".join(f"<th>{w}M<small>from {res.starts[w]:%-d %b}</small></th>" for w in cols)
     body = []
-    for name in [n for _, n in sl.INDICES] + ["Nifty 500"]:
+    for name in [n for _, n in sl.INDICES] + ["S&P 1500"]:
         r = res.table.loc[name]
         cells = []
         for w in cols:
-            if name == "Nifty 500":
+            if name == "S&P 1500":
                 cells.append(f'<td class="{_tone(r[f"{w}M"])}">{_pct(r[f"{w}M"])}</td>')
             else:
                 rel, ab = r[f"{w}M vs 500"], r[f"{w}M"]
                 cells.append(f'<td><b class="{_tone(rel)}">{fmt.signed(rel * 100)} pts</b><small>{_pct(ab)}</small></td>')
-        cls = ' class="db-base"' if name == "Nifty 500" else ""
+        cls = ' class="db-base"' if name == "S&P 1500" else ""
         body.append(f"<tr{cls}><th>{html.escape(name)}</th>{''.join(cells)}</tr>")
-    return (f'<table class="db-size"><thead><tr><th>Against the Nifty 500</th>{head}</tr></thead>'
+    return (f'<table class="db-size"><thead><tr><th>Against the S&P 1500</th>{head}</tr></thead>'
             f'<tbody>{"".join(body)}</tbody></table>')
 
 
@@ -166,7 +166,7 @@ def book_risk_html(res, as_of_record: pd.Timestamp | None) -> str:
 
     # Figures as rows, label left and figure right on hairlines, the same as
     # the market questions' tables and the reference site (owner, 8 Nov 2026).
-    small = res.tiers.get("Smallcap 250", 0.0) + res.tiers.get("Microcap 250", 0.0)
+    small = res.tiers.get("S&P 600", 0.0) + res.tiers.get("Microcap 250", 0.0)
     rows, lede = [], ""
 
     def row(label: str, figure: str, against: str = "", tone: str = "") -> None:
@@ -174,7 +174,7 @@ def book_risk_html(res, as_of_record: pd.Timestamp | None) -> str:
                     f'<td class="mid">{html.escape(against)}</td></tr>')
 
     if res.beta is not None:
-        lede = (f"The book as it stands moves about {res.beta:.2f} for each 1 of the Nifty 500 but swings "
+        lede = (f"The book as it stands moves about {res.beta:.2f} for each 1 of the S&P 1500 but swings "
                 f"{'more' if res.vol > res.bench_vol else 'less'}: {res.vol * 100:.1f}% a year against "
                 f"{res.bench_vol * 100:.1f}%. {small * 100:.0f}% of it is in small and micro caps"
                 + (f", and {res.cash * 100:.0f}% is in cash." if getattr(res, "cash", 0.0) > 0.0005 else "."))
@@ -185,7 +185,7 @@ def book_risk_html(res, as_of_record: pd.Timestamp | None) -> str:
         bdd = fmt.pct(res.bench_drawdown) if res.bench_drawdown is not None else ""
         row(when, fmt.pct(res.drawdown), bdd, "down" if res.drawdown < 0 else "")
         row("Worst month-end drawdown since the record began", fmt.pct(res.max_drawdown))
-    for t in ("Nifty 100", "Midcap 150", "Smallcap 250", "Microcap 250", "Outside"):
+    for t in ("Nifty 100", "S&P 400", "S&P 600", "Microcap 250", "Outside"):
         if res.tiers.get(t):
             row(f"Weight in the {t}" if t != "Outside" else "Weight outside these indices", f"{res.tiers[t] * 100:.0f}%")
     # Cash is part of the book, and it is why the beta above is what it is
@@ -197,32 +197,11 @@ def book_risk_html(res, as_of_record: pd.Timestamp | None) -> str:
         slow, days = res.exit_days.index[0], float(res.exit_days.iloc[0])
         row(f"Slowest exit, {slow}", f"{days:.2f} days" if days < 10 else f"{days:.0f} days")
     gaps = "".join(f'<p class="db-note">Left out: {html.escape(g)}.</p>' for g in res.gaps)
-    head = (f'<div class="db-big">{res.beta:.2f}<span>beta against the Nifty 500, {res.sessions} sessions</span></div>'
+    head = (f'<div class="db-big">{res.beta:.2f}<span>beta against the S&P 1500, {res.sessions} sessions</span></div>'
             if res.beta is not None else "")
     table = ('<table class="db-fig"><thead><tr><th scope="col">The book</th><th scope="col">Now</th>'
-             f'<th scope="col">Nifty 500</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
+             f'<th scope="col">S&P 1500</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
     return head + (f'<p class="db-lede">{html.escape(lede)}</p>' if lede else "") + table + gaps
-
-
-def calendar_html(bc, check: pd.Timestamp) -> str:
-    """"Coming up for the book": the holdings' (and planned buys') board meetings by
-    day, as tipsheet's "Coming up" lists them, with the next check in its place."""
-    from src.engine import results_calendar as rc
-
-    days: dict[pd.Timestamp, list[str]] = {}
-    for r in bc.upcoming.itertuples():
-        tag = ' <span class="db-cal-tag">to buy</span>' if r.role == "to buy" else ""
-        days.setdefault(pd.Timestamp(r.date).normalize(), []).append(
-            f'<li><b>{html.escape(r.symbol)}</b>{tag} {html.escape(rc.short_purpose(r.purpose))}</li>')
-    check = pd.Timestamp(check).normalize()
-    if days and min(days) <= check <= max(days) + pd.Timedelta(days=7):
-        days.setdefault(check, []).insert(0, '<li class="db-cal-check">Rebalance check, at the close</li>')
-    blocks = "".join(f'<div class="db-cal-day"><h3>{d:%a, %-d %b}</h3><ul>{"".join(items)}</ul></div>'
-                     for d, items in sorted(days.items()))
-    if not blocks:
-        blocks = (f'<p class="db-note">No board meetings announced for the book in the next '
-                  f'{rc.AHEAD_DAYS // 7} weeks.</p>')
-    return f'<p class="db-lede">{html.escape(rc.lede(bc, check))}</p><div class="db-cal">{blocks}</div>'
 
 
 def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
@@ -231,7 +210,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     cfg = TRACK_RECORD_CONFIG
     rules = Rules(buffer_n=int(cfg["buffer_n"]), high_pct=float(cfg["high_pct"]))
     as_of = (pd.Timestamp(adj_close.index[-1]) if adj_close is not None and len(adj_close)
-             else pd.Timestamp(ist_now().date()))
+             else pd.Timestamp(ny_now().date()))
     check, fill = next_rebalance(as_of)
 
     with st.spinner("Loading the model book…"):
@@ -262,17 +241,16 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     # tipsheet's question pages as the model, from the data the app holds).
     levels, bench = fetch_index_levels(), nse_benchmarks()
     size_ok = False
-    if levels is not None and bench is not None and "nifty50" in bench:
-        size_ok, _ = sl.cross_check(levels, bench["nifty50"])
+    if levels is not None and bench is not None and "sp500" in bench:
+        size_ok, _ = sl.cross_check(levels, bench["sp1500"])
     nifty500 = (benchmark_close if benchmark_close is not None and len(benchmark_close)
-                else _series_of(bench, "nifty500"))
-    _strip = {"Nifty 500": nifty500} if nifty500 is not None else {}
+                else _series_of(bench, "sp1500_tr"))
+    _strip = {"S&P 1500": nifty500} if nifty500 is not None else {}
     _strip.update(size_closes(levels, size_ok))
     if _strip:
         st.html(market_strip_html(_strip))
-    # NSE's sector indices, only from a file whose Nifty 50 passed NSE's check (S109).
-    from src.engine import sector_indices as si
-    sectors = si.sector_rotation(levels, nifty500) if size_ok else None
+    # Paresh's NSE sector-index rotation has no US counterpart in our data.
+    sectors = None
     drawn = render_market_questions(rank_df, adj_close, nifty500, size_closes(levels, size_ok), sectors)
 
     # Two columns, each a stack, so a short block never leaves a hole beside
@@ -296,7 +274,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
         from src.engine import book_risk as br
 
         nse = nse_benchmarks()
-        n500 = nse["nifty500"] if nse is not None and "nifty500" in nse else benchmark_close
+        n500 = nse["sp1500_tr"] if nse is not None and "sp1500_tr" in nse else benchmark_close
         eq = (record or {}).get("equity_curve")
         res = br.book_risk(book.set_index("Symbol")["Weight %"], adj_close, n500, eq, volume,
                            MODEL_BOOK_CAPITAL)
@@ -304,7 +282,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
         eq_end = pd.Timestamp(eq_series.index[-1]) if len(eq_series) else None
         st.html(book_risk_html(res, eq_end))
         kit.caption(f"Beta and volatility: today's book at today's weights over the last {br.WINDOW} sessions, "
-                    "against the Nifty 500's daily returns. Size: NSE's latest index lists. Drawdown: the "
+                    "against the S&P 1500's daily returns. Size: NSE's latest index lists. Drawdown: the "
                     "record's equity, to its last month-end. Exit: a position's value at the model book's "
                     f"capital over {br.PARTICIPATION:.0%} of its 20-day average traded value; that share is a "
                     "common rule of thumb, an assumption, not a measured figure.")
@@ -324,27 +302,14 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
         kit.caption_link("The same plan as Actions, from today's ranking and the model book's rules.",
                          page_href("actions"), "Actions")
 
-    from src.engine import results_calendar as rc
-    # Meetings are on calendar days, so "upcoming" counts from today in India, not
-    # from the last close (a Saturday's page would list Friday's results as ahead).
-    bc = rc.for_book(rc.load(), symbols, list(plan.buys), pd.Timestamp(ist_now().date()),
-                     fetched=rc.fetched_on())
-    if bc is not None:
-        with top_r, kit.card("Coming up for the book", "db_cal", "board meetings, as announced"):
-            st.html(calendar_html(bc, check))
-            when = f", collected {bc.fetched_on:%-d %b}" if bc.fetched_on is not None else ""
-            kit.caption(f"NSE's board-meeting calendar for the holdings and the planned buys, the next "
-                        f"{rc.AHEAD_DAYS // 7} weeks{when}. Companies can move a meeting; results usually "
-                        "come out the same day or the next.")
-
     size_drawn = False
     with low_l, kit.card("Size leadership", "db_size", "price return, NSE index closes"):
         res = None
-        if levels is None or bench is None or "nifty500" not in bench or "nifty50" not in bench:
+        if levels is None or bench is None or "sp1500_tr" not in bench or "sp500" not in bench:
             kit.caption("Index levels are not available right now, so this table is left out.")
         else:
-            ok, why = sl.cross_check(levels, bench["nifty50"])
-            res = sl.size_leadership(levels, bench["nifty500"]) if ok else None
+            ok, why = sl.cross_check(levels, bench["sp1500"])
+            res = sl.size_leadership(levels, bench["sp1500"]) if ok else None
             if not ok:
                 kit.caption(f"Left out: the index file failed its check ({why}).")
             elif res is None:
@@ -358,7 +323,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
             stale = (as_of - res.end).days > 7
             kit.caption(f"To {res.end:%-d %b %Y}"
                         + (" (older than the latest prices)" if stale else "")
-                        + "; bold figures are against the Nifty 500, small ones the index's own move. "
+                        + "; bold figures are against the S&P 1500, small ones the index's own move. "
                         + f"{why}. Source: " + ", ".join(res.sources) + ".")
 
     # S91 (owner, 7 Nov: "build it"): momentum health under the book's risk,
@@ -368,10 +333,9 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     # Desktop reading order: the questions, then each column's top block, then the rest.
     nav_slot.html(page_nav_html(drawn + [
         ("s-db_risk", "Book at risk"), ("s-db_bookrisk", "How risky is the book?"), ("s-db_next", "Next rebalance")]
-        + ([("s-db_cal", "Coming up for the book")] if bc is not None else []) + [
+        + [
         ("s-db_mh", "Momentum health"), ("s-db_qual", "How many stocks qualify?")]
-        + ([("s-db_size", "Size leadership")] if size_drawn else [])
-        + [("s-db_flows", "Flows")]))
+        + ([("s-db_size", "Size leadership")] if size_drawn else [])))
 
     render_data_quality_footer(
         total_stocks=len(rank_df),

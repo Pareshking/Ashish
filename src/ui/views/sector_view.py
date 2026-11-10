@@ -64,7 +64,7 @@ def _ago(months: int) -> str:
 
 
 def render_leadership_section(rank_df: pd.DataFrame, adj_close: pd.DataFrame, col: str) -> None:
-    """Sector leadership: return against the Nifty 500 across, breadth up, one
+    """Sector leadership: return against the S&P 1500 across, breadth up, one
     or three months ago and today, for the 20/50/100/200-day EMA."""
     if col not in rank_df.columns or adj_close is None or adj_close.empty:
         return
@@ -81,7 +81,7 @@ def render_leadership_section(rank_df: pd.DataFrame, adj_close: pd.DataFrame, co
     ])
 
     with kit.card("Sector leadership map", "sec_lead", f"hollow dot {_ago(months)} · filled dot today"):
-        kit.caption(f"Right: beat the Nifty 500 over the {'month' if months == 1 else f'{months} months'}. "
+        kit.caption(f"Right: beat the S&P 1500 over the {'month' if months == 1 else f'{months} months'}. "
                     "Up: more of its stocks above the EMA. The leader is blue, the laggard rust, the rest grey; tap one to pick it out.")
         with st.container(horizontal=True, gap="small", vertical_alignment="center", key="sec_lead_controls"):
             st.segmented_control("EMA", list(EMA_SPANS), default=200, required=True, key="sec_lead_span",
@@ -104,7 +104,7 @@ def render_leadership_section(rank_df: pd.DataFrame, adj_close: pd.DataFrame, co
         ahead_narrow = board[(board["x_now"] > 0) & (board["y_now"] < 0.5)]
         kit.caption(
             f"{then:%-d %b} to {now:%-d %b}: breadth fell in {fell} of {len(board)} sectors."
-            + (f" Ahead of the Nifty 500 with under half above the {span}-day EMA: "
+            + (f" Ahead of the S&P 1500 with under half above the {span}-day EMA: "
                f"{', '.join(SHORT_NAMES.get(n, n) for n in ahead_narrow['Sector'])}."
                if len(ahead_narrow) else "")
         )
@@ -165,8 +165,8 @@ def leadership_explainer(r: pd.Series, name: str, span: int) -> str:
     lifts = "; ".join(
         f"{html.escape(sym)} {_fmt.pct(rv * 100, fraction=False)}, which adds {_fmt.signed(rv * 100 / n, 2)} points to the sector's {_fmt.pct(ret, fraction=False)}"
         for sym, rv in (r.get("Leaders") or [])[:2])
-    return f"""**Across: did the sector beat the Nifty 500 over the {period}?**  
-Each of the {n} {html.escape(name)} stocks' price change from the {then:%-d %b} close to the {now:%-d %b} close, averaged with equal weight: **{_fmt.pct(ret, fraction=False)}**. The Nifty 500 over the same closes: **{_fmt.pct(bench, fraction=False)}**. The difference, {_fmt.signed(ret, 2)} − ({_fmt.signed(bench, 2)}) = **{_fmt.signed(x1, 2)}%**, places the filled dot {side} the 0 line. The hollow dot is the same sum for the {period} before: {_fmt.pct(x0, fraction=False)}.
+    return f"""**Across: did the sector beat the S&P 1500 over the {period}?**  
+Each of the {n} {html.escape(name)} stocks' price change from the {then:%-d %b} close to the {now:%-d %b} close, averaged with equal weight: **{_fmt.pct(ret, fraction=False)}**. The S&P 1500 over the same closes: **{_fmt.pct(bench, fraction=False)}**. The difference, {_fmt.signed(ret, 2)} − ({_fmt.signed(bench, 2)}) = **{_fmt.signed(x1, 2)}%**, places the filled dot {side} the 0 line. The hollow dot is the same sum for the {period} before: {_fmt.pct(x0, fraction=False)}.
 
 **Up: how many of its stocks are in an uptrend?**  
 A stock counts when its close is above its own {span}-day EMA (exponential average of its closes). Today {int(r['above_now'])} of {int(r['obs_now'])} = **{y1:.0f}%**; {_ago(m)} {int(r['above_then'])} of {int(r['obs_then'])} = {y0:.0f}%. Only stocks with a close and an EMA that day are counted; an EMA needs {int(span * 0.8)} sessions of prices, so a recent listing can be missing.
@@ -274,7 +274,7 @@ def render_sector_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
                        benchmark_close: pd.Series | None = None) -> None:
     """"What is leading?" first (owner, 7 Nov: tipsheet's question pages as the
     model): size, industries by six months and one month, month by month
-    against the Nifty 500, what would change it. Then the leaderboard, the
+    against the S&P 1500, what would change it. Then the leaderboard, the
     stocks of one industry and the leadership map."""
     has_tv = [c for c in ("TV_Industry", "TV_Sector") if c in rank_df.columns]
     tax = {"NSE industry": "Industry"}
@@ -312,10 +312,10 @@ def render_sector_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     # leaderboard below and this section.
     levels, nbench = fetch_index_levels(), nse_benchmarks()
     size_ok = False
-    if levels is not None and nbench is not None and "nifty50" in nbench:
-        size_ok, _ = sl.cross_check(levels, nbench["nifty50"])
+    if levels is not None and nbench is not None and "sp500" in nbench:
+        size_ok, _ = sl.cross_check(levels, nbench["sp1500"])
     nifty500 = (benchmark_close if benchmark_close is not None and len(benchmark_close)
-                else _series_of(nbench, "nifty500"))
+                else _series_of(nbench, "sp1500_tr"))
     render_leaders_section(rank_df, history_prices if history_prices is not None else adj_close,
                            nifty500, size_closes(levels, size_ok))
 

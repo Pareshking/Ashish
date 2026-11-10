@@ -60,7 +60,9 @@ def _download(tickers: list[str], start: str | None) -> pd.DataFrame:
     last = None
     for attempt in range(RETRIES):
         try:
-            df = yf.download(tickers, start=start, interval="1d", auto_adjust=False,
+            # No start means the whole history: yfinance's own default is one month.
+            span = {"start": start} if start else {"period": "max"}
+            df = yf.download(tickers, **span, interval="1d", auto_adjust=False,
                              actions=True, group_by="column", threads=True,
                              progress=False, timeout=60)
             if df is not None and not df.empty:

@@ -3,7 +3,7 @@
 Owner, 8 Nov 2026 (TODO S110): taken off the Dashboard. The conditions
 predict the long-short momentum FACTOR's bad months, as published, but tested
 on our own long-only portfolio's backtest in 5-year blocks they gave no
-reliable signal: the book's lead over the Nifty 500 vanished in flagged months
+reliable signal: the book's lead over the S&P 1500 vanished in flagged months
 in 2010-14 and 2020-24, reversed in 2025-26, and 2015-19 had none; the
 continuous readings changed sign between blocks.
 scripts/research/crash_state_vs_portfolio.py reproduces this.
@@ -17,7 +17,7 @@ Their state variables: a bear-market flag (the market's past 24-month return
 below zero) and the market's variance over the prior 126 sessions.
 
 Checked on Indian data before use (owner, 8 Nov 2026): at each month-end from
-2010, the state from the Nifty 500 (data/benchmarks.csv) against the next
+2010, the state from the S&P 1500 (data/benchmarks.csv) against the next
 month's top-minus-bottom spread (data/momentum_health.csv). In the months
 that were both bear and high-volatility the next month averaged -1.6 pts
 against +1.4 when calm, and three of the four worst months since 2010 (May
@@ -45,7 +45,7 @@ CALM, ELEVATED, CRASH = "Calm", "Elevated", "Crash-prone"
 @dataclass(frozen=True)
 class CrashState:
     as_of: pd.Timestamp
-    ret24: float          # the Nifty 500's return over 24 months
+    ret24: float          # the S&P 1500's return over 24 months
     vol: float            # annualised volatility over 126 sessions
     vol_pct: float        # share of month-end readings at or below today's
     verdict: str

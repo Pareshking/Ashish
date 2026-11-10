@@ -55,7 +55,7 @@ def render_stock_chart(
         key=f"lw_tf_{symbol}", label_visibility="collapsed",
     ) or "6M"
     overlays = c_ma.pills(
-        "Overlays", ["20 EMA", "50 EMA", "200 SMA", "Nifty 500"],
+        "Overlays", ["20 EMA", "50 EMA", "200 SMA", "S&P 1500"],
         selection_mode="multi", default=["20 EMA", "50 EMA"],
         key=f"lw_ma_{symbol}", label_visibility="collapsed",
     ) or []
@@ -88,12 +88,12 @@ def render_stock_chart(
     except Exception:
         pass
 
-    if "Nifty 500" in overlays and _bench_full is not None:
+    if "S&P 1500" in overlays and _bench_full is not None:
         bench_window = _bench_full.reindex(close.index, method="ffill").dropna()
         if len(bench_window) >= 2 and not close.empty:
-            chosen["Nifty 500"] = bench_window / bench_window.iloc[0] * close.iloc[0]
+            chosen["S&P 1500"] = bench_window / bench_window.iloc[0] * close.iloc[0]
 
-    # Relative Strength vs Nifty 500 — computed over the full history so the
+    # Relative Strength vs S&P 1500 — computed over the full history so the
     # ratio is stable regardless of the chosen display window.
     rs_full: pd.Series | None = None
     if _bench_full is not None and not full_close.empty:
@@ -443,7 +443,7 @@ CATEGORICAL = (
 )
 def leadership_colours(board: pd.DataFrame) -> dict[str, str]:
     """The sector leadership map's colours (owner, 8 Nov 2026, S97 g): every
-    sector a quiet grey, the leader (best return against the Nifty 500 today)
+    sector a quiet grey, the leader (best return against the S&P 1500 today)
     in blue and the laggard (worst) in rust; the sector a reader taps turns ink
     in the chart itself. With twenty hues no dot could be matched to its name;
     grey plus three answers "who is leading?" at a glance, and it is still not
@@ -484,7 +484,7 @@ const chart=Highcharts.chart('c',{chart:{type:'scatter',backgroundColor:'transpa
   style:{fontFamily:'IBM Plex Sans,system-ui,sans-serif'},zooming:{type:'xy'}},
   credits:{enabled:false},accessibility:{enabled:false},title:{text:null},legend:{enabled:false},exporting:{enabled:false},
   xAxis:{min:xmin,max:xmax,tickInterval:xtick,gridLineWidth:0,lineWidth:0,tickLength:0,
-    title:{text:months+'-month return vs Nifty 500 →',style:{color:'var(--c-muted_2)',fontSize:'11px'}},
+    title:{text:months+'-month return vs S&P 1500 →',style:{color:'var(--c-muted_2)',fontSize:'11px'}},
     labels:{format:'{value}%',style:{color:'var(--c-muted_2)',fontSize:'11px'}},plotLines:[{value:0,color:'var(--c-rule_strong)',width:1,zIndex:2}]},
   yAxis:{min:0,max:100,tickInterval:20,endOnTick:false,gridLineColor:'var(--c-grid)',
     title:{text:'↑ Stocks above their '+span+'-day EMA',style:{color:'var(--c-muted_2)',fontSize:'11px'}},
@@ -492,9 +492,9 @@ const chart=Highcharts.chart('c',{chart:{type:'scatter',backgroundColor:'transpa
   tooltip:{useHTML:true,backgroundColor:'var(--c-white)',borderColor:'var(--c-rule)',borderWidth:1,borderRadius:3,shadow:false,padding:8,style:{color:'var(--c-ink)',fontSize:'12px',lineHeight:'17px'},
     formatter:function(){const r=this.series.options.row;
       return '<b>'+e(r.full)+'</b> · '+r.stocks+' stocks<br>'+
-      '<span style="opacity:.7">'+e(then)+'</span> '+pct(r.x0)+' vs Nifty 500 · '+r.a0+' of '+r.o0+' above<br>'+
-      '<span style="opacity:.7">'+e(now)+'</span> <b>'+pct(r.x1)+'</b> vs Nifty 500 · <b>'+r.a1+' of '+r.o1+'</b> above<br>'+
-      '<span style="opacity:.7">Sector '+pct(r.ret)+', Nifty 500 '+pct(r.bench)+(months===1?' this month':' in '+months+' months')+'</span>'+
+      '<span style="opacity:.7">'+e(then)+'</span> '+pct(r.x0)+' vs S&P 1500 · '+r.a0+' of '+r.o0+' above<br>'+
+      '<span style="opacity:.7">'+e(now)+'</span> <b>'+pct(r.x1)+'</b> vs S&P 1500 · <b>'+r.a1+' of '+r.o1+'</b> above<br>'+
+      '<span style="opacity:.7">Sector '+pct(r.ret)+', S&P 1500 '+pct(r.bench)+(months===1?' this month':' in '+months+' months')+'</span>'+
       (r.lead?'<br>Led by <b>'+e(r.lead)+'</b>':'');}},
   plotOptions:{series:{animation:false,dashStyle:'ShortDash',lineWidth:1.2,marker:{enabled:true},stickyTracking:false,findNearestPointBy:'xy',
     states:{hover:{lineWidthPlus:1.5},inactive:{opacity:0.18}},cursor:'pointer',
@@ -510,7 +510,7 @@ paint(chart);
 def render_leadership_map(board: pd.DataFrame, span: int, focus: str | None = None,
                           short: dict[str, str] | None = None) -> None:
     """Each sector a dashed line from a hollow dot (a month ago) to a filled dot
-    (today): across is its 1-month return less the Nifty 500's, up is the share
+    (today): across is its 1-month return less the S&P 1500's, up is the share
     of its stocks above their `span`-day EMA.
     Tapping a sector (or picking it above) dims the rest."""
     from src.ui.highcharts_lib import lib, script_json, text_alternative
@@ -539,7 +539,7 @@ def render_leadership_map(board: pd.DataFrame, span: int, focus: str | None = No
         "html,body{background:transparent;font-family:'IBM Plex Sans',system-ui,sans-serif}"
         "#pin{font-size:12px;color:var(--c-faint);padding:2px 4px 6px}</style></head>"
         "<body>" + text_alternative(" ".join(
-            f"{r['full']}: {months}-month return {_fmt.pct(r['ret'], fraction=False)} against the Nifty 500's "
+            f"{r['full']}: {months}-month return {_fmt.pct(r['ret'], fraction=False)} against the S&P 1500's "
             f"{_fmt.pct(r['bench'], fraction=False)}; {_fmt.pct(r['y1'], signed_=False, fraction=False)} above their "
             f"{span}-day EMA ({_fmt.pct(r['y0'], signed_=False, fraction=False)} on {then})."
             for r in rows)) +

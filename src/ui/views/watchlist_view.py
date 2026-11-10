@@ -9,7 +9,7 @@ import re
 import pandas as pd
 import streamlit as st
 
-from src.core.market_time import ist_now
+from src.core.market_time import ny_now
 
 from src.ui import page_kit as kit
 from src.ui import watchlist_store
@@ -41,7 +41,7 @@ def render_watchlist_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame | None 
     actions = kit.page_head("Watchlist", count, actions=True)
     if not matched.empty:
         actions.download_button("Export CSV", matched.to_csv(index=False).encode(),
-                                f"watchlist_momentum_{ist_now():%Y%m%d}.csv", "text/csv",
+                                f"watchlist_momentum_{ny_now():%Y%m%d}.csv", "text/csv",
                                 key="dl_wl_csv", icon=":material/download:")
 
     current = ", ".join(user_symbols)

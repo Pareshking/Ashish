@@ -15,7 +15,7 @@ from src.engine.pipeline import price_fingerprint
 from src.engine.rank_history import month_books
 from src.engine.systems import inception, membership_for
 from src.engine.track_record import TRACK_RECORD_CONFIG, months_to_cover
-from src.loaders import former_members, nse_prices
+from src.loaders import former_members
 from src.loaders.ranking_store import actions_digest
 
 
@@ -37,8 +37,7 @@ def record_sector_map(symbols) -> dict[str, str]:
     for names that have left the index.
     """
     syms = [str(s) for s in symbols]
-    idx = pd.read_csv(former_members.INDEX_FILE)
-    idx.columns = [str(c).strip() for c in idx.columns]
+    idx = former_members.index_frame()
     nse = dict(zip(idx["Symbol"].astype(str), idx["Industry"].astype(str)))
     out = {s: nse[s] for s in syms if s in nse}
     # industry_for maps TradingView labels for EVERY name it is given, current
@@ -153,15 +152,6 @@ def record_run_uncached(adj_close: pd.DataFrame, benchmark_close: pd.Series | No
     # held and has since dropped must have prices (loaders/former_members.py).
     membership = membership_for(system)
     prices = former_members.with_former_members(adj_close, membership)
-    if system == SYSTEM_750:
-        # The 750's record is struck on NSE's closes as published, so this run
-        # must be too or its month-to-date would disagree with the frozen months.
-        nse, _ = nse_prices.basis_frame(adj_close, membership, months=months)
-        if nse is not None:
-            prices, events = nse, []
-            # The frame may run past the other source's last session (NSE's file is
-            # ahead on the first working day): the window is counted back from its end.
-            months = months_to_cover(pd.Timestamp(prices.index[-1]), start)
     # The strategy and benchmark are one comparison. Never let one side run
     # past the other side's latest completed close.
     prices, benchmark_close = _align_benchmark_to_price_as_of(prices, benchmark_close)

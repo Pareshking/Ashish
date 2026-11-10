@@ -122,15 +122,15 @@ def momentum_health_html(spreads: pd.DataFrame | None) -> str | None:
 
 def long_only_html(spreads: pd.DataFrame | None) -> str | None:
     """Momentum health led by what a long-only book earns: winners against the
-    Nifty 500 (owner, 8 Nov 2026), with winners against losers kept as one row."""
+    S&P 1500 (owner, 8 Nov 2026), with winners against losers kept as one row."""
     lo = long_only(spreads)
     if lo is None:
         return None
     month = pd.Period(lo["month"], freq="M")
     t12 = lo["lead_12m"]
     word = percentile_word(lo["percentile"])
-    lede = (f"Over the last 12 months the top 100 of our ranking (one fifth of the Nifty 500) returned "
-            f"{fmt.signed(lo['top_12m'])}% against the Nifty 500's {fmt.signed(lo['index_12m'])}%: "
+    lede = (f"Over the last 12 months the top 100 of our ranking (one fifth of the S&P 1500) returned "
+            f"{fmt.signed(lo['top_12m'])}% against the S&P 1500's {fmt.signed(lo['index_12m'])}%: "
             f"{abs(t12):.1f} pts {'ahead' if t12 >= 0 else 'behind'}, {word} "
             f"({ordinal(round(lo['percentile']))} percentile since {lo['since']}). "
             f"{month:%B}: {fmt.signed(lo['month_lead'])} pts.")
@@ -146,17 +146,17 @@ def long_only_html(spreads: pd.DataFrame | None) -> str | None:
     # carries the columns; until then the momentum and breadth split, which
     # adds to the headline exactly.
     if lo.get("top50_12m") is not None:
-        row("Top 50 against the Nifty 500", lo["top50_12m"])
-        row("Ranks 51\u2013100 against the Nifty 500", lo["d2_12m"])
+        row("Top 50 against the S&P 1500", lo["top50_12m"])
+        row("Ranks 51\u2013100 against the S&P 1500", lo["d2_12m"])
     else:
         row("Winners against the average stock (momentum)", lo["momentum_12m"])
-        row("Average stock against the Nifty 500 (breadth)", lo["breadth_12m"])
+        row("Average stock against the S&P 1500 (breadth)", lo["breadth_12m"])
     row("Winners against losers (the factor, for reference)", lo["wml_12m"])
     table = ('<table class="db-fig"><thead><tr><th scope="col">Last 12 months</th><th scope="col">Points</th>'
              f'</tr></thead><tbody>{"".join(rows)}</tbody></table>') if rows else ""
     recent = lo["recent"]
     img = _bars_svg(recent)
-    alt = (f"Monthly lead of the top 100 over the Nifty 500, last {len(recent)} months: from "
+    alt = (f"Monthly lead of the top 100 over the S&P 1500, last {len(recent)} months: from "
            f"{fmt.signed(min(recent))} to {fmt.signed(max(recent))} pts.")
     tone = "up" if t12 > 0 else "down" if t12 < 0 else ""
     months = [f"{pd.Period(m, freq='M'):%b %Y}" for m in lo.get("recent_months", [])]
@@ -184,9 +184,9 @@ def _qualified_evidence(spreads: pd.DataFrame, d: pd.DataFrame, cuts: list[float
         def lead(v: float, name: str) -> str:
             return f"beat {name} by {v:.1f} pts" if v >= 0 else f"trailed {name} by {-v:.1f} pts"
 
-        return (f"In a backtest of the strategy's rules on the Nifty 500 since {pe['since']} (not the live "
+        return (f"In a backtest of the strategy's rules on the S&P 1500 since {pe['since']} (not the live "
                 f"record, which trades the 750), after the quarter of month-ends with the fewest "
-                f"(at or below {pe['cut'] * 100:.0f}%) the portfolio {lead(pe['low'], 'the Nifty 500')} the next "
+                f"(at or below {pe['cut'] * 100:.0f}%) the portfolio {lead(pe['low'], 'the S&P 1500')} the next "
                 f"month on average; after the other months it {lead(pe['rest'], 'the index')}. The pattern held in "
                 f"{held} of {len(pe['blocks'])} five-year blocks.")
     d = d.assign(qtr=pd.qcut(d["qualified"], 4, labels=False))
@@ -213,7 +213,7 @@ def _latest_qualified() -> dict | None:
 
 def qualified_html(spreads: pd.DataFrame | None) -> str | None:
     """How many stocks qualify? (TODO S110, item 2): the month-end share of the
-    Nifty 500 passing the strategy's own gates, from data/momentum_health.csv."""
+    S&P 1500 passing the strategy's own gates, from data/momentum_health.csv."""
     from src.ui import page_kit as kit
 
     if spreads is None or "qualified" not in spreads.columns:
@@ -245,7 +245,7 @@ def qualified_html(spreads: pd.DataFrame | None) -> str | None:
     since = f"{pd.Timestamp(d['date'].iloc[0]):%Y}"
     rank = (f"fewer than in {share_above * 100:.0f}% of month-ends since {since}" if share_above > share_below
             else f"more than in {share_below * 100:.0f}% of month-ends since {since}")
-    lede = (f"At the end of {when:%B %Y}, {float(last['qualified']) * 100:.0f}% of the Nifty 500 passed the strategy's "
+    lede = (f"At the end of {when:%B %Y}, {float(last['qualified']) * 100:.0f}% of the S&P 1500 passed the strategy's "
             f"own filters (above the 50-day EMA, within 20% of the 52-week high): {rank}.")
     ev = _qualified_evidence(spreads, d, cuts)
     spark = kit.spark_img(d["qualified"].tail(24).tolist(), 120, 28, last=None)
@@ -367,27 +367,28 @@ def nsdl_flows_html(nsdl: pd.DataFrame | None, nse: pd.DataFrame | None) -> str 
 
 
 def render(kit, left, right) -> None:
-    """The two cards, momentum health on the left, flows on the right."""
+    """Momentum health on the left, the qualified share on the right. (Paresh's
+    third card, India's FII/DII flows, is not carried over.)"""
     spreads = _load(MOMENTUM_FILE)
     lo_out = long_only_html(spreads)
     with left, kit.card("Momentum health", "db_mh",
-                        "top 100 against the Nifty 500" if lo_out else "top 100 minus bottom 100"):
+                        "top 100 against the S&P 1500" if lo_out else "top 100 minus bottom 100"):
         out = lo_out or momentum_health_html(spreads)
         if out is None:
             kit.caption("Momentum health is not available right now: its monthly file is missing or "
                         "shorter than two years.")
         elif lo_out:
             st.html(out)
-            kit.caption("Each month-end the Nifty 500's members are ranked by this site's score and the "
+            kit.caption("Each month-end the S&P 1500's members are ranked by this site's score and the "
                         "top 100 are held, equal weight, for the next month: what a long-only momentum "
-                        "book earns. The figure is that book's 12-month return less the Nifty 500's, in "
+                        "book earns. The figure is that book's 12-month return less the S&P 1500's, in "
                         "percentage points. Since 2010 it moved with our own book's lead over the index "
                         "(correlation 0.81; winners minus losers 0.44). The top 100 is equal weight "
                         "and the index is not, so part of the lead is the small-stock effect. "
                         f"Winners minus losers checked: {IIMA_CHECK}. A reading, not a forecast.")
         else:
             st.html(out)
-            kit.caption("Each month-end the Nifty 500's members are ranked by this site's score; the "
+            kit.caption("Each month-end the S&P 1500's members are ranked by this site's score; the "
                         "spread is the next month's return of the top 100 minus the bottom 100. "
                         f"Bars: the last 24 months. Checked: {IIMA_CHECK}. How momentum has been "
                         "paying, not a forecast.")
@@ -398,24 +399,7 @@ def render(kit, left, right) -> None:
                         "next build.")
         else:
             st.html(out)
-            kit.caption("Each month-end, the share of the Nifty 500's members (as they stood then) passing the "
+            kit.caption("Each month-end, the share of the S&P 1500's members (as they stood then) passing the "
                         "same filters the model applies. Line: the last 24 month-ends. The backtest is the record's "
-                        "configuration on NSE's adjusted closes over the Nifty 500 as it stood (Backtest's History "
+                        "configuration on NSE's adjusted closes over the S&P 1500 as it stood (Backtest's History "
                         "from 2010), rebuilt each month; a reading, not a forecast.")
-    with right, kit.card("Flows", "db_flows", "foreign and domestic institutions"):
-        nse = _load(FLOWS_FILE)
-        out = nsdl_flows_html(_load(NSDL_FILE), nse)
-        if out is not None:
-            st.html(out)
-            kit.caption("NSDL's confirmed FPI figures (custodians' reports, a reporting date covers the "
-                        "previous trading day), equity, stock exchange and primary market. DII from NSE's "
-                        "provisional daily figures, collected each evening from 6 Nov 2026.")
-            return
-        out = flows_html(nse)
-        if out is None:
-            kit.caption("Flows are not available right now.")
-        else:
-            st.html(out)
-            kit.caption("NSE's provisional figures, collected each trading evening. NSE and MSEI publish "
-                        "only the latest day, so this history starts on 6 Nov 2026 and grows by one "
-                        "session a day; NSDL's longer record is being tried as a source.")

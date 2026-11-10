@@ -1,14 +1,14 @@
 """The indices a long backtest can be run on, each point in time from 2010.
 
-Owner, 2026-10-03: a backtest from 2010 on a chosen index -- Nifty 50, 100,
-500, Midcap 150, Smallcap 250, Microcap 250 or Total Market -- with size set
+Owner, 2026-10-03: a backtest from 2010 on a chosen index -- S&P 500, 100,
+500, S&P 400, S&P 600, Microcap 250 or Total Market -- with size set
 by the index tier (NSE builds them by free-float market cap) and an optional
 traded-value floor; no market-cap cutoff.
 
 data/membership_history.json keeps each index's own timeline under
 ``indices`` (nse_index_rebuild/merge_into_history.py); the top level is the
 Total Market copy the live systems read. Nifty 100 is not stored: it is
-Nifty 50 plus Nifty Next 50 on every date, which is how NSE defines it.
+S&P 500 plus Nifty Next 50 on every date, which is how NSE defines it.
 
 An index cannot be chosen for a month before its timeline begins (Midcap and
 Smallcap from Apr 2016, Microcap from Sep 2021, Total Market from Oct 2021).
@@ -20,21 +20,13 @@ from typing import Any
 
 import pandas as pd
 
-from src.engine.membership import load_history_or_none, members_on  # noqa: F401  (members_on is read as iu.members_on by scripts/check_nifty500_against_wayback.py)
-from src.engine.systems import combined_history
+from src.engine.membership import load_history_or_none, members_on  # noqa: F401
 
-# key -> display name, in the order the picker lists them.
-INDICES: dict[str, str] = {
-    "nifty_50": "Nifty 50",
-    "nifty_100": "Nifty 100",
-    "nifty_500": "Nifty 500",
-    "nifty_midcap_150": "Nifty Midcap 150",
-    "nifty_smallcap_250": "Nifty Smallcap 250",
-    "nifty_microcap_250": "Nifty Microcap 250",
-    "nifty_total_market": "Nifty Total Market",
-}
-DEFAULT_INDEX = "nifty_500"
-NIFTY_100_PARTS = ("nifty_50", "nifty_next_50")
+# key -> display name. One point-in-time timeline is recorded here, the S&P
+# 1500's (data/membership_history.json, top level); per-index timelines can be
+# added under "indices" (docs/TODO.md B7).
+INDICES: dict[str, str] = {"sp1500": "S&P 1500"}
+DEFAULT_INDEX = "sp1500"
 
 
 def _stored(full: dict[str, Any], key: str) -> dict[str, Any] | None:
@@ -59,12 +51,8 @@ def index_history(key: str, full: dict[str, Any] | None = None) -> dict[str, Any
     full = full if full is not None else load_history_or_none()
     if not full:
         return None
-    if key == "nifty_100":
-        a, b = (_stored(full, k) for k in NIFTY_100_PARTS)
-        out = combined_history(a, b)
-        if out is None:
-            return None
-        return {**out, "index": key, "aliases": full.get("aliases") or {}}
+    if key == DEFAULT_INDEX and full.get("baseline"):
+        return {**full, "index": key, "aliases": full.get("aliases") or {}}
     return _stored(full, key)
 
 

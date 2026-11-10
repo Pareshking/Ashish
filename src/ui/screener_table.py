@@ -39,8 +39,8 @@ from src.ui import formats as _fmt
 
 # Readable names for the index tags the ranking stores.
 INDEX_NAMES = {
-    "N50": "Nifty 50", "NN50": "Next 50", "MID150": "Midcap 150",
-    "SMALL250": "Smallcap 250", "MICRO250": "Microcap 250",
+    "N50": "S&P 500", "NN50": "Next 50", "MID150": "S&P 400",
+    "SMALL250": "S&P 600", "MICRO250": "Microcap 250",
 }
 
 # (key, header, sort type). One registry; Executive, Core and Quant are column

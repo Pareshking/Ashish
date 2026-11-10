@@ -310,7 +310,7 @@ _MENU_GROUPS = (
 _QUICK_PAGES = ("Dashboard", "Actions", "Screener", "Portfolio")
 
 
-# The header says what it measures (owner, 8 Nov 2026): "Nifty 500 2.9% above its
+# The header says what it measures (owner, 8 Nov 2026): "S&P 1500 2.9% above its
 # 200D EMA". "Trend: up" sat above the Dashboard's "No clear trend" (four
 # measures) and read as a contradiction (audit U-H1); "Bullish" before it read
 # as a market call.
@@ -335,7 +335,7 @@ def render_header_kpi_bar(
     dist = regime.distance_pct
     # An unknown regime must read as unknown. With no usable benchmark the
     # loader returns UNKNOWN with distance 0.0 and price 0.0, and the header
-    # printed "Nifty 500 0.0% above its 200D EMA" beside a level of "0" --
+    # printed "S&P 1500 0.0% above its 200D EMA" beside a level of "0" --
     # a wrong number stated as fact, which is worse than an error page
     # (launch slot 5, 10 Nov 2026).
     unknown = regime.status == MarketRegime.UNKNOWN or not regime.current_price
@@ -349,10 +349,10 @@ def render_header_kpi_bar(
     market_html = f"""
     <div role="status" aria-label="Market status dashboard" class="mkt-snapshot">
         <div class="mkt-item mkt-regime-item">
-            <span class="{regime_cls} mkt-regime"><span class="mkt-dot" aria-hidden="true">●</span>Nifty 500 {html.escape(dist_text)}{"" if unknown else " its 200D EMA"}</span>
+            <span class="{regime_cls} mkt-regime"><span class="mkt-dot" aria-hidden="true">●</span>S&P 1500 {html.escape(dist_text)}{"" if unknown else " its 200D EMA"}</span>
         </div>
         <div class="mkt-item mkt-index">
-            <span class="mkt-label">Nifty 500</span>
+            <span class="mkt-label">S&P 1500</span>
             <strong>{level_text}</strong>
         </div>
         <div class="mkt-item">
@@ -488,7 +488,7 @@ def data_freshness() -> list[dict]:
     from datetime import date as _date
 
     from src.core import startup_metrics as _metrics
-    from src.core.market_time import ist_today, trading_days_behind
+    from src.core.market_time import ny_today, trading_days_behind
 
     facts = _metrics.snapshot().get("facts", {})
     items: list[dict] = []
@@ -542,7 +542,7 @@ def data_freshness() -> list[dict]:
             # apart: printing "21 Aug - today" on a Sunday reads as a bug in
             # the pipeline, and a freshness indicator that raises a false alarm
             # is failing at the one job it has.
-            "is_today": as_of == ist_today(),
+            "is_today": as_of == ny_today(),
             "stale": stale,
             "source": facts.get(presence_key) if presence_key else None,
         })
@@ -603,7 +603,7 @@ def data_freshness() -> list[dict]:
                 "as_of": _d.strftime("%-d %b"),
                 "date": _d,
                 "behind": 0,
-                "is_today": _d == ist_today(),
+                "is_today": _d == ny_today(),
                 # Not a fault and must not render as one. The vendor publishes
                 # an Indian session over roughly a day and a half; waiting for
                 # it is the correct behaviour, and an amber chip here would
@@ -669,7 +669,7 @@ def stale_prices_notice() -> str:
     if due is None:
         return f"Prices stop at {have} and are behind. A background price update has failed or is late."
     return (f"Prices stop at {have}; {due.strftime('%-d %b')}'s closes were due by "
-            f"{(due + timedelta(days=1)).strftime('%-d %b')}, 09:00 IST. "
+            f"{(due + timedelta(days=1)).strftime('%-d %b')}, 09:00 ET. "
             "The nightly price update has failed or is late, so rankings use the older prices.")
 
 

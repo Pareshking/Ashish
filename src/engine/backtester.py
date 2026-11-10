@@ -188,8 +188,8 @@ def _composite_z_score(
 
 # Share lines of one company: a book holds at most one, so the 5% per-stock
 # cap holds for the company (owner, 2026-10-02: "Tata Motors DVR: count it"
-# -- the DVR is an index member in its own right, Nifty 50 2016-04-01 to
-# 2017-05-26, Nifty 500 and Total Market until 2024-08-29). TMPV is today's
+# -- the DVR is an index member in its own right, S&P 500 2016-04-01 to
+# 2017-05-26, S&P 1500 and Total Market until 2024-08-29). TMPV is today's
 # ticker for Tata Motors' ordinary shares (TATAMOTORS until 2025-10-24).
 SAME_COMPANY: dict[str, str] = {
     "TATAMTRDVR": "TATAMOTORS",
@@ -1073,7 +1073,7 @@ def run_backtest(
     prices = _adj_close.dropna(axis=1, how="all").copy()
 
     # Benchmark and strategy must share exactly the same completed session.
-    # The benchmark is the canonical daily NIFTY 500 series; never let a newer
+    # The benchmark is the canonical daily S&P 1500 series; never let a newer
     # index close extend the benchmark beyond the strategy's available prices,
     # or let an older strategy frame be compared with a newer index close.
     benchmark_input = _benchmark_close
@@ -1970,7 +1970,7 @@ def run_backtest(
     # the old book earned on the fill day -- 30 Sep close to 1 Oct close, say --
     # sat in neither the frozen month before (which ends at its last close) nor
     # this one, for the strategy and the index alike, until the month froze:
-    # on 12 Oct 2026 the record's Nifty 500 read -7.6% against -8.5% measured
+    # on 12 Oct 2026 the record's S&P 1500 read -7.6% against -8.5% measured
     # from the first fill. The frozen month comes off the daily curve, where
     # that session belongs to the old book. Mark the live month the same way:
     # the old book from the previous month's last close to the fill, then the

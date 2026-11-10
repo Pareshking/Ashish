@@ -13,7 +13,7 @@ from src.ui.widget_state import mirror_key, remember
 from src.ui.system_param import keep_system_only, stock_href
 
 from src.core.config import SHORT_FORMS
-from src.core.market_time import ist_now
+from src.core.market_time import ny_now
 from src.ui.components import (
     compute_signals,
     gap_count,
@@ -291,7 +291,7 @@ def render_ranking_view(
     # The Indices column stores SHORT FORMS -- "N50", "NN50", "MID150",
     # "SMALL250", "MICRO250" -- because indices_loader writes
     # SHORT_FORMS.get(name, name). The option list used to add the long names
-    # ("NIFTY 50", "NIFTY MIDCAP 150", and a "NIFTY 500" the app does not even
+    # ("S&P 500", "NIFTY MIDCAP 150", and a "S&P 1500" the app does not even
     # load as a constituent index) on top of the tags, and the filter matched
     # by substring. On the real 750-symbol universe that gave 11 options of
     # which 6 returned an empty screener.
@@ -515,8 +515,8 @@ def render_ranking_view(
             ]
         elif s_val.startswith("[INDEX] "):
             # Exact tag membership, not a substring. "NN50" CONTAINS "N50", so
-            # substring matching returned all 100 Nifty 50 + Nifty Next 50
-            # names for a filter labelled Nifty 50.
+            # substring matching returned all 100 S&P 500 + Nifty Next 50
+            # names for a filter labelled S&P 500.
             target_tag = idx_label_to_tag.get(
                 s_val, s_val.replace("[INDEX] ", "").strip()
             ).upper()
@@ -587,7 +587,7 @@ def render_ranking_view(
     c_export.download_button(
         "Export CSV",
         _rankings_csv(_frame_key(export_df), export_df),
-        f"nse_momentum_rankings_{ist_now():%Y%m%d}.csv",
+        f"nse_momentum_rankings_{ny_now():%Y%m%d}.csv",
         "text/csv",
         key="dl_rank_csv",
         icon=":material/download:",
