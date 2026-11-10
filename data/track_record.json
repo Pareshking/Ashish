@@ -4,11 +4,11 @@
   "benchmark": "SPTM_TR",
   "months": {
     "2026-01": {
-      "strategy": 0.087243,
+      "strategy": 0.14043,
       "benchmark": 0.01415,
-      "alpha": 0.073093,
+      "alpha": 0.12628,
       "origin": "backfill",
-      "universe": "current",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -16,11 +16,11 @@
       "replayed": true
     },
     "2026-02": {
-      "strategy": 0.069867,
+      "strategy": 0.075427,
       "benchmark": -0.00465,
-      "alpha": 0.074518,
+      "alpha": 0.080078,
       "origin": "backfill",
-      "universe": "current",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -28,11 +28,11 @@
       "replayed": true
     },
     "2026-03": {
-      "strategy": -0.047438,
+      "strategy": -0.051938,
       "benchmark": -0.050005,
-      "alpha": 0.002567,
+      "alpha": -0.001933,
       "origin": "backfill",
-      "universe": "current",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -40,11 +40,11 @@
       "replayed": true
     },
     "2026-04": {
-      "strategy": 0.147689,
+      "strategy": 0.145893,
       "benchmark": 0.103591,
-      "alpha": 0.044098,
+      "alpha": 0.042302,
       "origin": "backfill",
-      "universe": "current",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -56,7 +56,7 @@
       "benchmark": 0.050201,
       "alpha": -0.025374,
       "origin": "backfill",
-      "universe": "current",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -64,11 +64,11 @@
       "replayed": true
     },
     "2026-06": {
-      "strategy": 0.118517,
+      "strategy": 0.10301,
       "benchmark": -0.006435,
-      "alpha": 0.124951,
+      "alpha": 0.109444,
       "origin": "backfill",
-      "universe": "current",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -76,11 +76,11 @@
       "replayed": true
     },
     "2026-07": {
-      "strategy": -0.173918,
+      "strategy": -0.1797,
       "benchmark": -0.000662,
-      "alpha": -0.173257,
+      "alpha": -0.179039,
       "origin": "backfill",
-      "universe": "current",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -88,11 +88,11 @@
       "replayed": true
     },
     "2026-08": {
-      "strategy": -0.022959,
+      "strategy": -0.010314,
       "benchmark": 0.024138,
-      "alpha": -0.047096,
+      "alpha": -0.034452,
       "origin": "backfill",
-      "universe": "current",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -100,11 +100,11 @@
       "replayed": true
     },
     "2026-09": {
-      "strategy": -0.017981,
+      "strategy": -0.018036,
       "benchmark": -0.006674,
-      "alpha": -0.011307,
+      "alpha": -0.011361,
       "origin": "backfill",
-      "universe": "current",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -115,8 +115,8 @@
       "strategy": -0.019287,
       "benchmark": -0.005866,
       "alpha": -0.013421,
-      "origin": "recorded",
-      "universe": "current",
+      "origin": "backfill",
+      "universe": "point_in_time",
       "finalized_on": "2026-11-10",
       "config": "632835551a4e",
       "data_as_of": "2026-11-09",
@@ -124,5 +124,63 @@
       "replayed": true
     }
   },
-  "price_basis": "yahoo_split_adjusted_dividends_from_actions"
+  "price_basis": "yahoo_split_adjusted_dividends_from_actions",
+  "rebuilds": [
+    {
+      "on": "2026-11-10",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ],
+      "note": "Owner, 10 Nov 2026: survivorship-free universe. Re-struck on point-in-time S&P 1500 month-end lists from Wikipedia revisions (scripts/build_membership_history.py) instead of today's list.",
+      "previous_values": {
+        "2026-01": 0.087243,
+        "2026-02": 0.069867,
+        "2026-03": -0.047438,
+        "2026-04": 0.147689,
+        "2026-05": 0.024827,
+        "2026-06": 0.118517,
+        "2026-07": -0.173918,
+        "2026-08": -0.022959,
+        "2026-09": -0.017981,
+        "2026-10": -0.019287
+      }
+    },
+    {
+      "on": "2026-11-10",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ],
+      "note": "One company per slot for US share classes (GOOG/GOOGL held together before); point-in-time membership.",
+      "previous_values": {
+        "2026-01": 0.135783,
+        "2026-02": 0.067218,
+        "2026-03": -0.053578,
+        "2026-04": 0.145893,
+        "2026-05": 0.024827,
+        "2026-06": 0.10301,
+        "2026-07": -0.1797,
+        "2026-08": -0.010314,
+        "2026-09": -0.018036,
+        "2026-10": -0.019287
+      }
+    }
+  ]
 }

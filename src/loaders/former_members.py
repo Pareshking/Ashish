@@ -24,8 +24,26 @@ UNIVERSE_FILE = REPO_DATA / "universe.csv"
 SECTOR_HISTORY_FILE = REPO_DATA / "sector_history.csv"
 
 
+MONTHLY_FILE = REPO_DATA / "membership_monthly.csv"
+
+
 def _sectors() -> dict[str, str]:
+    """GICS sector per symbol: the point-in-time month-end lists (the sector a
+    member last carried while listed), then the sector history, then today's list."""
     out: dict[str, str] = {}
+    if MONTHLY_FILE.exists():
+        m = pd.read_csv(MONTHLY_FILE, dtype=str, keep_default_na=False).sort_values("Date")
+        m = m[m["Sector"].str.strip() != ""]
+        aliases = {}
+        try:
+            import json
+            aliases = json.loads((REPO_DATA / "membership_history.json").read_text()).get("aliases") or {}
+        except (OSError, ValueError):
+            pass
+        for sym, sec in zip(m["Yahoo"], m["Sector"]):
+            out[sym] = sec
+            if sym in aliases:
+                out.setdefault(aliases[sym]["new_symbol"], sec)
     if SECTOR_HISTORY_FILE.exists():
         h = pd.read_csv(SECTOR_HISTORY_FILE, dtype=str, keep_default_na=False)
         out.update(dict(zip(h["Symbol"], h["Sector"])))

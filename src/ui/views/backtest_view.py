@@ -396,7 +396,8 @@ def _backtest_tab(
         history_start = history["start"].start_time
         liquidity_floor_cr, traded_value = history["floor"], history["traded_value"]
         price_basis = ("Yahoo Finance closes, adjusted for splits and recorded spin-offs, dividends "
-                       "reinvested; today's S&P 1500 list before 10 Nov 2026")
+                       "reinvested; members as listed at each month-end since Dec 2019, about 11% of "
+                       "member-months without prices (mostly delisted)")
         kit.caption(
             f"{history['name']}, point in time · Prices: {price_basis} · file built "
             f"{_day(history.get('built'))}, last session {_day(history.get('last_session'))}."

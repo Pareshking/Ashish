@@ -187,15 +187,34 @@ def _composite_z_score(
 
 
 # Share lines of one company: a book holds at most one, so the 5% per-stock
-# cap holds for the company (owner, 2026-10-02: "Tata Motors DVR: count it"
-# -- the DVR is an index member in its own right, S&P 500 2016-04-01 to
-# 2017-05-26, S&P 1500 and Total Market until 2024-08-29). TMPV is today's
-# ticker for Tata Motors' ordinary shares (TATAMOTORS until 2025-10-24).
-SAME_COMPANY: dict[str, str] = {
-    "TATAMTRDVR": "TATAMOTORS",
-    "TATAMOTORS": "TATAMOTORS",
-    "TMPV": "TATAMOTORS",
-}
+# cap holds for the company (Paresh's rule, owner 2026-10-02, for Tata Motors
+# and its DVR; here the US share classes, found 10 Nov 2026 when a replay held
+# both GOOG and GOOGL).
+def _same_company() -> dict[str, str]:
+    """Share lines of one company (US share classes: GOOG/GOOGL, FOX/FOXA,
+    NWS/NWSA, UA/UAA, CWEN/CWEN-A, CENT/CENTA on 10 Nov 2026), from
+    data/universe.csv: the same company name once "(Class A)" and the like are
+    taken off. The SEC CIK is not trusted alone: Wikipedia gave Indivior and
+    Supernus the same one. Each line maps to one company key."""
+    import re
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[2] / "data" / "universe.csv"
+    try:
+        u = pd.read_csv(path, dtype=str, keep_default_na=False)
+    except (OSError, ValueError):
+        return {}
+    key = u["Company"].str.lower().map(
+        lambda n: re.sub(r"\s*\((class|series)\s+[a-z0-9]+\)|\s+class\s+[a-z0-9]+$", "", n).strip(" .,"))
+    groups = u.groupby(key)["Yahoo"].apply(list)
+    out: dict[str, str] = {}
+    for lines in groups[groups.map(len) > 1]:
+        company = sorted(lines)[0]
+        out.update({s: company for s in lines})
+    return out
+
+
+SAME_COMPANY: dict[str, str] = _same_company()
 
 
 def _select_holdings(
@@ -220,7 +239,7 @@ def _select_holdings(
     and re-bought for a rank wobble. Only once it falls past the buffer, or
     fails a filter and drops out of `full_ranked` entirely, does it go.
 
-    Two share lines of one company (SAME_COMPANY: Tata Motors and its DVR)
+    Two share lines of one company (SAME_COMPANY: US share classes such as GOOG/GOOGL)
     take one slot: a line already held keeps it (the buffer rule, no churn),
     otherwise the better-ranked line takes it and the other is skipped.
 
