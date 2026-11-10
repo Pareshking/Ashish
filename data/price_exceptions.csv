@@ -1,0 +1,7 @@
+Symbol,Date,Check,Reason,Evidence,Checked
+ACA,2026-10-22,last,"Still on Wikipedia's S&P 600 list but no longer trading","Yahoo's last row 2026-10-22; Nasdaq.com quote API answers 'Symbol not exists' (10 Nov 2026). Not ranked (price_source LAST_LAG). Cause (acquisition or delisting) not confirmed",2026-11-10
+BLFS,2026-10-05,last,"Still on Wikipedia's S&P 600 list but no longer trading","Yahoo's last row 2026-10-05; Nasdaq.com: 'Symbol not exists' (10 Nov 2026). Cause not confirmed",2026-11-10
+HLX,2026-09-01,last,"Still on Wikipedia's S&P 600 list but no longer trading","Yahoo's last row 2026-09-01; Nasdaq.com: 'Symbol not exists' (10 Nov 2026). Cause not confirmed",2026-11-10
+LEG,2026-08-26,last,"Still on Wikipedia's S&P 600 list but no longer trading","Yahoo's last row 2026-08-26; Nasdaq.com: 'Symbol not exists' (10 Nov 2026). Cause not confirmed",2026-11-10
+QRVO,2026-10-02,last,"Still on Wikipedia's S&P 600 list but no longer trading","Yahoo's last row 2026-10-02; Nasdaq.com: 'Symbol not exists' (10 Nov 2026). Cause not confirmed (a Skyworks merger is the likely one)",2026-11-10
+RAMP,2026-10-30,last,"Still on Wikipedia's S&P 600 list but no longer trading","Yahoo's last row 2026-10-30; Nasdaq.com: 'Symbol not exists' (10 Nov 2026). Cause not confirmed",2026-11-10
