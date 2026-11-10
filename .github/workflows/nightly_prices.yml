@@ -64,6 +64,21 @@ jobs:
           done
           echo "::error::Could not push the nightly data after 5 attempts."
           exit 1
+      # The ranking the app would compute, stamped with its contract and
+      # published as a release asset (not git history). The app uses it only
+      # when every input matches; otherwise it computes, as it would without it.
+      - name: Precompute the ranking
+        id: precompute
+        continue-on-error: true
+        run: python scripts/precompute_ranking.py
+      - name: Publish the ranking to the data-latest release
+        if: steps.precompute.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view data-latest >/dev/null 2>&1 || \
+            gh release create data-latest --title "Nightly data" --notes "Published by the nightly job: rankings.parquet." --latest=false
+          gh release upload data-latest data_cache/rankings.parquet --clobber
       - name: Upload audit report
         if: always()
         uses: actions/upload-artifact@v4
@@ -73,8 +88,8 @@ jobs:
           if-no-files-found: ignore
       # Last, after the data is committed: an audit finding fails the run so the
       # failure alert opens an issue.
-      - name: Fail on audit findings
-        if: steps.audit.outcome == 'failure'
+      - name: Fail on audit findings or a failed precompute
+        if: steps.audit.outcome == 'failure' || steps.precompute.outcome == 'failure'
         run: |
-          echo "::error::The price audit found unexplained findings; see the price-audit artifact."
+          echo "::error::audit=${{ steps.audit.outcome }} precompute=${{ steps.precompute.outcome }}; see the artifacts and the log."
           exit 1
