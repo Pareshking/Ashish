@@ -223,7 +223,7 @@ def _settings_form(weights: tuple[float, ...], liquidity_floor_cr: float,
                     format_func=lambda m: m.strftime("%b %Y"), key="bt_hist_months",
                     help="An index whose point-in-time list begins later starts there.")
                 choice["floor"] = st.number_input(
-                    "Minimum traded value (₹ Cr, 20-day average; 0 = off)", min_value=0.0,
+                    "Minimum traded value ($M, 20-day average; 0 = off)", min_value=0.0,
                     max_value=500.0, value=float(liquidity_floor_cr or 0.0), step=1.0,
                     key="bt_hist_floor")
 
@@ -419,7 +419,7 @@ def _backtest_tab(
     ph = f"{price_fingerprint(adj_close)}_{actions_digest(_events)}"
     if liquidity_floor_cr:
         kit.caption(f"Liquidity floor on: a stock is bought only while its 20-day average "
-                    f"traded value is ₹{liquidity_floor_cr:g} Cr or more"
+                    f"traded value is ${liquidity_floor_cr:g}M or more"
                     + ("." if history else " (Configuration)."))
         if traded_value is not None:
             ph += f"_{price_fingerprint(traded_value)}"
@@ -652,7 +652,7 @@ def _backtest_tab(
 
     eq = bt_res["equity_curve"]
     bm = bt_res["benchmark"].reindex(eq.index).ffill() if bt_res.get("benchmark") is not None else None
-    with kit.card("Growth of ₹100", "bt_growth", "daily"):
+    with kit.card("Growth of $100", "bt_growth", "daily"):
         kit.growth_chart(eq.index, eq.tolist(),
                          None if bm is None else bm.tolist(), names=("Strategy", bench_name), key="bt")
 

@@ -197,7 +197,7 @@ def build_portfolio_tracker(
         prior = curve.loc[curve.index < pd.Timestamp(fill_date)]
         return float(prior.iloc[-1]) if not prior.empty else float(capital)
 
-    out["Capital at Entry (₹)"] = entry.map(_capital_before_fill).astype(float)
+    out["Capital at Entry ($)"] = entry.map(_capital_before_fill).astype(float)
     # At every rebalance the model sets each holding to the weight it struck (back to the
     # target until the 30 Nov 2026 signal; from then a kept name keeps its drifted weight up
     # to 15%), so the shares held today are those the latest fill left: account value before
@@ -214,7 +214,7 @@ def build_portfolio_tracker(
         size_px = fill_px.where(fill_px.notna(), out["Entry Price"])
         # The curve holds month-ends, so `base` is the account before the last
         # close of the old book and before the fill's trading costs. Sized on
-        # it, the book held more than the ledger's account (at ₹1 crore, cash
+        # it, the book held more than the ledger's account (at $1M, cash
         # read -₹34,041; at ₹20 lakh, rounding down to whole shares hid it).
         # The account at the fill is today's ledger value over the book's
         # growth since the fill at its target weights.
@@ -232,7 +232,7 @@ def build_portfolio_tracker(
         ).fillna(0.0).apply(np.floor).astype(int)
     else:
         out["Shares"] = (
-            (out["Capital at Entry (₹)"] * out["Entry Weight %"] / 100.0)
+            (out["Capital at Entry ($)"] * out["Entry Weight %"] / 100.0)
             / out["Entry Price"].replace(0, np.nan)
         ).fillna(0.0).apply(np.floor).astype(int)
     # Today's shares were set at the latest fill, so their honest base is the value
@@ -240,26 +240,26 @@ def build_portfolio_tracker(
     # winner look small, CUPID Rs 2.56 lakh while it held Rs 6.85 lakh). Without a
     # fill price the shares were sized at entry and the two bases agree.
     basis_px = (size_px if fill_px.notna().any() else out["Entry Price"])
-    out["Value at Rebalance (₹)"] = (out["Shares"] * basis_px).round(0)
-    out["Invested Value (₹)"] = (out["Shares"] * out["Entry Price"]).round(0)
-    out["Current Value (₹)"] = (out["Shares"] * out["Current Price"]).round(0)
-    out["P&L (₹)"] = (out["Current Value (₹)"] - out["Invested Value (₹)"]).round(0)
-    out["P&L since Rebalance (₹)"] = (out["Current Value (₹)"] - out["Value at Rebalance (₹)"]).round(0)
+    out["Value at Rebalance ($)"] = (out["Shares"] * basis_px).round(0)
+    out["Invested Value ($)"] = (out["Shares"] * out["Entry Price"]).round(0)
+    out["Current Value ($)"] = (out["Shares"] * out["Current Price"]).round(0)
+    out["P&L ($)"] = (out["Current Value ($)"] - out["Invested Value ($)"]).round(0)
+    out["P&L since Rebalance ($)"] = (out["Current Value ($)"] - out["Value at Rebalance ($)"]).round(0)
     out["P&L %"] = np.where(
-        out["Invested Value (₹)"] > 0,
-        out["P&L (₹)"] / out["Invested Value (₹)"] * 100.0,
+        out["Invested Value ($)"] > 0,
+        out["P&L ($)"] / out["Invested Value ($)"] * 100.0,
         np.nan,
     )
 
-    total_invested = float(out["Invested Value (₹)"].sum())
-    total_current = float(out["Current Value (₹)"].sum())
+    total_invested = float(out["Invested Value ($)"].sum())
+    total_current = float(out["Current Value ($)"].sum())
     total_value = (
         float(curve.iloc[-1])
         if not curve.empty and float(curve.iloc[-1]) > 0
         else total_current + max(float(capital) - total_invested, 0.0)
     )
     out["Weight %"] = np.where(
-        total_value > 0, out["Current Value (₹)"] / total_value * 100.0, 0.0
+        total_value > 0, out["Current Value ($)"] / total_value * 100.0, 0.0
     )
     out["Weight Drift %"] = out["Weight %"] - out["Target Weight %"]
 
@@ -272,7 +272,7 @@ def build_portfolio_tracker(
         p = prices.reindex(columns=out["Symbol"].tolist()).ffill()
         prev = pd.to_numeric(p.iloc[-2], errors="coerce")
         curr = pd.to_numeric(p.iloc[-1], errors="coerce")
-        out["Day P&L (₹)"] = out.apply(
+        out["Day P&L ($)"] = out.apply(
             lambda r: float(r["Shares"]) * (
                 float(curr.get(r["Symbol"], np.nan))
                 - float(prev.get(r["Symbol"], np.nan))
@@ -282,19 +282,19 @@ def build_portfolio_tracker(
             else np.nan,
             axis=1,
         )
-        out["Previous Value (₹)"] = out.apply(
+        out["Previous Value ($)"] = out.apply(
             lambda r: float(r["Shares"]) * float(prev.get(r["Symbol"], np.nan))
             if pd.notna(prev.get(r["Symbol"], np.nan)) else np.nan,
             axis=1,
         )
         out["Day P&L %"] = np.where(
-            out["Previous Value (₹)"] > 0,
-            out["Day P&L (₹)"] / out["Previous Value (₹)"] * 100.0,
+            out["Previous Value ($)"] > 0,
+            out["Day P&L ($)"] / out["Previous Value ($)"] * 100.0,
             np.nan,
         )
     else:
-        out["Day P&L (₹)"] = np.nan
-        out["Previous Value (₹)"] = np.nan
+        out["Day P&L ($)"] = np.nan
+        out["Previous Value ($)"] = np.nan
         out["Day P&L %"] = np.nan
 
     out["Status"] = "Held"
@@ -511,7 +511,7 @@ def _daily_with_live(history: dict, table: pd.DataFrame, prices: pd.DataFrame | 
 
 
 def render_portfolio_view(calc, rank_df: pd.DataFrame) -> None:
-    """Render the canonical ₹1 crore model portfolio as a portfolio dashboard.
+    """Render the canonical $1M model portfolio as a portfolio dashboard.
 
     It takes no Configuration limits: the book is the track record's, run on
     its pinned settings (TRACK_RECORD_CONFIG), whatever the sliders say.
@@ -561,8 +561,8 @@ def render_portfolio_view(calc, rank_df: pd.DataFrame) -> None:
         kit.empty("The model book could not be sized.")
         return
 
-    invested = float(table["Value at Rebalance (₹)"].sum())
-    current = float(table["Current Value (₹)"].sum())
+    invested = float(table["Value at Rebalance ($)"].sum())
+    current = float(table["Current Value ($)"].sum())
     # Total account value is sourced from the same compounded ledger/replay
     # series as Track Record. Cash is the residual after marking current
     # positions, so realized P&L from sold positions is not lost.
@@ -570,8 +570,8 @@ def render_portfolio_view(calc, rank_df: pd.DataFrame) -> None:
     cash = value - current
     pnl = current - invested
     pnl_pct = pnl / invested * 100.0 if invested else np.nan
-    day_pnl = float(table["Day P&L (₹)"].sum(skipna=True))
-    previous_value = float(table["Previous Value (₹)"].sum(skipna=True))
+    day_pnl = float(table["Day P&L ($)"].sum(skipna=True))
+    previous_value = float(table["Previous Value ($)"].sum(skipna=True))
     day_pnl_pct = day_pnl / previous_value * 100.0 if previous_value > 0 else np.nan
     benchmark_day_pct, benchmark_mtd_daily, benchmark_total_daily = _benchmark_returns_from_daily(
         benchmark_close, _common_as_of, inception(system)
@@ -637,9 +637,9 @@ def render_portfolio_view(calc, rank_df: pd.DataFrame) -> None:
     ], "Portfolio snapshot")
     # One canonical table; the columns users scan first come first.
     display_cols = [
-        "Symbol", "Current Price", "P&L %", "P&L since Rebalance (₹)", "Weight %", "Target Weight %",
-        "Weight Drift %", "Day P&L (₹)", "Day P&L %", "Current Value (₹)", "Shares",
-        "Entry Date", "Entry Price", "Value at Rebalance (₹)", "Holding Days",
+        "Symbol", "Current Price", "P&L %", "P&L since Rebalance ($)", "Weight %", "Target Weight %",
+        "Weight Drift %", "Day P&L ($)", "Day P&L %", "Current Value ($)", "Shares",
+        "Entry Date", "Entry Price", "Value at Rebalance ($)", "Holding Days",
         "Rank at Rebalance", "Rank at Entry", "Current Rank", "1M Return",
         "Sector / Industry",
     ]

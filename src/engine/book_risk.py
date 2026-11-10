@@ -36,7 +36,7 @@ WINDOW = 126
 MIN_SESSIONS = 60
 PARTICIPATION = 0.10
 VALUE_WINDOW = 20
-CRORE = 1e7
+CRORE = 1e6  # $ millions (Paresh: ₹ crore)
 INDEX_DIR = Path(__file__).resolve().parents[2] / "data" / "indices"
 TIERS = (("Nifty 100", ("ind_nifty50list.csv", "ind_niftynext50list.csv")),
          ("S&P 400", ("ind_niftymidcap150list.csv",)),

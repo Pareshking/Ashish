@@ -18,7 +18,7 @@ Series types: line, area, histogram, baseline (fills above/below zero), candlest
 A histogram with "volume": True sits on its own hidden scale in the bottom fifth of
 the pane; an optional "colors" list colours each bar.
 fmt: pct (value is already in percent, signed), share (percent, unsigned, whole),
-share1 (percent, unsigned, one decimal), price (₹, two decimals: a share price),
+share1 (percent, unsigned, one decimal), price ($, two decimals: a share price),
 num, int, rupee. A series may set "range": [lo, hi] to pin the value axis.
 A series may set "abs": True to show magnitudes in the legend (new lows are
 drawn below zero but read as positive counts).
@@ -195,9 +195,9 @@ const root=document.getElementById('root');
 const fmts={
   pct:v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1)+'%',
   num:v=>(v<0?'−':'')+Math.abs(v).toFixed(2),
-  int:v=>(Math.round(v)<0?'−':'')+Math.abs(Math.round(v)).toLocaleString('en-IN'),
-  rupee:v=>(Math.round(v)<0?'−':'')+'₹'+Math.abs(Math.round(v)).toLocaleString('en-IN'),
-  price:v=>(v<0?'−':'')+'₹'+Math.abs(v).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}),
+  int:v=>(Math.round(v)<0?'−':'')+Math.abs(Math.round(v)).toLocaleString('en-US'),
+  rupee:v=>(Math.round(v)<0?'−':'')+'$'+Math.abs(Math.round(v)).toLocaleString('en-US'),
+  price:v=>(v<0?'−':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),
   share:v=>v.toFixed(0)+'%',
   share1:v=>v.toFixed(1)+'%',
 };

@@ -383,7 +383,7 @@ def _section_portfolio_risk() -> None:
     )
     remember("cfg_lf", bool(new_lf))
     new_lfv = st.number_input(
-        "Floor (₹ Cr a day)", min_value=1, max_value=500, step=1,
+        "Floor ($M a day)", min_value=1, max_value=500, step=1,
         value=int(_risk("cfg_lfv")), key="cfg_lfv", disabled=not new_lf, width=220,
     )
     remember("cfg_lfv", int(new_lfv))
@@ -508,7 +508,7 @@ def render_config_view(rank_df: pd.DataFrame) -> None:
         ("Universe", (" + ".join(i.title() for i in indices) or "—") + system_note),
         ("Score weights", "Default" if is_default else "Yours"),
         ("Backtest max per stock · per sector", f"{_risk('cfg_stc')}% · {_risk('cfg_sc')}%"),
-        ("Backtest liquidity floor", f"₹{_risk('cfg_lfv')} Cr" if _risk("cfg_lf") else "Off"),
+        ("Backtest liquidity floor", f"${_risk('cfg_lfv')}M" if _risk("cfg_lf") else "Off"),
     ], lead="In effect")
 
     st.html(

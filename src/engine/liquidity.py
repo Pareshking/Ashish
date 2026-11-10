@@ -1,6 +1,6 @@
-"""The liquidity floor: a stock's 20-day average traded value, in ₹ crore.
+"""The liquidity floor: a stock's 20-day average traded value, in $ millions.
 
-Owner, 2026-09-27: an option in Configuration, off by default, set in ₹ Cr of
+Owner, 2026-09-27: an option in Configuration, off by default, set in $M of
 20-day average traded value, for every system. When on, the Portfolio book
 and the Backtest pass over a stock whose average falls below it -- at each
 rebalance, on the value known that day. The track record's pinned
@@ -18,12 +18,14 @@ import pandas as pd
 WINDOW = 20
 MIN_SESSIONS = 15
 DEFAULT_FLOOR_CR = 5
-CRORE = 1e7
+# US: traded value in $ millions. Paresh's names (CRORE, *_cr) are kept for
+# the ported callers; the unit they carry here is one million dollars.
+CRORE = 1e6
 
 
 def traded_value_cr(close: pd.DataFrame | None, volume: pd.DataFrame | None,
                     window: int = WINDOW) -> pd.DataFrame | None:
-    """Each stock's trailing average of close x volume, in ₹ crore."""
+    """Each stock's trailing average of close x volume, in $ millions."""
     if close is None or volume is None or close.empty or volume.empty:
         return None
     cols = [c for c in close.columns if c in set(volume.columns)]

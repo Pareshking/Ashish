@@ -174,7 +174,7 @@ def parse_holdings(text: str) -> list[tuple[str, float | None]]:
     out: list[tuple[str, float | None]] = []
     seen = set()
     for part in re.split(r"[,;\n]+", str(text or "")):
-        m = re.match(r"\s*([A-Za-z0-9&._-]{1,20})\s*(?:[@:\s]\s*₹?\s*([0-9]+(?:\.[0-9]+)?))?\s*$", part)
+        m = re.match(r"\s*([A-Za-z0-9&._-]{1,20})\s*(?:[@:\s]\s*[$₹]?\s*([0-9]+(?:\.[0-9]+)?))?\s*$", part)
         if not m:
             continue
         sym = m.group(1).upper()

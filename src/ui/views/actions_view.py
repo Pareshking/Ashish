@@ -54,7 +54,7 @@ BUFFER_HELP = "Counts only stocks that pass both filters, the same count the str
 
 
 def kite_capital() -> int:
-    """The capital the Kite basket is sized on: the reader's, else Portfolio's ₹1 crore."""
+    """The capital the Kite basket is sized on: the reader's, else Portfolio's $1M."""
     return resolve(KITE_CAPITAL_KEY, int(MODEL_BOOK_CAPITAL), lo=KITE_MIN_CAPITAL, hi=KITE_MAX_CAPITAL)
 
 
@@ -338,7 +338,7 @@ def render_actions_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
         # reader sets it here, starting at Portfolio's (owner, 12 Oct 2026).
         with head, st.popover("Kite basket", icon=":material/download:", type="primary"):
             capital = float(st.number_input(
-                "Capital (₹)", min_value=KITE_MIN_CAPITAL, max_value=KITE_MAX_CAPITAL,
+                "Capital ($)", min_value=KITE_MIN_CAPITAL, max_value=KITE_MAX_CAPITAL,
                 step=100_000, value=kite_capital(), key=KITE_CAPITAL_KEY,
                 help=f"{_fmt.inr(MODEL_BOOK_CAPITAL)} is the model book on Portfolio. "
                      "For your own holdings, enter your account's size.",

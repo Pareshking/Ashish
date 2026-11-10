@@ -42,8 +42,8 @@ FORMAT_MAP: dict[str, str] = {
     "Chand Exit": "{:,.0f}",
     "52W High": "{:,.0f}",
     "52W Low": "{:,.0f}",
-    "Target Value (₹)": "{:,.0f}",
-    "Actual Value (₹)": "{:,.0f}",
+    "Target Value ($)": "{:,.0f}",
+    "Actual Value ($)": "{:,.0f}",
     "Capital Sized": "{:,.0f}",
     "Allocated Capital": "{:,.0f}",
     "Market Cap (Cr)": "{:,.0f}",
@@ -2241,8 +2241,8 @@ def render_saas_table(
             val = row[col]
             c_str = str(col).upper()
             portfolio_sign_class = ""
-            if variant == "portfolio" and c_str in {"P&L (₹)", "P&L %", "DAY P&L (₹)", "DAY P&L %",
-                                                    "P&L SINCE REBALANCE (₹)", "RETURN SINCE ENTRY %"}:
+            if variant == "portfolio" and c_str in {"P&L ($)", "P&L %", "DAY P&L ($)", "DAY P&L %",
+                                                    "P&L SINCE REBALANCE ($)", "RETURN SINCE ENTRY %"}:
                 portfolio_sign_class = "portfolio-pos" if val > 0 else ("portfolio-neg" if val < 0 else "portfolio-flat")
 
             if pd.isna(val) or val is None or str(val).strip() in ("", "nan", "None"):
@@ -2708,8 +2708,8 @@ document.addEventListener('DOMContentLoaded', function() {{
                     }}
                 }}
 
-                let cleanA = txtA.replace(/[₹,×%+#]/g, '').trim();
-                let cleanB = txtB.replace(/[₹,×%+#]/g, '').trim();
+                let cleanA = txtA.replace(/[$₹,×%+#]/g, '').trim();
+                let cleanB = txtB.replace(/[$₹,×%+#]/g, '').trim();
                 let valA = parseFloat(cleanA);
                 let valB = parseFloat(cleanB);
 
