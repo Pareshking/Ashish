@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "inception": "2026-01",
+  "benchmark": "SPTM_TR",
+  "months": {
+    "2026-01": {
+      "strategy": 0.157497,
+      "benchmark": 0.012881,
+      "alpha": 0.144616,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-02": {
+      "strategy": 0.066462,
+      "benchmark": -0.008642,
+      "alpha": 0.075104,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-03": {
+      "strategy": -0.054129,
+      "benchmark": -0.04938,
+      "alpha": -0.004749,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-04": {
+      "strategy": 0.137754,
+      "benchmark": 0.105053,
+      "alpha": 0.032701,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-05": {
+      "strategy": 0.039154,
+      "benchmark": 0.052626,
+      "alpha": -0.013471,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-06": {
+      "strategy": 0.031549,
+      "benchmark": -0.010293,
+      "alpha": 0.041842,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-07": {
+      "strategy": -0.099054,
+      "benchmark": 0.000348,
+      "alpha": -0.099403,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-08": {
+      "strategy": 0.020334,
+      "benchmark": 0.026799,
+      "alpha": -0.006466,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-09": {
+      "strategy": 0.02131,
+      "benchmark": -0.003293,
+      "alpha": 0.024603,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    },
+    "2026-10": {
+      "strategy": -0.021849,
+      "benchmark": -0.009061,
+      "alpha": -0.012788,
+      "origin": "backfill",
+      "universe": "point_in_time",
+      "finalized_on": "2026-11-10",
+      "config": "946ea8e650e9",
+      "data_as_of": "2026-11-09",
+      "struck_on": "2026-11-10",
+      "replayed": true
+    }
+  },
+  "price_basis": "yahoo_split_adjusted_dividends_from_actions",
+  "rebuilds": [
+    {
+      "on": "2026-11-10",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ],
+      "note": "Owner, 10 Nov 2026: survivorship-free universe. Re-struck on point-in-time S&P 1500 month-end lists from Wikipedia revisions (scripts/build_membership_history.py) instead of today's list.",
+      "previous_values": {
+        "2026-01": 0.087243,
+        "2026-02": 0.069867,
+        "2026-03": -0.047438,
+        "2026-04": 0.147689,
+        "2026-05": 0.024827,
+        "2026-06": 0.118517,
+        "2026-07": -0.173918,
+        "2026-08": -0.022959,
+        "2026-09": -0.017981,
+        "2026-10": -0.019287
+      }
+    },
+    {
+      "on": "2026-11-10",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ],
+      "note": "One company per slot for US share classes (GOOG/GOOGL held together before); point-in-time membership.",
+      "previous_values": {
+        "2026-01": 0.135783,
+        "2026-02": 0.067218,
+        "2026-03": -0.053578,
+        "2026-04": 0.145893,
+        "2026-05": 0.024827,
+        "2026-06": 0.10301,
+        "2026-07": -0.1797,
+        "2026-08": -0.010314,
+        "2026-09": -0.018036,
+        "2026-10": -0.019287
+      }
+    },
+    {
+      "on": "2026-11-10",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ],
+      "note": "Owner, 10 Nov 2026: S&P 500 becomes the main book. Re-struck on point-in-time S&P 500 month-end lists against the S&P 500 with dividends (SPY).",
+      "previous_values": {
+        "2026-01": 0.14043,
+        "2026-02": 0.075427,
+        "2026-03": -0.051938,
+        "2026-04": 0.145893,
+        "2026-05": 0.024827,
+        "2026-06": 0.10301,
+        "2026-07": -0.1797,
+        "2026-08": -0.010314,
+        "2026-09": -0.018036,
+        "2026-10": -0.019287
+      }
+    },
+    {
+      "on": "2026-11-10",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ],
+      "note": "Owner, 10 Nov 2026: S&P 500 becomes the main book. Re-struck on point-in-time S&P 500 lists, former members' prices included, against the S&P 500 with dividends (SPY).",
+      "previous_values": {
+        "2026-01": 0.179828,
+        "2026-02": 0.069605,
+        "2026-03": -0.058463,
+        "2026-04": 0.155239,
+        "2026-05": 0.040887,
+        "2026-06": 0.028001,
+        "2026-07": -0.098871,
+        "2026-08": 0.020334,
+        "2026-09": 0.02131,
+        "2026-10": -0.021849
+      }
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+"""A number in a table has a unit, and the renderer has to know which one.
+
+`render_saas_table` inferred it from magnitude: a value at or below 1.0 was
+treated as a fraction, anything larger as an already-scaled percentage. The
+inference is wrong in both directions and fails on the rows a momentum desk
+cares about most -- a stock that gained 131% (Return % == 1.31) printed as
+"+1.3%", and an 0.8% drawdown (Max DD 3M == -0.8) printed as "-80.0%".
+"""
+import types
+
+import pandas as pd
+import pytest
+
+from src.ui import theme
+from src.ui.theme import percent_unit, render_saas_table
+
+
+def _render(df: pd.DataFrame, monkeypatch) -> str:
+    captured: dict[str, str] = {}
+    monkeypatch.setattr(
+        theme,
+        "st",
+        types.SimpleNamespace(
+            iframe=lambda html, height=None: captured.setdefault("html", html),
+            info=lambda *a, **k: None,
+        ),
+    )
+    render_saas_table(df)
+    return captured["html"]
+
+
+@pytest.mark.parametrize("column", [
+    "Return %", "Strategy Net", "Benchmark", "Alpha vs Benchmark",
+    "Total Return", "CAGR", "Win Rate", "Max Drawdown",
+    "1M Return", "3M Return", "6M Return", "9M Return", "12M Return",
+])
+def test_fraction_columns_are_declared(column):
+    assert percent_unit(column) == "fraction"
+
+
+@pytest.mark.parametrize("column", [
+    "Turnover %", "Cost Drag %", "Weight %", "Day P&L %", "% High", "% ATH", "% 50 EMA",
+    "% 20 EMA", "% 52W High", "ATR %", "FFill %", "Del %",
+    "Max DD 1M", "Max DD 3M", "Max DD 12M",
+])
+def test_scaled_columns_are_declared(column):
+    assert percent_unit(column) == "scaled"
+
+
+def test_non_percentage_columns_remain_undeclared():
+    assert percent_unit("Sharpe") is None
+    assert percent_unit("Symbol") is None
+
+
+def test_undeclared_percentage_units_fail_loudly(monkeypatch):
+    with pytest.raises(ValueError, match="Undeclared percentage unit"):
+        _render(pd.DataFrame({"Symbol": ["X"], "New Return %": [0.5]}), monkeypatch)
+
+
+def test_day_pnl_percent_is_scaled(monkeypatch):
+    html = _render(
+        pd.DataFrame({"Symbol": ["SIGMAADV"], "Day P&L %": [-0.9]}),
+        monkeypatch,
+    )
+    assert "−0.9%" in html
+    assert "-90.0%" not in html
+
+
+def test_a_multibagger_is_not_printed_as_a_rounding_error(monkeypatch):
+    """+131.4% must not render as "+1.3%"."""
+    html = _render(pd.DataFrame({"Symbol": ["AAPL"], "Return %": [1.3142]}), monkeypatch)
+    assert "+131.4%" in html
+    assert "+1.3%" not in html
+
+
+def test_a_total_loss_keeps_its_sign_and_scale(monkeypatch):
+    html = _render(pd.DataFrame({"Symbol": ["X"], "Return %": [-0.4271]}), monkeypatch)
+    assert "−42.7%" in html
+
+
+def test_a_small_drawdown_is_not_inflated_a_hundredfold(monkeypatch):
+    html = _render(pd.DataFrame({"Symbol": ["X"], "Max DD 3M": [-0.8]}), monkeypatch)
+    assert "\u22120.8%" in html  # true minus (owner, 7 Nov 2026)
+    assert "-80.0%" not in html
+
+
+def test_turnover_stays_a_percentage(monkeypatch):
+    html = _render(pd.DataFrame({"Symbol": ["X"], "Turnover %": [45.0]}), monkeypatch)
+    assert "45.0%" in html
+
+
+def test_entry_and_exit_prices_keep_their_cents(monkeypatch):
+    """The blotter's two prices must reproduce the return printed beside them."""
+    html = _render(
+        pd.DataFrame(
+            {
+                "Symbol": ["AAPL"],
+                "Entry Price": [157.65],
+                "Exit Price": [168.40],
+                "Return %": [168.40 / 157.65 - 1],
+            }
+        ),
+        monkeypatch,
+    )
+    assert "$157.65" in html
+    assert "$168.40" in html
+    assert "+6.8%" in html
+
+
+def test_aggregate_money_stays_whole(monkeypatch):
+    html = _render(
+        pd.DataFrame({"Symbol": ["X"], "Actual Value ($)": [1234567.89]}), monkeypatch
+    )
+    assert "$1,234,568" in html  # Indian grouping (owner, 7 Nov 2026)
+
+
+# ── The two renderers must agree ────────────────────────────────────────────
+# theme.py hosts two table renderers. render_saas_table reads percent_unit();
+# render_styled_table reads FORMAT_MAP. Each used to carry its own idea of
+# which columns hold fractions, with nothing keeping them in step -- and the
+# failure mode is silent, the same column reading +26.3% in one table and
+# +0.26 in the other.
+
+def _format_claims(fmt: str) -> str | None:
+    """What a FORMAT_MAP entry assumes about its column's unit.
+
+    "{:+.1%}" scales by 100 when formatting, so the value must be a fraction.
+    "{:.1f}%" appends a literal sign, so the value must already be scaled.
+    """
+    fmt = fmt.rstrip()
+    if fmt.endswith("%}"):
+        return "fraction"
+    if fmt.endswith("%"):
+        return "scaled"
+    return None
+
+
+def test_format_map_and_percent_unit_never_contradict():
+    from src.ui.theme import FORMAT_MAP
+
+    disagreements = []
+    for col, fmt in FORMAT_MAP.items():
+        claimed, declared = _format_claims(fmt), percent_unit(col)
+        if claimed and declared and claimed != declared:
+            disagreements.append(f"{col}: FORMAT_MAP says {claimed}, percent_unit says {declared}")
+    assert not disagreements, "; ".join(disagreements)
+
+
+def test_alpha_is_a_fraction_in_both_renderers():
+    """It sat in FORMAT_MAP as a bare ratio, left over from removed score columns."""
+    from src.ui.theme import FORMAT_MAP
+
+    assert _format_claims(FORMAT_MAP["Alpha"]) == "fraction"
+    assert percent_unit("Alpha") == "fraction"
+
+
+def test_mtd_is_a_signed_coloured_fraction(monkeypatch):
+    # 2026-09-27: MTD % printed raw ("0.1%" for +10%) with no sign or colour,
+    # because the column had no unit and no return styling.
+    out = _render(pd.DataFrame({"MTD %": [0.1, -0.023]}), monkeypatch)
+    assert "+10.0%" in out and "−2.3%" in out
+    assert "ret-pos" in out and "ret-neg" in out
+
+
+def test_no_column_declares_both_percent_units():
+    # "% of 52w high start / end" (price / 52-week high, a fraction) sat in both
+    # sets; the fraction set won, so the scaled entry was dead and ambiguous.
+    from src.ui.theme import FRACTION_PERCENT_COLUMNS, SCALED_PERCENT_COLUMNS, percent_unit
+
+    assert not FRACTION_PERCENT_COLUMNS & SCALED_PERCENT_COLUMNS
+    assert percent_unit("% of 52w high start") == "fraction"
+
+
+def test_every_percent_column_the_engine_names_declares_its_unit():
+    # 7 Oct 2026, live: the Backtest page's current book raised "Undeclared
+    # percentage unit for column 'Entry Weight %'". Every "... %" column name in
+    # src/ must declare one, so no table can raise on a new column.
+    import re
+    from pathlib import Path
+
+    from src.ui.theme import percent_unit
+
+    root = Path(__file__).resolve().parents[1]
+    names = set()
+    for path in [*root.joinpath("src").rglob("*.py"), root / "app.py"]:
+        names |= set(re.findall(r'"([A-Za-z][A-Za-z0-9 ()/&.\-]{0,40} %)"', path.read_text(encoding="utf-8")))
+    labels_only = {"Day %"}          # a column-config label, not a column name
+    missing = sorted(n for n in names - labels_only if percent_unit(n) is None)
+    assert not missing, missing
+
+
+def test_the_backtest_current_book_renders():
+    from src.ui.theme import render_saas_table
+
+    book = pd.DataFrame({"Symbol": ["AAA"], "Price Now": [101.0], "Return %": [0.01], "MTD %": [0.002],
+                         "Weight %": [5.0], "Entry Date": ["01 Oct 2026"], "Entry Price": [100.0],
+                         "Holding (Days)": [6], "Rank at Entry": [3], "Rank at Rebalance": [4],
+                         "Industry": ["X"], "Entry Weight %": [5.0]})
+    render_saas_table(book)        # raised ValueError before

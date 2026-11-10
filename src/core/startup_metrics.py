@@ -1,0 +1,333 @@
+"""Process-global cold-start telemetry.
+
+Observation only. Nothing here changes what the application fetches, how it
+retries, what it caches, or which symbols survive — it records when stages ran
+and how many attempts they took, so a cold start can be measured from outside
+the container instead of guessed at.
+
+The recorder is process-global rather than session-scoped on purpose. The
+expensive data pipeline runs once, on whichever session happens to connect to
+a fresh container first, and every later session is served from
+``@st.cache_data``. A session-scoped recorder would therefore report a warm
+session's timings and miss the cold start entirely. Keeping the numbers on the
+process means a probe that arrives second still reads the first run's real
+cost.
+"""
+
+from __future__ import annotations
+
+import os
+import threading
+import time
+from contextlib import contextmanager
+from datetime import datetime, timezone
+
+_LOCK = threading.Lock()
+
+MODULE_IMPORT_MONOTONIC: float = time.monotonic()
+# When THIS MODULE was imported. On Streamlit Cloud a deploy can reload changed
+# modules into an already-running interpreter, so this is NOT proof that the
+# process restarted -- see process_identity() for that.
+MODULE_IMPORT_UTC: str = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def process_identity() -> dict:
+    """Identify the OS process, so a module reload cannot be mistaken for a restart.
+
+    A fresh import with a warm @st.cache_data is exactly what a redeploy into a
+    surviving interpreter looks like, and it is indistinguishable from a cold
+    process unless the PID and process start time are reported too.
+    """
+    info: dict[str, object] = {"pid": os.getpid()}
+    try:
+        with open("/proc/self/stat", "r", encoding="utf-8") as fh:
+            fields = fh.read().rsplit(") ", 1)[-1].split()
+        starttime_ticks = float(fields[19])
+        clk = os.sysconf("SC_CLK_TCK")
+        with open("/proc/uptime", "r", encoding="utf-8") as fh:
+            system_uptime = float(fh.read().split()[0])
+        info["process_age_s"] = round(system_uptime - starttime_ticks / clk, 1)
+        info["system_uptime_s"] = round(system_uptime, 1)
+    except Exception as exc:
+        info["error"] = str(exc)[:120]
+    return info
+
+_stages: dict[str, dict] = {}
+_counters: dict[str, float] = {}
+_facts: dict[str, object] = {}
+# note_if_changed's memory. Kept OUT of _facts on purpose: its keys are log
+# dedupe state (one held ~20 KB of contract JSON, another the price vendor's
+# name), and _facts is embedded in the served page.
+_seen: dict[str, object] = {}
+
+
+def _revision() -> str | None:
+    """Commit actually serving this process, for deploy correspondence."""
+    try:
+        from src.core.build_info import deployed_revision
+
+        return deployed_revision()
+    except Exception:
+        return None
+
+
+# The commit on disk when this process imported its modules. `revision`
+# below is read from git on every call, so it moves the moment Streamlit
+# Cloud pulls a push. But Streamlit re-executes only app.py on a rerun, and
+# modules already imported (everything under src/) stay as they were loaded
+# until the process restarts. On 2026-09-25, #177 was on disk and reported as
+# served while the process still ran the src/ui it had imported at #173.
+# Comparing the two is how QA can tell.
+LOADED_REVISION: str | None = _revision()
+
+
+def mark_code_current() -> None:
+    """The process now runs the src/ code on disk: move LOADED_REVISION to it.
+
+    app.py calls this after src.core.code_reload has checked every loaded
+    src/ and r2/ module against its file (reloading all of them if any
+    differed) and the imports have run. A module not yet imported will load
+    from disk. So the code running is the code on disk, whatever the process
+    started on. Without it, a push that only ADDS a file reloads nothing, and
+    LOADED_REVISION kept naming the start build (QA run 580).
+
+    If app.py stops calling the reloader, this is not called either, and QA's
+    stale-module check sees the old revision again.
+    """
+    global LOADED_REVISION
+    LOADED_REVISION = _revision()
+
+
+def _streamlit_version() -> str | None:
+    """Which Streamlit frontend this process is actually running.
+
+    requirements.txt asked for `streamlit>=1.35.0` for months, so Cloud was
+    free to install a different frontend on any reboot with no commit here --
+    and the frontend is where the Configuration sliders were rendering at their
+    minimum. This belongs in telemetry, where QA can assert on it; it was
+    briefly shown in the UI and does not belong in front of a reader.
+    """
+    try:
+        import streamlit as _st
+
+        return getattr(_st, "__version__", None)
+    except Exception:
+        return None
+
+
+def _now() -> float:
+    return time.monotonic()
+
+
+def since_start() -> float:
+    """Seconds elapsed since this module was imported."""
+    return round(_now() - MODULE_IMPORT_MONOTONIC, 3)
+
+
+# ── Memory (ported from #417, bounded) ─────────────────────────────────────
+# A checkpoint runs at every stage boundary on every rerun of every session,
+# for the life of the process. #417 appended each one to a list in _facts with
+# no limit -- growing memory in a memory fix, and inflating the hidden div on
+# every page. Kept here: the first MEMORY_COLD_CHECKPOINTS (the cold start,
+# which the probe reads), the latest per label, and the process peak.
+MEMORY_COLD_CHECKPOINTS = 64
+MEMORY_MAX_LABELS = 64
+# One log line each time the process peak (VmHWM) has risen this much since
+# the last line, so Streamlit Cloud's log shows when and where memory grew
+# without a line per rerun.
+MEMORY_LOG_STEP_BYTES = 50 * 1024 * 1024
+_memory_logged_peak = 0
+
+
+def _process_memory() -> dict:
+    """VmRSS (resident now) and VmHWM (peak), in bytes, from /proc. {} off Linux."""
+    out: dict[str, int] = {}
+    try:
+        with open("/proc/self/status", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith(("VmRSS:", "VmHWM:")):
+                    key, raw = line.split(":", 1)
+                    parts = raw.split()
+                    if parts and parts[0].isdigit():
+                        out[key] = int(parts[0]) * 1024
+    except OSError:
+        pass
+    return out
+
+
+def memory_checkpoint(label: str) -> dict:
+    """Record resident and peak memory at `label`. Observation only."""
+    global _memory_logged_peak
+    values: dict[str, object] = {"label": label, "at_s": since_start(), **_process_memory()}
+    peak = values.get("VmHWM")
+    log_it = False
+    with _LOCK:
+        cold = _facts.setdefault("memory_checkpoints", [])
+        if len(cold) < MEMORY_COLD_CHECKPOINTS:
+            cold.append(values)
+        latest = _facts.setdefault("memory_latest", {})
+        if label in latest or len(latest) < MEMORY_MAX_LABELS:
+            latest[label] = values
+        if isinstance(peak, int):
+            _facts["memory_peak_bytes"] = max(peak, int(_facts.get("memory_peak_bytes", 0) or 0))
+            if peak >= _memory_logged_peak + MEMORY_LOG_STEP_BYTES:
+                _memory_logged_peak = peak
+                log_it = True
+    if log_it:
+        import logging
+
+        logging.getLogger("nse_momentum").info(
+            "Memory peak %d MB at %s (resident now %d MB, %.0fs after start).",
+            peak // 2**20, label, int(values.get("VmRSS", 0)) // 2**20, values["at_s"],
+        )
+    return values
+
+
+@contextmanager
+def stage(name: str):
+    """Time a named startup stage, and record memory at its two ends.
+
+    Only the FIRST execution is kept: that is the cold one. Later executions
+    just bump ``repeats`` so a forced refresh is visible without overwriting
+    the cold-start measurement.
+    """
+    started_at = since_start()
+    t0 = _now()
+    memory_checkpoint(f"{name}:start")
+    try:
+        yield
+    finally:
+        duration = round(_now() - t0, 3)
+        memory_checkpoint(f"{name}:end")
+        with _LOCK:
+            existing = _stages.get(name)
+            if existing is None:
+                _stages[name] = {
+                    "started_at_s": started_at,
+                    "ended_at_s": round(started_at + duration, 3),
+                    "duration_s": duration,
+                    "repeats": 0,
+                }
+            else:
+                existing["repeats"] += 1
+
+
+def incr(key: str, n: float = 1) -> None:
+    """Increment a counter (batches attempted, retries issued, and so on)."""
+    with _LOCK:
+        _counters[key] = _counters.get(key, 0) + n
+
+
+def note(key: str, value) -> None:
+    """Record a scalar fact (symbol counts, cache presence, ...)."""
+    with _LOCK:
+        _facts[key] = value
+
+
+def note_if_changed(key: str, value) -> bool:
+    """Report whether a value changed in this process since the last call.
+
+    Streamlit reruns the script from top to bottom on interaction. This helper
+    lets callers distinguish a genuinely new decision from the same decision
+    being observed again, without weakening the underlying computation or
+    cache contract.
+    """
+    with _LOCK:
+        sentinel = object()
+        previous = _seen.get(key, sentinel)
+        _seen[key] = value
+        return previous is sentinel or previous != value
+
+
+def record_cache_presence(paths: dict[str, str]) -> None:
+    """Snapshot which cache files existed BEFORE any fetch ran.
+
+    This is how "was this container genuinely cold?" is answered with evidence
+    rather than assumed from the fact that a deploy happened.
+    """
+    present: dict[str, object] = {}
+    for label, path in paths.items():
+        try:
+            exists = os.path.exists(path)
+            present[label] = (
+                {"exists": True, "bytes": os.path.getsize(path)} if exists
+                else {"exists": False}
+            )
+        except OSError as exc:
+            present[label] = {"error": str(exc)[:120]}
+    with _LOCK:
+        if "cache_at_startup" not in _facts:
+            _facts["cache_at_startup"] = present
+            _facts["cold_container"] = not any(
+                isinstance(v, dict) and v.get("exists") for v in present.values()
+            )
+
+
+def snapshot() -> dict:
+    """Everything recorded so far, safe to serialise."""
+    with _LOCK:
+        return {
+            "revision": _revision(),
+            "loaded_revision": LOADED_REVISION,
+            "streamlit_version": _streamlit_version(),
+            "module_import_utc": MODULE_IMPORT_UTC,
+            "uptime_s": since_start(),
+            "process": process_identity(),
+            "stages": dict(_stages),
+            "counters": dict(_counters),
+            "facts": dict(_facts),
+        }
+
+
+# Facts that name a data vendor. Kept in-process for logs and for the cold
+# start probe, which read snapshot() directly, but never written into the page.
+#
+# app.py embeds the whole snapshot in a hidden div so a probe can read startup
+# timings out of the served HTML. Hidden is not private: it is in view-source
+# for anyone who opens the page. Which upstream feed the numbers came from is
+# nobody's business but the operator's, and it has no bearing on the timings
+# that div exists to carry.
+_VENDOR_FACTS: frozenset[str] = frozenset({
+    "price_source",
+    "price_source_rejected",
+    "screener_store_fetch",
+    "screener_store_fetch_s",
+    "screener_symbols_fetched",
+    "screener_symbols_unresolved",
+    "screener_run_complete",
+    "screener_blocked_after",
+    "screener_store_rows",
+    "screener_store_new_rows",
+    "screener_cells_preserved",
+    "screener_store_refused",
+})
+
+# Prefixes too, so a fact added later is redacted by default rather than
+# leaking until someone remembers to list it.
+_VENDOR_PREFIXES: tuple[str, ...] = ("screener_", "yfinance_", "vendor_")
+
+
+def public_snapshot() -> dict:
+    """snapshot() with vendor-identifying facts removed, for the served page.
+
+    Everything else is untouched: stage timings, counters and the rest are the
+    whole reason the div exists, and a probe that lost them would be measuring
+    nothing.
+    """
+    snap = snapshot()
+    facts = snap.get("facts", {})
+    snap["facts"] = {
+        k: v for k, v in facts.items()
+        if k not in _VENDOR_FACTS and not k.startswith(_VENDOR_PREFIXES)
+    }
+    return snap
+
+
+def reset_for_tests() -> None:
+    global _memory_logged_peak
+    _memory_logged_peak = 0
+    with _LOCK:
+        _stages.clear()
+        _counters.clear()
+        _facts.clear()
+        _seen.clear()

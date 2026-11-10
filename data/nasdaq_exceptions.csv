@@ -1,0 +1,3 @@
+Symbol,Before,Reason,Evidence,Checked
+HON,2026-06-29,"Separation on 2026-06-29: Yahoo adjusts the earlier closes (factor 0.524), Nasdaq.com does not","Nasdaq.com close 464.42 on 2026-06-26 then 227.80 on 2026-06-29; Yahoo records a split on 2026-06-29 and its series is continuous (243.53 to 227.80). Event name (Honeywell Aerospace spin-off) not confirmed against a filing",2026-11-10
+FTV,2025-06-30,"Ralliant spin-off on 2025-06-30: both sources adjust the earlier closes, by factors 3.7% apart","Nasdaq.com 52.05 and Yahoo 53.96 on 2025-06-27, both 52.13 on 2025-06-30; Yahoo records a 1.327 split on 2025-06-30. Which factor is right is not checked",2026-11-10

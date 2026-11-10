@@ -1,0 +1,664 @@
+"""
+Momentum Engine — single-system production core.
+
+One system, the one that always drove every rank on screen: multi-window
+Sharpe momentum, winsorized and z-scored across five calendar lookbacks.
+
+Four alternative systems used to live here -- exponential regression, residual
+alpha, industry-relative and momentum acceleration. None of them fed the
+composite Rank; they produced extra columns and a Multi-Strategy tab. They were
+removed deliberately: each carried its own failure modes (residual alpha reached
+out to Yahoo mid-calculation), and none paid for the surface area it cost.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Sequence
+
+import numpy as np
+import pandas as pd
+
+from src.core.config import (
+    DEFAULT_LOOKBACK_WEIGHTS,
+    HIGH_52W_MIN_OBSERVATIONS,
+    MOMENTUM_WINDOWS,
+)
+from src.core.tickers import normalise_symbol
+from src.core.logger import logger
+from src.engine.calendar_momentum import (
+    _calendar_period_metrics,
+    calendar_start_positions,
+    horizons_scored,
+    latest_as_of_date,
+)
+
+
+def clean_holidays(df: pd.DataFrame | None) -> pd.DataFrame:
+    """Drops dates where >70% of the universe has NaN (market holidays)."""
+    if df is None or df.empty:
+        return df if df is not None else pd.DataFrame()
+    n_cols = df.shape[1]
+    limit = max(int(n_cols * 0.70), 1)
+    count = df.isna().sum(axis=1)
+    holidays = count > limit
+    n_dropped = int(holidays.sum())
+    if n_dropped > 0:
+        logger.debug(f"Holiday cleanup: dropped {n_dropped} rows")
+    if n_dropped == len(df):
+        logger.warning(
+            "Holiday cleanup would remove the entire dataset; preserving rows "
+            "to avoid converting an upstream sparse/malformed cache into an empty "
+            "production price history."
+        )
+        return df.copy()
+    # Remove exchange-wide missing dates only; preserve stock-specific NaNs.
+    return df.loc[~holidays]
+
+
+def compute_ffill_pct(raw_df: pd.DataFrame | None,
+                      months: int = max(MOMENTUM_WINDOWS)) -> pd.Series:
+    """Per-stock % of sessions gap-filled inside the ranking window.
+
+    Only the last `months` calendar months count: that is all the score and
+    the 52-week high read, so a hole from years ago cannot move today's rank
+    and must not flag it (on 2026-09-25 eight stocks read 12-62% on holes
+    all older than a year, SKYGOLD among the Actions page's buys).
+    """
+    if raw_df is None or raw_df.empty:
+        return pd.Series(dtype=float)
+    n_cols = raw_df.shape[1]
+    limit = max(int(n_cols * 0.70), 1)
+    count = raw_df.isna().sum(axis=1)
+    cleaned = raw_df.loc[count <= limit]
+    if cleaned.empty:
+        return pd.Series(dtype=float)
+    if isinstance(cleaned.index, pd.DatetimeIndex) and months:
+        cleaned = cleaned.loc[cleaned.index >= cleaned.index[-1] - pd.DateOffset(months=months)]
+    # A stock has no price before its history starts; those sessions are not
+    # gaps (Short History reports them). Count from each first real print.
+    listed = cleaned.notna().cummax()
+    n_rows = listed.sum()
+    nan_per_col = (cleaned.isna() & listed).sum()
+    return (nan_per_col / n_rows.clip(lower=1) * 100).round(1)
+
+
+
+def _normalize_ticker_cols(df: pd.DataFrame | None) -> pd.DataFrame | None:
+    if df is None or df.empty:
+        return df
+    res = df.copy()
+    res.columns = [normalise_symbol(c) for c in res.columns]
+    return res
+
+
+# Minimum real price observations before a symbol may be ranked at all. Also
+# the qualification a HISTORICAL rank is judged by, at the date it describes.
+MIN_OBSERVATIONS: int = 63
+
+
+# Every column that needs a real intraday high and low, named here because
+# this module is what produces them. A second copy elsewhere is a typo waiting
+# to happen, and it did: the drop list in pipeline.py said "Chandelier Exit"
+# while the column has always been "Chand Exit", so on a close-only source the
+# stop kept rendering -- from an ATR measured at 0.47x its true width, which is
+# the one outcome worse than showing nothing.
+ATR_DERIVED_COLUMNS: tuple[str, ...] = ("ATR", "ATR %", "Stop Loss", "Chand Exit")
+
+# Appended to "Data Gap" for a stock ranked on its last print because it had no
+# price on the ranking session (pipeline.carried_symbols). Not ⏳: that already
+# means "short history" in the footer.
+CARRIED_MARK: str = "⏸"
+
+
+class MomentumEngine:
+    """
+    Hardened Production Quantitative Momentum Engine.
+    Vectorized calculations across 5 lookback windows with zero look-ahead bias.
+    """
+
+    WINDOWS: list[int] = MOMENTUM_WINDOWS
+    DEFAULT_WEIGHTS: list[float] = DEFAULT_LOOKBACK_WEIGHTS
+
+    def __init__(
+        self,
+        prices_df: pd.DataFrame,
+        *,
+        high_df: pd.DataFrame | None = None,
+        low_df: pd.DataFrame | None = None,
+        close_df: pd.DataFrame | None = None,
+        volume_df: pd.DataFrame | None = None,
+        weights: Sequence[float] | None = None,
+        corporate_actions: list[dict] | None = None,
+    ):
+        self.ffill_pct: pd.Series = compute_ffill_pct(prices_df)
+
+        # Clean holidays once from prices_df and share the resulting index across
+        # all four frames. clean_holidays() performs an O(n×m) NaN scan; calling
+        # it separately for each frame wastes 3 redundant full-matrix passes.
+        # Exchange-wide holidays show as >70% NaN density in all frames equally,
+        # so the prices_df mask is the correct and complete holiday mask.
+        cleaned_p = clean_holidays(prices_df)
+        norm_p = _normalize_ticker_cols(cleaned_p)
+        self.prices: pd.DataFrame = norm_p if norm_p is not None else pd.DataFrame()
+        _keep_idx = cleaned_p.index if cleaned_p is not None and not cleaned_p.empty else (
+            prices_df.index if prices_df is not None else pd.Index([])
+        )
+
+        def _apply_mask(df: pd.DataFrame | None) -> pd.DataFrame | None:
+            if df is None or df.empty:
+                return df
+            return df.loc[df.index.intersection(_keep_idx)]
+
+        if high_df is not None:
+            norm_h = _normalize_ticker_cols(_apply_mask(high_df))
+            self.high: pd.DataFrame = norm_h if norm_h is not None else self.prices
+        else:
+            self.high = self.prices
+
+        if low_df is not None:
+            norm_l = _normalize_ticker_cols(_apply_mask(low_df))
+            self.low: pd.DataFrame = norm_l if norm_l is not None else self.prices
+        else:
+            self.low = self.prices
+
+        if close_df is not None:
+            norm_c = _normalize_ticker_cols(_apply_mask(close_df))
+            self.close: pd.DataFrame = norm_c if norm_c is not None else self.prices
+        else:
+            self.close = self.prices
+
+        if volume_df is not None:
+            self.volume: pd.DataFrame | None = _normalize_ticker_cols(_apply_mask(volume_df))
+        else:
+            self.volume = None
+
+        self.weights: list[float] = list(weights) if weights is not None else list(self.DEFAULT_WEIGHTS)
+        # The events already neutralised in the frames above. Carried so the
+        # ATH snapshot -- a separate download this engine does not own -- can be
+        # put on the same price scale. See corporate_actions.adjust_ath.
+        self.corporate_actions: list[dict] = list(corporate_actions or [])
+        # Set by pipeline.build_engine: ranked on their last print (⏸).
+        self.carried_symbols: list[str] = []
+
+        # Pre-calculate daily log returns
+        self.log_ret: pd.DataFrame = np.log(self.prices / self.prices.shift(1).replace(0, np.nan))
+        self._valid_counts: pd.Series = self.prices.notna().sum()
+
+        self.momentum_scores: pd.DataFrame | None = None
+        self.ranking_diagnostics: dict[str, int] = {}
+        self.period_metrics: dict[int, dict[str, pd.Series]] = {}
+        self.period_dates: dict[int, dict] = {}
+        self._period_z_scores: dict[int, pd.DataFrame] = {}
+        self._static_signals: pd.DataFrame | None = None
+
+    def calculate_sharpe_momentum(self) -> pd.DataFrame:
+        """Compatibility entry point for the canonical calendar-month System-1 engine."""
+        from src.engine.calendar_momentum import apply_calendar_momentum
+        return apply_calendar_momentum(self)
+
+
+    def compute_atr_and_stops(
+        self,
+        period: int = 14,
+        atr_mult: float = 2.0,
+        chand_mult: float = 3.0,
+    ) -> pd.DataFrame:
+        """Vectorized ATR, 2xATR Stop Loss, and 3xATR Chandelier Exits."""
+        prev_close = self.close.shift(1)
+        idx = self.high.index.intersection(self.low.index).intersection(prev_close.index)
+        h = self.high.reindex(idx)
+        lo = self.low.reindex(idx)
+        pc = prev_close.reindex(idx)
+        tr = np.maximum(np.maximum((h - lo).values, (h - pc).abs().values), (lo - pc).abs().values)
+        tr = pd.DataFrame(tr, index=idx, columns=self.high.columns)
+
+        atr = tr.rolling(period, min_periods=max(period - 2, 5)).mean()
+        latest_atr = atr.iloc[-1]
+        # Use the last row that has at least one real close. On a partial trading
+        # day self.close.iloc[-1] may be all-NaN (data pulled before the close),
+        # which turns ATR%, Stop Loss, and Chandelier Exit all NaN even though
+        # the prior day's data is complete and usable.
+        latest_close = self.close.dropna(how="all").iloc[-1]
+        atr_pct = (latest_atr / latest_close.replace(0, np.nan)) * 100
+
+        stop_loss = (latest_close - atr_mult * latest_atr).clip(lower=0)
+        hi_22 = self.high.iloc[-22:].max()
+        chand_exit = (hi_22 - chand_mult * latest_atr).clip(lower=0)
+
+        return pd.DataFrame(
+            {
+                "ATR": latest_atr.round(2),
+                "ATR %": atr_pct.round(1),
+                "Stop Loss": stop_loss.round(2),
+                "Chand Exit": chand_exit.round(2),
+            }
+        )
+
+    # ── Frog-in-the-Pan Persistence ──────────────────────────────────────────
+    def compute_persistence(
+        self, window: int = 126, months: int | None = 6
+    ) -> pd.Series:
+        """Compute percentage of sessions with positive return in a 6M calendar window."""
+        if months is None:
+            ret = self.log_ret.iloc[-window:]
+        else:
+            # Reuse the calendar start date already computed by apply_calendar_momentum
+            # rather than re-running calendar_start_positions (another searchsorted pass).
+            pd_entry = getattr(self, "period_dates", {}).get(months, {})
+            actual_start = pd_entry.get("actual_start")
+            # The return ON the start date is the move INTO the window's
+            # opening print, so it belongs to the session before the window.
+            # The momentum windows sum log returns from start+1 to the end;
+            # persistence counts over the same sessions.
+            if actual_start is not None and pd.notna(actual_start):
+                ret = self.log_ret.loc[actual_start:].iloc[1:]
+            else:
+                as_of = latest_as_of_date(pd.DatetimeIndex(self.log_ret.index))
+                starts = calendar_start_positions(
+                    pd.DatetimeIndex(self.log_ret.index), months, latest_as_of=as_of
+                )
+                ret = self.log_ret.iloc[int(starts[-1]) + 1:]
+        pos = (ret > 0).sum()
+        total = ret.notna().sum().replace(0, np.nan)
+        return (pos / total * 100).round(1)
+    def _precompute_signals(
+        self,
+        index_info: pd.DataFrame,
+        market_caps: pd.Series,
+        close_prices_df: pd.DataFrame | None = None,
+        high_prices_df: pd.DataFrame | None = None,
+    ) -> None:
+        """Pre-compute weight-independent signal columns; store in self._static_signals.
+
+        Called once per price-data snapshot from _run_engine_base. The result
+        travels with calc through the Streamlit cache so weight-slider changes
+        in run_momentum_pipeline skip the expensive ATR/EMA/drawdown recomputation.
+        """
+        close_src = (close_prices_df if close_prices_df is not None else self.close).copy()
+        # The 52-week and all-time high gates read the DAY CLOSE, not the
+        # intraday high (owner, 10 Nov 2026: "Must be day close value").
+        # The backtester and rank_history always measured the high from
+        # adjusted closes (backtester._rolling_high_at, rank_history), so the
+        # screener's intraday high made its gate strictly harder: a name the
+        # backtest would buy could sit "below its 52-week high" here only
+        # because the comparison used a spike the close never reached
+        # (duplicate audit, 10 Nov 2026). One rule, and it is the checkable one.
+        high_src = close_src.copy()
+        close_src.columns = [normalise_symbol(c) for c in close_src.columns]
+        high_src.columns = [normalise_symbol(c) for c in high_src.columns]
+
+        valid_close_idx = close_src.dropna(how="all").index
+        if not valid_close_idx.empty:
+            close_src = close_src.loc[: valid_close_idx[-1]]
+            high_src = high_src.loc[: valid_close_idx[-1]]
+
+        latest_close = close_src.iloc[-1]
+        ema_50 = close_src.ewm(span=50, min_periods=30).mean().iloc[-1]
+
+        # Vectorized EMA signals (avoids per-symbol Python lambdas)
+        both_valid = ema_50.notna() & latest_close.notna()
+        above_ema_s = (latest_close > ema_50).where(both_valid, False)
+        pct_ema_s = ((latest_close - ema_50) / ema_50.replace(0, np.nan) * 100).where(
+            both_valid & (ema_50 > 0), np.nan
+        )
+
+        # 52-week high. A stock needs HIGH_52W_MIN_OBSERVATIONS real prints in
+        # the window before one can be quoted: the backtester has always
+        # required it (rolling(252, min_periods=126)) and the screener required
+        # nothing, so a name listed 70 sessions ago got a "52-week high" from
+        # those 70 sessions, sat 0.0% below it, ranked #1, and passed a gate the
+        # backtest would have excluded it from. Fewer prints made the gate
+        # EASIER, which points the bias at recent listings.
+        win_52w = min(252, len(high_src))
+        _win = high_src.iloc[-win_52w:]
+        _win_obs = _win.notna().sum()
+        _enough_hist = _win_obs >= HIGH_52W_MIN_OBSERVATIONS
+        high_52w = _win.max().where(_enough_hist, np.nan)
+        _has_any = _win.notna().any() & _enough_hist
+        high_52w_date_s = (
+            _win.loc[:, _has_any[_has_any].index].idxmax()
+            if bool(_has_any.any())
+            else pd.Series(dtype="datetime64[ns]")
+        )
+        high_52w_date_str = high_52w_date_s.reindex(high_52w.index).map(
+            lambda d: str(pd.Timestamp(d).date()) if pd.notna(d) else ""
+        )
+        pct_high = ((latest_close - high_52w) / high_52w.replace(0, np.nan)) * 100
+        # NaN -> False, so a stock without enough history fails the gate rather
+        # than passing it on a high computed from a fortnight.
+        near_high_s = pct_high.map(lambda x: x >= -20.0 if pd.notna(x) else False)
+
+        # All-time high
+        from src.loaders.ath_loader import ath_series, ath_date_series
+        from src.engine.corporate_actions import trustworthy_ath
+        # Drop any high recorded on a price scale a corporate action has since
+        # moved. A pre-split high is the LARGER number, so it would win the
+        # max() below and silently defeat the adjustment applied to the frames.
+        snapshot_ath = trustworthy_ath(
+            ath_series(), ath_date_series(), self.corporate_actions
+        )
+        window_ath = high_src.max()
+        if not snapshot_ath.empty:
+            ath = pd.concat(
+                [snapshot_ath.reindex(window_ath.index), window_ath], axis=1
+            ).max(axis=1)
+            ath_source = "snapshot"
+        else:
+            ath = window_ath
+            ath_source = "in_memory_window"
+        pct_ath = ((latest_close - ath) / ath.replace(0, np.nan)) * 100
+        at_ath_s = pct_ath.map(lambda x: x >= -5.0 if pd.notna(x) else False)
+        peak_dates = ath_date_series()
+        if not peak_dates.empty:
+            _pd_d = peak_dates.to_dict()
+            ath_date_str = pd.Series(
+                {s: str(_pd_d[s]) if pd.notna(_pd_d.get(s)) else "" for s in latest_close.index},
+                index=latest_close.index,
+            )
+        else:
+            ath_date_str = pd.Series("", index=latest_close.index)
+
+        # Period returns and Sharpes from cached period_metrics
+        as_of_metrics = latest_as_of_date(pd.DatetimeIndex(self.prices.index))
+        period_cols: dict[str, pd.Series] = {}
+        for months in MOMENTUM_WINDOWS:
+            label = f"{months}M"
+            cached = (self.period_metrics or {}).get(months) or {}
+            cal_ret = cached.get("return")
+            cal_sharpe = cached.get("sharpe")
+            if not isinstance(cal_ret, pd.Series) or not isinstance(cal_sharpe, pd.Series):
+                _, cal_ret, cal_sharpe_df, _ = _calendar_period_metrics(
+                    self.prices, self.log_ret, months, latest_as_of=as_of_metrics
+                )
+                cal_sharpe = cal_sharpe_df.iloc[-1]
+            period_cols[f"{label} Return"] = cal_ret
+            period_cols[f"{label} Sharpe"] = cal_sharpe
+
+        # Drawdowns over all calendar windows
+        close_idx = pd.DatetimeIndex(close_src.index)
+        as_of_dd = latest_as_of_date(close_idx)
+        starts_by_month = {
+            m: calendar_start_positions(close_idx, m, latest_as_of=as_of_dd)
+            for m in MOMENTUM_WINDOWS
+        }
+        first_close_date = close_idx[0].normalize() if len(close_idx) else None
+        for months in MOMENTUM_WINDOWS:
+            label = f"{months}M"
+            if first_close_date is None or (
+                as_of_dd - pd.DateOffset(months=months) < first_close_date
+            ):
+                # The frame is shorter than the horizon: a "Max DD 12M" over
+                # whatever history exists is a different statistic.
+                period_cols[f"Max DD {label}"] = pd.Series(np.nan, index=close_src.columns)
+                continue
+            start = int(starts_by_month[months][-1])
+            period_close = close_src.iloc[start:]
+            roll_max = period_close.cummax()
+            dd = ((period_close - roll_max) / roll_max.replace(0, np.nan)).min() * 100
+            period_cols[f"Max DD {label}"] = dd
+
+        # ATR & stops
+        atr_df = self.compute_atr_and_stops()
+
+        # Persistence
+        pers = self.compute_persistence(months=6)
+
+        # Volume signal
+        if self.volume is not None and not self.volume.empty:
+            vol_df = self.volume.copy()
+            vol_df.columns = [normalise_symbol(c) for c in vol_df.columns]
+            vol_20_avg = vol_df.rolling(20, min_periods=10).mean().iloc[-1]
+            vol_latest = vol_df.iloc[-1]
+            vol_ratio = vol_latest / vol_20_avg.replace(0, np.nan)
+            vol_label = vol_ratio.map(
+                lambda r: "High" if r >= 1.5 else ("Low" if r < 0.7 else "Normal")
+            )
+        else:
+            vol_label = pd.Series("Normal", index=latest_close.index)
+
+        # Market cap & data-quality flags
+        _mc_d = market_caps.to_dict()
+        mcap_s = pd.Series(
+            {s: (_mc_d[s] / 1e9) if pd.notna(_mc_d.get(s)) else np.nan  # $ billions
+             for s in latest_close.index},
+            index=latest_close.index,
+        )
+        short_hist_s = self._valid_counts.map(lambda v: "Yes" if v < 126 else "No")
+        # Weight-independent, so it survives a slider tick untouched.
+        horizons_s = horizons_scored(self)
+        ffill_s = self.ffill_pct
+        data_gap_s = ffill_s.map(lambda p: "🔴" if p > 10.0 else "")
+        for sym in self.carried_symbols:
+            if sym in data_gap_s.index:
+                data_gap_s[sym] = (data_gap_s[sym] + CARRIED_MARK).strip()
+
+        self._static_signals = pd.DataFrame(
+            {
+                "CMP": latest_close,
+                "Above 50 EMA": above_ema_s,
+                "% 50 EMA": pct_ema_s,
+                "52W High": high_52w,
+                "52W High Date": high_52w_date_str,
+                "% High": pct_high,
+                "Near 52W High": near_high_s,
+                "ATH": ath,
+                "% ATH": pct_ath,
+                "At ATH": at_ath_s,
+                "ATH Source": ath_source,
+                "ATH Date": ath_date_str,
+                **period_cols,
+                "ATR": atr_df["ATR"],
+                "ATR %": atr_df["ATR %"],
+                "Stop Loss": atr_df["Stop Loss"],
+                "Chand Exit": atr_df["Chand Exit"],
+                "Persistence": pers,
+                "Volume": vol_label,
+                "Market Cap ($B)": mcap_s,
+                "Short History": short_hist_s,
+                "Horizons Scored": horizons_s,
+                "FFill %": ffill_s,
+                "Data Gap": data_gap_s,
+            }
+        )
+
+    def get_rankings(
+        self,
+        index_info: pd.DataFrame,
+        market_caps: pd.Series,
+        *,
+        close_prices_df: pd.DataFrame | None = None,
+        high_prices_df: pd.DataFrame | None = None,
+    ) -> pd.DataFrame:
+        """Constructs comprehensive production master rankings."""
+        if self.momentum_scores is None:
+            from src.engine.calendar_momentum import apply_calendar_momentum
+            apply_calendar_momentum(self)
+
+        latest_scores = (
+            self.momentum_scores.iloc[-1]
+            if self.momentum_scores is not None
+            else pd.Series(dtype=float)
+        )
+        valid_mask = self._valid_counts >= MIN_OBSERVATIONS
+        latest_scores_valid = latest_scores.where(valid_mask, np.nan)
+
+        rank_df = index_info.copy()
+        sym_to_score = latest_scores_valid.to_dict()
+        rank_df["Score"] = rank_df["Symbol"].map(sym_to_score)
+
+        # Why a ranking can come back empty. dropna below removes every symbol
+        # without a score, so if no symbol cleared the 63-observation minimum
+        # the result is zero rows -- which used to reach the views as an empty
+        # frame and crash the Qualified tab instead of saying anything. Record
+        # the counts so the failure is diagnosable rather than silent.
+        universe_symbols = set(rank_df["Symbol"].astype(str))
+        price_symbols = set(str(c) for c in self.prices.columns)
+        self.ranking_diagnostics = {
+            "universe": int(len(rank_df)),
+            # Distinguishes a symbol-namespace mismatch from thin history. If
+            # this is 0 while price columns exist, the price frame is keyed
+            # differently from the universe (e.g. "RELIANCE.NS" vs "RELIANCE")
+            # and every Score maps to NaN no matter how good the data is.
+            "price_columns": int(len(price_symbols)),
+            "symbols_matching_prices": int(len(universe_symbols & price_symbols)),
+            "with_price_history": int((self._valid_counts > 0).sum()),
+            "meeting_min_observations": int(valid_mask.sum()),
+            "min_observations": MIN_OBSERVATIONS,
+            "scored": int(rank_df["Score"].notna().sum()),
+        }
+
+        rank_df = rank_df.dropna(subset=["Score"]).copy()
+        rank_df["Rank"] = (
+            rank_df["Score"].rank(ascending=False, method="min").astype(int)
+        )
+        rank_df["Composite Rank"] = rank_df["Rank"]
+
+        # Historical ranks use calendar 1M/3M snapshots rather than fixed rows.
+        # Precompute both windows in one pass to avoid two separate searchsorted calls.
+        n_rows = len(self.momentum_scores) if self.momentum_scores is not None else 0
+        if n_rows > 0 and self.momentum_scores is not None:
+            score_idx = pd.DatetimeIndex(self.momentum_scores.index)
+            as_of = latest_as_of_date(score_idx)
+            hist_starts = {
+                m: calendar_start_positions(score_idx, m, latest_as_of=as_of)
+                for m in (1, 2, 3, 6)
+            }
+            # A rank delta is only meaningful between two ranks over the SAME
+            # set of names, and neither of the obvious ways to build it is.
+            #
+            # Originally `Rank (-1M)` was ranked over every price column while
+            # `Rank` was ranked among the rows surviving the score dropna, so a
+            # name that had a score a month ago and has none now -- delisting,
+            # suspension, vendor hole -- left a historical slot behind and every
+            # survivor under it appeared to climb. On a 40-name universe with 5
+            # gone dark the book's mean "improvement" was +3.17 places.
+            #
+            # Restricting the past to today's book alone overshoots the other
+            # way: names that have since ENTERED the ranking (a recent listing
+            # crossing the 63-observation minimum) push today's rank numbers out
+            # without a historical counterpart, and the mean went to -2.23.
+            #
+            # So both sides are ranked over the PAIRED set -- names scored on
+            # both dates. Over that set the deltas sum to zero, which is the
+            # defining property of a rank change. A name in only one of the two
+            # gets NaN and renders as "—", rather than a fabricated jump.
+            # `Rank` itself stays the full-book rank: that is the ranking.
+            ranked_symbols = pd.Index(rank_df["Symbol"].astype(str))
+            today_scores = latest_scores_valid.reindex(ranked_symbols).dropna()
+
+            def _paired_rank_delta(row_idx: int) -> tuple[pd.Series, pd.Series]:
+                # Qualify the past row by the observations that existed THEN.
+                # `valid_mask` is today's count, and applying it backwards let a
+                # stock with 27 prints three months ago sit in "Rank (-3M)" --
+                # it would not have appeared in the screener at all on that
+                # date. Ranking against names that were not rankable is the
+                # same fabrication as ranking against names that have since
+                # gone. One partial notna() sum per horizon, not a full
+                # cumulative matrix over the frame.
+                past_valid = self.prices.iloc[: row_idx + 1].notna().sum() >= MIN_OBSERVATIONS
+                past = self.momentum_scores.iloc[row_idx].where(past_valid, np.nan)
+                past = past.reindex(ranked_symbols).dropna()
+                paired = today_scores.index.intersection(past.index)
+                if paired.empty:
+                    empty = pd.Series(dtype=float)
+                    return empty, empty
+                then = past.reindex(paired).rank(ascending=False, method="min")
+                now = today_scores.reindex(paired).rank(ascending=False, method="min")
+                return then, then - now
+
+            # The stock-page path uses the same canonical composite score,
+            # evaluated at calendar offsets. 6M and 2M are not new momentum
+            # factors: they are simply historical snapshots of the existing
+            # daily composite, ranked with the same paired-name rule.
+            # Imported here: pipeline imports this module at load time.
+            from src.engine import pipeline
+
+            for months in pipeline.RANK_HISTORY_MONTHS:
+                idx_hist = int(hist_starts[months][-1])
+                rank_col = f"Rank (-{months}M)"
+                delta_col = f"Rank Δ {months}M"
+                if idx_hist < n_rows:
+                    r_hist, d_hist = _paired_rank_delta(idx_hist)
+                    rank_df[rank_col] = rank_df["Symbol"].map(r_hist)
+                    rank_df[delta_col] = rank_df["Symbol"].map(d_hist)
+                else:
+                    rank_df[rank_col] = np.nan
+                    rank_df[delta_col] = np.nan
+        else:
+            from src.engine import pipeline
+
+            for months in pipeline.RANK_HISTORY_MONTHS:
+                rank_df[f"Rank (-{months}M)"] = np.nan
+                rank_df[f"Rank Δ {months}M"] = np.nan
+
+        if self._static_signals is None:
+            # Cold start or a caller that skipped build_engine. There used to be
+            # a second, hand-copied implementation of every column here; the two
+            # had already drifted twice (the 52-week-high minimum and the ATH
+            # date format). One definition now: compute the static frame, then
+            # take the same join as the fast path.
+            self._precompute_signals(
+                index_info, market_caps, close_prices_df, high_prices_df
+            )
+        # Signal columns are weight-independent; join them by Symbol.
+        rank_df = rank_df.join(self._static_signals, on="Symbol", how="left")
+        rank_df["FFill %"] = rank_df["FFill %"].fillna(0.0)
+        # A left join against a symbol the engine never priced yields NaN,
+        # which would turn an integer count into a float column. Nothing
+        # reaching here can really have zero horizons -- a row without a
+        # Score was dropped above -- so 0 is the honest reading for a
+        # symbol the signal frame does not know.
+        rank_df["Horizons Scored"] = (
+            rank_df["Horizons Scored"].fillna(0).astype("int64")
+        )
+
+        return rank_df.sort_values("Rank").reset_index(drop=True)
+
+    # ── Industry Rankings ────────────────────────────────────────────────────
+    def get_industry_rankings(
+        self,
+        rank_df: pd.DataFrame,
+        industry_col: str = "Industry",
+    ) -> pd.DataFrame:
+        """Aggregates stock ranks into institutional industry rankings."""
+        if industry_col not in rank_df.columns:
+            return pd.DataFrame()
+
+        groups = rank_df.groupby(industry_col)
+        rows: list[dict[str, Any]] = []
+        for ind_name, grp in groups:
+            if len(grp) < 2 or not ind_name or str(ind_name).strip() in ("", "nan"):
+                continue
+            sorted_g = grp.sort_values("Rank")
+            top_syms = sorted_g["Symbol"].tolist()
+            rows.append(
+                {
+                    "Industry": ind_name,
+                    "Stocks": len(grp),
+                    "Avg Score": grp["Score"].mean() if "Score" in grp.columns else 0.0,
+                    "3M Return": (
+                        grp["3M Return"].median() if "3M Return" in grp.columns else 0.0
+                    ),
+                    "6M Return": (
+                        grp["6M Return"].median() if "6M Return" in grp.columns else 0.0
+                    ),
+                    "Top 1": top_syms[0] if len(top_syms) > 0 else "—",
+                    "Top 2": top_syms[1] if len(top_syms) > 1 else "—",
+                    "Top 3": top_syms[2] if len(top_syms) > 2 else "—",
+                    "Top 4": top_syms[3] if len(top_syms) > 3 else "—",
+                    "Top 5": top_syms[4] if len(top_syms) > 4 else "—",
+                }
+            )
+
+        ind_df = pd.DataFrame(rows)
+        if ind_df.empty:
+            return ind_df
+        ind_df["Rank"] = (
+            ind_df["Avg Score"].rank(ascending=False, method="min").astype(int)
+        )
+        return (
+            ind_df.sort_values("Rank")
+            .drop(columns=["Avg Score"])
+            .reset_index(drop=True)
+        )
+

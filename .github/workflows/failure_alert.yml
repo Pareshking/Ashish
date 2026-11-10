@@ -1,0 +1,36 @@
+name: Scheduled job failure alert
+
+on:
+  workflow_run:
+    workflows:
+      - Nightly prices (New York close)
+      - Nasdaq cross-check (weekly sample)
+      - Monthly track record
+    types: [completed]
+
+permissions:
+  issues: write
+
+jobs:
+  alert:
+    if: >-
+      github.event.workflow_run.event == 'schedule' &&
+      (github.event.workflow_run.conclusion == 'failure' ||
+       github.event.workflow_run.conclusion == 'timed_out' ||
+       github.event.workflow_run.conclusion == 'cancelled')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      WORKFLOW: ${{ github.event.workflow_run.name }}
+      RUN_URL: ${{ github.event.workflow_run.html_url }}
+      CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+    steps:
+      - name: Open or update the failure issue
+        run: |
+          set -euo pipefail
+          title="Scheduled job failing: ${WORKFLOW}"
+          body="Run: ${RUN_URL} (${CONCLUSION}) at $(date -u '+%Y-%m-%d %H:%M UTC')"
+          num=$(gh issue list --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty')
+          if [ -n "${num}" ]; then gh issue comment "${num}" --body "${body}"; else gh issue create --title "${title}" --body "${body}"; fi

@@ -1,0 +1,816 @@
+"""Single-stock page, as drawn in the approved light design.
+
+Order, top to bottom:
+  1. HERO       company, price with its close date, change chips; rank card
+                with the path from three months ago and the score
+  2. VERDICT    passes both screener filters, one, or neither -- by how much
+  3. NOTICES    corporate action in the price history, when there is one
+  4. CHART      price with EMAs and volume, relative strength beneath
+  5. LADDER     where the price sits: 52-week range, filter line, EMA, ATH,
+                stop levels when the source has intraday highs and lows
+  6. RETURNS    gain vs pain: each window's return beside the fall it took,
+                with the S&P 500 and the typical stock on the same bars
+  7. PEERS      the industry's best-ranked stocks, in the Screener's table
+  8. CHECKS     data caveats; opens itself when one needs reading
+"""
+
+from __future__ import annotations
+
+from src.ui.tokens import C
+
+import html as _html
+from urllib.parse import quote as _quote
+
+import numpy as np
+
+import pandas as pd
+import streamlit as st
+
+from src.ui import page_kit as kit
+from src.engine.corporate_actions import load_events
+from src.engine.momentum import CARRIED_MARK
+from src.ui.charts import render_stock_chart
+from src.ui.components import gap_count, render_data_quality_footer, to_bool_mask
+from src.ui.screener_table import render_screener_table
+from src.ui import formats as _fmt
+
+# ── Palette tokens ───────────────────────────────────────────────────────────
+POS   = C.up
+NEG   = C.down
+ACC   = C.ink
+INK   = C.ink
+SUB   = C.text_2
+MUTED = C.muted
+PERIODS = (1, 3, 6, 9, 12)
+_LONG = {1: "1 month", 3: "3 months", 6: "6 months", 9: "9 months", 12: "12 months"}
+
+INDEX_NAMES = {
+    "SP500": "S&P 500", "SP400": "S&P 400", "SP600": "S&P 600",
+}
+
+
+# ── Formatting primitives ────────────────────────────────────────────────────
+
+def _num(value) -> float | None:
+    try:
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return None
+        if pd.isna(value):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _money(value, decimals: int = 2) -> str:
+    # A share price and its levels (52W high, EMA, the -20% line) carry paise,
+    # as the Screener's price does (audit F66).
+    v = _num(value)
+    return _fmt.inr(v, decimals) if v is not None else "—"
+
+
+def _pct(value, decimals: int = 1, signed: bool = True) -> str:
+    """A percentage already in percent units (not a fraction).
+
+    Through formats (duplicate audit, 10 Nov 2026): this printed an ASCII
+    hyphen where the whole site uses U+2212, and signed before rounding."""
+    v = _num(value)
+    if v is None:
+        return _fmt.DASH
+    return f"{_fmt.signed(v, decimals, plus=signed)}%"
+
+
+def _ratio(value, decimals: int = 2) -> str:
+    v = _num(value)
+    return f"{v:.{decimals}f}" if v is not None else "—"
+
+
+def _signed_pct(frac: float | None, decimals: int = 1) -> str:
+    """A fraction as a signed percentage with a real minus sign."""
+    if frac is None:
+        return "—"
+    sign = "+" if frac > 0 else "−" if frac < 0 else ""
+    return f"{sign}{abs(frac) * 100:.{decimals}f}%"
+
+
+def _flag(row: pd.Series, col: str) -> bool:
+    return bool(to_bool_mask(pd.Series([row.get(col)])).iloc[0])
+
+
+def _date_label(raw) -> str:
+    if raw is None or str(raw).strip() in ("", "nan", "NaT", "None"):
+        return ""
+    try:
+        return pd.Timestamp(str(raw)[:10]).strftime("%-d %b %Y")
+    except (ValueError, TypeError):
+        return ""
+
+
+def _html_block(markup: str) -> None:
+    # st.markdown, not st.html: the page's tests read at.markdown, and the
+    # shared stylesheet styles both the same.
+    st.markdown(markup, unsafe_allow_html=True)
+
+
+def _price_day() -> pd.Timestamp | None:
+    from src.core import startup_metrics as _metrics
+
+    try:
+        day = pd.Timestamp(
+            str(_metrics.snapshot().get("facts", {}).get("price_as_of") or "")[:10])
+    except (ValueError, TypeError):
+        return None
+    return None if pd.isna(day) else day
+
+
+# ── 1. HERO ──────────────────────────────────────────────────────────────────
+
+def _render_identity(row: pd.Series, total_stocks: int) -> None:
+    sym = str(row["Symbol"])
+    name = str(row.get("Company Name") or "").strip() or sym
+    industry = str(row.get("Industry") or "").strip()
+    sector = str(row.get("TV_Sector") or "").strip()
+    tags = [t.strip().upper() for t in str(row.get("Indices") or "").split(",") if t.strip()]
+
+    # Exact tags, as indices_loader writes them (config.SHORT_FORMS). A
+    # substring test ("50" in tag) once gave every MID150/SMALL250/MICRO250
+    # stock a S&P 500 badge.
+    chips = f'<span class="sp-sym">{_html.escape(sym)}</span>'
+    for t in tags:
+        if t in ("—", "NAN"):
+            continue
+        chips += f'<span class="sp-tag">{_html.escape(INDEX_NAMES.get(t, t))}</span>'
+
+    day = _price_day()
+    mcap = _num(row.get("Market Cap ($B)"))
+    close_bits = [f"Close · {day:%a %-d %b %Y}" if day is not None else "Close"]
+    if mcap is not None:
+        close_bits.append(f"Market cap ${mcap:,.1f}B")
+
+    changes = ""
+    for m in (1, 3, 12):
+        v = _num(row.get(f"{m}M Return"))
+        if v is None:
+            continue
+        cls = "up" if v > 0 else "down" if v < 0 else "flat"
+        arrow = "▲" if v > 0 else "▼" if v < 0 else "•"
+        changes += (
+            f'<span class="sp-chg {cls}">'
+            f'<i>{m}M</i><b>{arrow} {abs(v) * 100:.1f}%</b>'
+            '</span>'
+        )
+
+    cls_parts = [p for p in (industry, sector) if p and p.lower() != "nan"]
+    if len(cls_parts) == 2 and cls_parts[0] == cls_parts[1]:
+        cls_parts = cls_parts[:1]
+    cls_line = " · ".join(_html.escape(p) for p in cls_parts)
+
+    rank = _num(row.get("Rank"))
+    path = []
+    for col, label in (
+        ("Rank (-6M)", "6M"),
+        ("Rank (-3M)", "3M"),
+        ("Rank (-2M)", "2M"),
+        ("Rank (-1M)", "1M"),
+        ("Rank", "Now"),
+    ):
+        v = _num(row.get(col))
+        path.append((int(v) if v is not None else None, label))
+    path_html = ""
+    if len(path) >= 2:
+        steps = []
+        for i, (r, label) in enumerate(path):
+            cls = "now" if label == "Now" else ""
+            rank_text = f"#{r}" if r is not None else "—"
+            steps.append(f'<span class="sp-step {cls}"><b>{rank_text}</b><i>{label}</i></span>')
+            if i < len(path) - 1:
+                steps.append('<span class="sp-arrow">→</span>')
+        path_html = f'<div class="sp-path">{"".join(steps)}</div>'
+    score = _num(row.get("Score"))
+    hz = _num(row.get("Horizons Scored"))
+    facts = []
+    if score is not None:
+        facts.append(f"<span>Score <b>{score:.3f}</b></span>")
+    if hz is not None:
+        facts.append(f"<span>Horizons scored <b>{int(hz)} of 5</b></span>")
+
+    _html_block(
+        '<section class="sp-hero">'
+        '<div class="sp-card sp-id">'
+        f'<div class="sp-chips">{chips}</div>'
+        f'<div class="sp-cls">{cls_line}</div>'
+        f'<h1 class="sp-name">{_html.escape(name)}</h1>'
+        '<div class="sp-price-row"><div class="sp-price-col">'
+        f'<span class="sp-price">{_money(row.get("CMP"), 2)}</span>'
+        f'<span class="sp-close">{_html.escape(" · ".join(close_bits))}</span></div>'
+        f'<div class="sp-changes">{changes}</div></div>'
+        '</div>'
+        '<div class="sp-card sp-rank">'
+        '<span class="sp-k">Momentum rank</span>'
+        f'<div class="sp-rank-big"><span>#{int(rank) if rank is not None else "—"}</span>'
+        f'<i>of {total_stocks} stocks</i></div>'
+        f'{path_html}'
+        f'<div class="sp-facts">{"".join(facts)}</div>'
+        '</div></section>'
+    )
+
+
+# ── 2. VERDICT ───────────────────────────────────────────────────────────────
+
+def _render_verdict(row: pd.Series) -> None:
+    # Distances only: the price, the 50D EMA and the 52W high are printed once,
+    # in the hero and on the ladder. The ATH price is printed here, because no
+    # other block on the page shows it.
+    above = _flag(row, "Above 50 EMA")
+    near = _flag(row, "Near 52W High")
+    ema_pct = _num(row.get("% 50 EMA"))
+    pct_hi = _num(row.get("% High"))
+    ath = _num(row.get("ATH"))
+    pct_ath = _num(row.get("% ATH"))
+
+    # The badge carries the verdict; the title says which filters passed.
+    if above and near:
+        state, title = "pass", "Passes both filters"
+    elif above or near:
+        state, title = "part", "Passes one filter of two"
+    else:
+        state, title = "fail", "Fails both filters"
+
+    def dist(p: float | None) -> str:
+        if p is None:
+            return "—"
+        if abs(p) < 0.05:
+            return "At the high"
+        return f"{abs(p):.1f}% {'above' if p > 0 else 'below'}"
+
+    ema_txt = "—" if ema_pct is None else f"{abs(ema_pct):.1f}% {'above' if ema_pct >= 0 else 'below'}"
+    hi_date = _date_label(row.get("52W High Date"))
+    ath_date = _date_label(row.get("ATH Date"))
+
+    mark = {"pass": "✓", "part": "!", "fail": "✕"}[state]
+
+    ema_status = "PASS" if above else "FAIL"
+    hi_status = "PASS" if near else "FAIL"
+    ema_value = ema_txt
+    hi_value = dist(pct_hi)
+    ath_value = dist(pct_ath)
+
+    _html_block(
+        f'<section class="sp-verdict {state}" aria-label="Screener filters">'
+        f'<div class="sv-head"><span class="sv-head-mark">{mark}</span>'
+        f'<div><b>{title}</b></div>'
+        f'<span class="sv-state">{ "ELIGIBLE" if state == "pass" else "NOT ELIGIBLE" }</span></div>'
+        f'<div class="sv-card ema">'
+        f'<div class="sv-main"><span class="sv-k">50D EMA</span>'
+        f'<strong>{_html.escape(ema_value)}</strong></div>'
+        f'<div class="sv-side"><em class="{"pass" if above else "fail"}">{ema_status}</em>'
+        '</div></div>'
+        f'<div class="sv-card high">'
+        f'<div class="sv-main"><span class="sv-k">52W high</span>'
+        f'<strong>{_html.escape(hi_value)}</strong></div>'
+        f'<div class="sv-side"><em class="{"pass" if near else "fail"}">{hi_status}</em>'
+        f'<span>Date</span><b>{_html.escape(hi_date or "—")}</b></div></div>'
+        f'<div class="sv-card ath">'
+        f'<div class="sv-main"><span class="sv-k">ATH</span>'
+        f'<strong>{_html.escape(ath_value)}</strong>'
+        f'<b class="sv-price">{_money(ath)}</b></div>'
+        f'<div class="sv-side">'
+        f'<span>Date</span><b>{_html.escape(ath_date or "—")}</b></div></div>'
+        '</section>'
+    )
+
+# ── 3. NOTICES ───────────────────────────────────────────────────────────────
+
+def _render_corporate_actions(symbol: str) -> None:
+    events = [e for e in load_events() if e.get("symbol", "").upper() == symbol.upper()]
+    if not events:
+        return
+    lines = []
+    for e in sorted(events, key=lambda x: x.get("date", "")):
+        move = e.get("move")
+        move_str = f"{_fmt.pct(move * 100, fraction=False)}" if move is not None else "a large amount"
+        kind = e.get("looks_like") or e.get("kind") or "corporate action"
+        day = _date_label(e.get("date")) or str(e.get("date", "—"))
+        lines.append(
+            f"On <b>{_html.escape(day)}</b> the price moved <b>{_html.escape(move_str)}</b> in "
+            f"one session, which looks like a {_html.escape(str(kind))}."
+        )
+    _html_block(
+        '<section class="sp-notice" aria-label="Corporate action">'
+        '<b>Corporate action in the price history</b>'
+        f'<p>{" ".join(lines)} History before the event is rescaled, so the jump is '
+        'not counted as a real gain or loss in the ranking or the backtest.</p></section>'
+    )
+
+
+# ── 5. LADDER ────────────────────────────────────────────────────────────────
+
+def _year_low(symbol: str, adj_close: pd.DataFrame | None,
+              low_prices: pd.DataFrame | None) -> float | None:
+    for frame in (low_prices, adj_close):
+        if frame is not None and symbol in getattr(frame, "columns", []):
+            s = pd.to_numeric(frame[symbol], errors="coerce").dropna().tail(252)
+            if not s.empty:
+                return float(s.min())
+    return None
+
+
+def _render_price_ladder(row: pd.Series, year_low: float | None = None) -> None:
+    """Render the compact price-position scale used on the stock page."""
+    cmp_v = _num(row.get("CMP"))
+    hi = _num(row.get("52W High"))
+    ema_pct = _num(row.get("% 50 EMA"))
+    ema_val = cmp_v / (1 + ema_pct / 100) if cmp_v is not None and ema_pct is not None else None
+    line = hi * 0.8 if hi is not None else None
+
+    if hi is None or year_low is None or hi <= year_low:
+        # Some unit tests exercise the renderer with only ranking columns.
+        # Keep the section visible without inventing a range position.
+        fallback_items = []
+        if hi is not None:
+            fallback_items.append(f'<span><b>52W high</b><strong>{_money(hi)}</strong></span>')
+        if ema_val is not None:
+            fallback_items.append(f'<span><b>50D EMA</b><strong>{_money(ema_val)}</strong></span>')
+        if line is not None:
+            fallback_items.append(f'<span><b>−20% from 52W high</b><strong>{_money(line)}</strong></span>')
+        if not fallback_items:
+            return
+        _html_block(
+            '<section class="sp-card sp-ladder sp-price-position" aria-label="Where the price sits">'
+            '<h2>Where the price sits</h2>'
+            '<div class="sp-range-fallback">'
+            + "".join(fallback_items)
+            + '</div></section>'
+            '<style>'
+            '.sp-range-fallback{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}'
+            '.sp-range-fallback span{display:flex;flex-direction:column;gap:3px;min-width:120px;padding:10px 12px;border-radius:10px;background:var(--c-white);}'
+            '.sp-range-fallback b{font-size:12px;color:var(--c-muted);}'
+            '.sp-range-fallback strong{font-family:var(--font-mono);font-size: 15px;color:var(--c-ink);}'
+            '</style>'
+            '</section>'
+        )
+        return
+
+    span = hi - year_low
+
+    def x(value: float | None) -> float:
+        if value is None:
+            return 0.0
+        return max(0.0, min(100.0, (value - year_low) / span * 100))
+
+    ema_x = x(ema_val)
+    line_x = x(line)
+
+    # Labels are intentionally decoupled from marker positions. The markers
+    # represent the actual price locations; the four labels use equal-width
+    # columns so close prices never make the text collide.
+
+    _html_block(
+        '<section class="sp-card sp-ladder sp-price-position" aria-label="Where the price sits">'
+        '<h2>Where the price sits</h2>'
+        '<div class="sp-range-clean">'
+        '<div class="sp-range-labels">'
+        f'<div class="sp-range-label low">'
+        f'<span class="sp-range-k"><i></i>52W low</span><b>{_money(year_low)}</b></div>'
+        f'<div class="sp-range-label threshold">'
+        f'<span class="sp-range-k"><i></i>−20% from 52W high</span><b>{_money(line)}</b></div>'
+        f'<div class="sp-range-label ema">'
+        f'<span class="sp-range-k"><i></i>50D EMA</span><b>{_money(ema_val)}</b></div>'
+        f'<div class="sp-range-label high">'
+        f'<span class="sp-range-k"><i></i>52W high</span><b>{_money(hi)}</b></div>'
+        '</div>'
+        '<div class="sp-range-track" aria-hidden="true">'
+        f'<span class="sp-range-segment muted" style="left:0%;width:{ema_x:.1f}%"></span>'
+        f'<span class="sp-range-segment positive" style="left:{ema_x:.1f}%;width:{100 - ema_x:.1f}%"></span>'
+        f'<i class="sp-range-dot low" style="left:0%"></i>'
+        f'<i class="sp-range-dot ema" style="left:{ema_x:.1f}%"></i>'
+        f'<i class="sp-range-dot threshold" style="left:{line_x:.1f}%"></i>'
+        f'<i class="sp-range-dot high" style="left:100%"></i>'
+        '</div>'
+        '</div>'
+        '</section>'
+        '<style>'
+        '.sp-price-position{margin:14px 0;}'
+        '.sp-range-clean{margin-top:22px;padding:0 2px 2px;}'
+        '.sp-range-labels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:start;height:62px;}'
+        '.sp-range-label{text-align:center;min-width:0;}'
+        '.sp-range-k{display:flex;align-items:center;justify-content:center;gap:5px;font-family:var(--font-ui);font-size:12.5px;line-height:1.2;font-weight:500;white-space:normal;}'
+        '.sp-range-k i{display:inline-block;flex:0 0 8px;width:8px;height:8px;border-radius:50%;}'
+        '.sp-range-label.low .sp-range-k{color:var(--c-down);}'
+        '.sp-range-label.low .sp-range-k i{background:var(--c-down);}'
+        '.sp-range-label.threshold .sp-range-k{color:var(--c-caution);}'
+        '.sp-range-label.threshold .sp-range-k i{background:var(--c-caution);}'
+        '.sp-range-label.ema .sp-range-k{color:var(--c-ink);}'
+        '.sp-range-label.ema .sp-range-k i{background:var(--c-ink);}'
+        '.sp-range-label.high .sp-range-k{color:var(--c-up);}'
+        '.sp-range-label.high .sp-range-k i{background:var(--c-up);}'
+        '.sp-range-label b{display:block;margin-top:5px;font-family:var(--font-mono);font-size: 15px;line-height:1;color:var(--c-ink);font-weight:500;white-space:nowrap;}'
+        '.sp-range-track{position:relative;height:18px;margin:0 10px;}'
+        '.sp-range-segment{position:absolute;top:7px;height:4px;border-radius:2px;}'
+        '.sp-range-segment.muted{background:var(--c-rule);}'
+        '.sp-range-segment.positive{background:var(--c-up_line_2);}'
+        '.sp-range-dot{position:absolute;top:4px;width:10px;height:10px;margin-left:-5px;border:1.5px solid var(--c-white);border-radius:50%;box-sizing:border-box;}'
+        '.sp-range-dot.low{background:var(--c-down);}'
+        '.sp-range-dot.ema{background:var(--c-ink);}'
+        '.sp-range-dot.threshold{background:var(--c-caution);}'
+        '.sp-range-dot.high{background:var(--c-up);}'
+        '@media (max-width:640px){'
+        '.sp-price-position{padding:14px 12px;border-radius:16px;}'
+        '.sp-range-clean{margin-top:20px;padding:0;}'
+        '.sp-range-labels{gap:4px;height:68px;}'
+        '.sp-range-k{font-size:12.5px;line-height:1.15;gap:4px;}'
+        '.sp-range-k i{flex-basis:7px;width:7px;height:7px;}'
+        '.sp-range-label b{font-size:15px;margin-top:4px;}'
+        '.sp-range-track{margin:0 8px;height:18px;}'
+        '}'
+        '</style>'
+    )
+
+
+# ── 6. RETURNS: GAIN VS PAIN ─────────────────────────────────────────────────
+
+def _benchmark_returns(day: pd.Timestamp | None) -> dict[int, float]:
+    """S&P 500 price return over each calendar window ending on the price day."""
+    try:
+        from src.loaders.price_loader import fetch_benchmark_history
+
+        s = fetch_benchmark_history(period="2y")
+    except Exception:
+        return {}
+    s = pd.to_numeric(s, errors="coerce").dropna()
+    if s.empty:
+        return {}
+    if day is not None:
+        s = s[s.index <= day + pd.Timedelta(days=1)]
+    if s.empty:
+        return {}
+    end_t = s.index[-1]
+    out = {}
+    for m in PERIODS:
+        start = s[s.index <= end_t - pd.DateOffset(months=m)]
+        if not start.empty:
+            out[m] = float(s.iloc[-1] / start.iloc[-1] - 1)
+    return out
+
+
+def _render_gain_vs_pain(row: pd.Series, rank_df: pd.DataFrame) -> None:
+    """Each window's return grows right, the fall it took grows left."""
+    bench = _benchmark_returns(_price_day())
+    dd_max, r_max = 30.0, 0.0
+    data = []
+    for m in PERIODS:
+        ret = _num(row.get(f"{m}M Return"))
+        dd = _num(row.get(f"Max DD {m}M"))
+        sh = _num(row.get(f"{m}M Sharpe"))
+        pct = None
+        col = rank_df.get(f"{m}M Return")
+        if ret is not None and col is not None:
+            vals = pd.to_numeric(col, errors="coerce").dropna()
+            if len(vals):
+                pct = float((vals < ret).mean() * 100)
+        med = None
+        med_col = rank_df.get(f"Max DD {m}M")
+        if med_col is not None:
+            med = _num(pd.to_numeric(med_col, errors="coerce").median())
+        data.append((m, ret, dd, sh, pct, med, bench.get(m)))
+        if ret is not None:
+            r_max = max(r_max, ret)
+        for v in (dd, med):
+            if v is not None:
+                dd_max = max(dd_max, abs(v))
+    r_scale = max(r_max * 1.15, 0.25)
+
+    rows_html = []
+    for m, ret, dd, sh, pct, med, nb in data:
+        dd_w = abs(dd) / dd_max * 100 if dd is not None else 0
+        r_w = max(0.0, ret) / r_scale * 100 if ret is not None else 0
+        n_w = max(0.0, nb) / r_scale * 100 if nb is not None else 0
+        neg = "neg" if ret is not None and ret < 0 else ""
+        med_mark = (f'<i class="gp-med" style="right:{abs(med) / dd_max * 100:.1f}%" '
+                    f'title="Typical stock: −{abs(med):.1f}%"></i>' if med is not None else "")
+        dots = "".join(
+            f'<i class="{"on" if sh is not None and sh >= k + 1 else "half" if sh is not None and sh > k else ""}"></i>'
+            for k in range(4)
+        )
+        if pct is None:
+            top, good = "—", ""
+        elif pct >= 50:
+            top, good = f"Top {max(1, int(np.ceil(100 - pct)))}%", "good"
+        else:
+            top, good = f"Bottom {max(1, int(np.ceil(pct)))}%", "poor"
+        dd_txt = f"−{abs(dd):.1f}%" if dd is not None else "—"
+        nb_txt = f"S&P 500 {_signed_pct(nb)}" if nb is not None else ""
+        rows_html.append(
+            '<div class="gp-row">'
+            f'<span class="gp-w"><b>{m}M</b><i>{_LONG[m]}</i></span>'
+            # Each label sits past the end of its bar, clamped so it cannot
+            # run outside the cell: on a phone the cell is 280px and a long
+            # bar pushed the figure out of sight (design audit, 9 Nov 2026).
+            f'<div class="gp-dd">{med_mark}<div class="bar" style="width:{dd_w:.1f}%"></div>'
+            f'<span class="lbl" style="right:min(calc({dd_w:.1f}% + 6px), calc(100% - 52px))">{dd_txt}</span></div>'
+            '<div class="gp-axis"></div>'
+            f'<div class="gp-ret"><div class="bar {neg}" style="width:{r_w:.1f}%"></div>'
+            f'<span class="lbl {neg}" style="left:min(calc({r_w:.1f}% + 8px), calc(100% - 56px))">{_signed_pct(ret)}</span>'
+            f'<div class="nb" style="width:{n_w:.2f}%"></div>'
+            f'<span class="nl" style="left:min(calc({n_w:.2f}% + 6px), calc(100% - 96px))">{nb_txt}</span></div>'
+            f'<span class="gp-sh"><span class="dots">{dots}</span><b>{_ratio(sh)}</b></span>'
+            f'<span class="gp-top"><em class="{good}">{top}</em></span>'
+            '</div>'
+        )
+
+    # Say so when one fall is the worst drop in several windows: the old grid
+    # repeated the same number four times with no explanation.
+    dds = [(d[0], d[2]) for d in data if d[2] is not None]
+    note = ""
+    if len(dds) >= 2:
+        same = [m for m, v in dds if abs(v - dds[0][1]) < 0.01]
+        if len(same) >= 2:
+            note = (f"The same {abs(dds[0][1]):.1f}% fall is the worst drop in every window "
+                    f"from {same[0]}M to {same[-1]}M. ")
+    _html_block(
+        '<section class="sp-card sp-gp" aria-label="Returns and risk">'
+        '<div class="gp-head"><h2>Returns and risk by window</h2>'
+        '<span class="gp-legend"><span><i class="k-dd"></i>Max drawdown</span>'
+        '<span><i class="k-ret"></i>Return</span><span><i class="k-nb"></i>S&P 500</span>'
+        '<span><i class="k-med"></i>Typical stock</span></span></div>'
+        '<div class="gp-row gp-hdr"><span>Window</span><span class="r">Max drawdown</span><span></span>'
+        '<span>Return</span><span class="r">Sharpe</span><span class="r">Among all</span></div>'
+        f'{"".join(rows_html)}'
+        f'<div class="gp-foot">{_html.escape(note)}Price return, no dividends. Sharpe is the '
+        "window's return over its volatility, as the ranking scores it (not annualised), one "
+        'dot per full point. "Among all" ranks the return against every '
+        'ranked stock.</div></section>'
+    )
+
+
+# ── 7. PEERS ─────────────────────────────────────────────────────────────────
+# The Screener's own table: same columns, sorting, links and phone layout as
+# every other list of stocks, with this stock's row tagged.
+
+PEERS_SHOWN = 8
+
+
+def _peer_rows(row: pd.Series, rank_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """The industry's best-ranked stocks, with this stock always among them,
+    and the whole industry best rank first."""
+    industry = row.get("Industry")
+    if not industry or "Industry" not in rank_df.columns:
+        return rank_df.iloc[0:0], rank_df.iloc[0:0]
+    in_ind = rank_df[rank_df["Industry"] == industry].sort_values("Rank")
+    peers = in_ind.head(PEERS_SHOWN)
+    sym = str(row["Symbol"])
+    if sym not in set(peers["Symbol"].astype(str)):
+        peers = pd.concat([peers.head(PEERS_SHOWN - 1),
+                           in_ind[in_ind["Symbol"].astype(str) == sym]])
+    return peers, in_ind
+
+
+def _render_peers(row: pd.Series, rank_df: pd.DataFrame,
+                  adj_close: pd.DataFrame | None = None) -> None:
+    peers, in_ind = _peer_rows(row, rank_df)
+    if len(peers) <= 1:
+        return
+    industry = str(row.get("Industry"))
+    sym = str(row["Symbol"])
+    with kit.card(f"Best-ranked {industry} stocks", "sp_peers",
+                  f"{len(in_ind)} stocks in the industry"):
+        render_screener_table(peers.reset_index(drop=True), adj_close, "Core", highlight=sym)
+        if len(in_ind) > len(peers):
+            if st.button("Show all", type="tertiary", icon=":material/open_in_full:",
+                         key="sp_peers_all"):
+                _peers_dialog(industry, in_ind.reset_index(drop=True), adj_close, sym)
+
+
+# ── Drill-downs (modal, read-only) ───────────────────────────────────────────
+# Dialogs run as fragments and drop their widgets when closed, so they hold
+# figures only: nothing keyed, nothing the engine reads.
+
+def _factsheet_frame(row: dict) -> pd.DataFrame:
+    """One line per lookback window: return, Sharpe and the worst fall in it."""
+    return pd.DataFrame([
+        {"Window": f"{m} month" + ("s" if m > 1 else ""),
+         "Return": _num(row.get(f"{m}M Return")),
+         "Sharpe": _num(row.get(f"{m}M Sharpe")),
+         "Max drawdown": _num(row.get(f"Max DD {m}M"))}
+        for m in PERIODS
+    ])
+
+
+@st.dialog("Factsheet", width="large")
+def _factsheet_dialog(row: dict) -> None:
+    """Every figure the ranking holds for this stock, grouped."""
+    r = pd.Series(row)
+    sym = str(r.get("Symbol", ""))
+    st.caption(f"{str(r.get('Company Name') or sym)} · {sym}")
+    t_ret, t_trend, t_data = st.tabs(["Returns and risk", "Trend and levels", "Data quality"])
+
+    with t_ret:
+        st.dataframe(
+            _factsheet_frame(row), hide_index=True, width="stretch",
+            column_config={
+                "Window": st.column_config.TextColumn("Window", pinned=True),
+                "Return": st.column_config.NumberColumn("Return", format="percent"),
+                "Sharpe": st.column_config.NumberColumn("Sharpe", format="%.2f"),
+                "Max drawdown": st.column_config.NumberColumn("Max drawdown", format="%.1f%%"),
+            },
+        )
+        st.caption("Return is the price change over the window; the drawdown is the "
+                   "deepest fall from a peak inside it.")
+
+    with t_trend:
+        kit.metric_row([
+            kit.Metric("Rank", f"#{int(_num(r.get('Rank')))}" if _num(r.get("Rank")) is not None else "—"),
+            kit.Metric("Score", _ratio(r.get("Score"), 3)),
+            kit.Metric("From 52W high", _pct(r.get("% High"))),
+            kit.Metric("vs 50D EMA", _pct(r.get("% 50 EMA"))),
+        ], key="fs_trend")
+        kit.metric_row([
+            kit.Metric("Price", _money(r.get("CMP"), 2)),
+            kit.Metric("52W high", _money(r.get("52W High"), 2)),
+            kit.Metric("All-time high", _money(r.get("ATH"), 2)),
+            kit.Metric("Stop loss", _money(r.get("Stop Loss"), 2)),
+            kit.Metric("Chandelier exit", _money(r.get("Chand Exit"), 2)),
+        ], key="fs_levels")
+        with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+            for label, col in (("Above 50D EMA", "Above 50 EMA"),
+                               ("Near 52W high", "Near 52W High"),
+                               ("At all-time high", "At ATH")):
+                kit.badge(label, "up" if _flag(r, col) else "")
+
+    with t_data:
+        gap = str(r.get("Data Gap") or "").strip()
+        hz = _num(r.get("Horizons Scored"))
+        kit.metric_row([
+            kit.Metric("Horizons scored", f"{int(hz)} of 5" if hz is not None else "—"),
+            kit.Metric("Gap-filled prices", _pct(r.get("FFill %"), signed=False)),
+            kit.Metric("History", "Under 6 months" if str(r.get("Short History") or "No") == "Yes" else "Full"),
+        ], key="fs_data")
+        if gap and gap.lower() not in ("nan", "none", "—"):
+            kit.callout("Data gap", gap, "warn")
+        else:
+            kit.callout("No data gaps flagged", "", "up")
+
+
+@st.dialog("Industry peers", width="large")
+def _peers_dialog(industry: str, frame: pd.DataFrame, adj_close: pd.DataFrame | None = None,
+                  highlight: str = "") -> None:
+    """Every ranked stock in the industry, in the Screener's table."""
+    st.caption(f"{industry}. Click a header to sort.")
+    render_screener_table(frame, adj_close, "Core", highlight=highlight)
+
+
+# ── 8. DATA CHECKS ───────────────────────────────────────────────────────────
+
+def _render_data_health(row: pd.Series) -> None:
+    gap = str(row.get("Data Gap") or "")
+    short_hist = str(row.get("Short History") or "No") == "Yes"
+    ffill = _num(row.get("FFill %")) or 0.0
+    ath_src = str(row.get("ATH Source") or "")
+    hz = _num(row.get("Horizons Scored"))
+
+    checks = [
+        (ffill > 10, f"Gap-filled prices, last 12 months: {ffill:.1f}%" if ffill
+         else "No gap-filled prices in the last 12 months"),
+        ("🔴" in gap, "A data gap in the last 12 months" if "🔴" in gap else "No data gaps"),
+        (CARRIED_MARK in gap, "Price is the last print, not the ranking day's"
+         if CARRIED_MARK in gap else "Price is current"),
+        (short_hist, "Less than 6 months of history" if short_hist else "Full 12-month history"),
+        (ath_src != "snapshot", "All-time high from the 20-year record" if ath_src == "snapshot"
+         else "High from a 2-year window, not all-time"),
+    ]
+    if hz is not None and hz < 5:
+        checks.append((True, f"Ranked on {int(hz)} of 5 horizons"))
+    issues = sum(1 for bad, _ in checks if bad)
+    label = "Data checks · all clear" if not issues else f"Data checks · {issues} to review"
+    with st.expander(label, expanded=bool(issues),
+                     icon=":material/verified_user:" if not issues else ":material/warning:"):
+        _html_block(
+            '<div class="sp-checks">'
+            + "".join(f'<span class="{"bad" if bad else ""}">{_html.escape(text)}</span>'
+                      for bad, text in checks)
+            + "</div>"
+        )
+
+
+# ── Actions: back, watchlist, share ──────────────────────────────────────────
+
+def _share_url(sym: str) -> str:
+    """The short, public link to this stock's page.
+
+    Built from the address the reader is on, minus Streamlit Cloud's /~/+/
+    mount and any page path: the short form is the one production QA has
+    confirmed reaches the stock page (audit_deep_links, "short_query").
+    """
+    from urllib.parse import urlsplit
+
+    try:
+        parts = urlsplit(str(st.context.url or ""))
+        base = f"{parts.scheme}://{parts.netloc}" if parts.scheme and parts.netloc else ""
+    except Exception:
+        base = ""
+    return f"{base}/?stock={_quote(sym, safe='')}"
+
+
+def _render_exit_status(sym: str, rank_df: pd.DataFrame) -> None:
+    """If you hold it: where it stands against the three rules that sell it."""
+    from src.engine.exit_watch import CLEAR, SELL, STATUS_LABEL, assess
+
+    a = assess(rank_df, [sym])
+    if a.empty or a.iloc[0]["status"] not in STATUS_LABEL:
+        return
+    r = a.iloc[0]
+    status = r["status"]
+    if status == CLEAR:
+        why = "clear of all three sell rules"
+    else:
+        why = r["why"] or ""
+    cls = {SELL: "sell", CLEAR: "clear"}.get(status, "watch")
+    _html_block(
+        f'<div class="sp-exit {cls}"><span class="lbl">If you hold it</span>'
+        f'<b>{_html.escape(STATUS_LABEL[status])}</b><span>{_html.escape(why)}</span>'
+        '<a href="/actions" target="_self">Actions →</a></div>'
+    )
+
+
+def _render_actions(sym: str, on_back=None, row: dict | None = None) -> None:
+    from src.ui import watchlist_store
+
+    on_list = sym.upper() in watchlist_store.symbols()
+    with st.container(key="sp_actions", horizontal=True, vertical_alignment="center",
+                      gap="small"):
+        if on_back:
+            on_back()
+        st.space("stretch")
+        st.button(
+            "In watchlist" if on_list else "Add to watchlist",
+            icon=":material/star:" if on_list else ":material/star_border:",
+            key="sp_watch",
+            type="secondary",
+            on_click=watchlist_store.toggle,
+            args=(sym,),
+            help=("Remove from your watchlist" if on_list else
+                  "Save to your watchlist, kept in this browser"),
+        )
+        if row is not None and st.button("Factsheet", icon=":material/table_view:",
+                                         key="sp_factsheet", type="secondary",
+                                         help="Every figure the ranking holds for this stock"):
+            _factsheet_dialog(row)
+        st.link_button("Chart", kit.tradingview_url(sym), icon=":material/open_in_new:",
+                       help="Opens this stock on TradingView in a new tab")
+        with st.popover("Share", icon=":material/link:", key="sp_share"):
+            st.caption("Link to this stock's page. Use the copy button on the right.")
+            st.code(_share_url(sym), language=None, wrap_lines=True)
+
+
+# ── Main entry ────────────────────────────────────────────────────────────────
+
+def render_stock_view(
+    symbol: str,
+    rank_df: pd.DataFrame,
+    adj_close: pd.DataFrame,
+    high_prices: pd.DataFrame | None = None,
+    low_prices: pd.DataFrame | None = None,
+    volume_data: pd.DataFrame | None = None,
+    open_prices: pd.DataFrame | None = None,
+    *,
+    on_back=None,
+) -> None:
+    """Render the detail page for one symbol."""
+    match = rank_df[rank_df["Symbol"].astype(str).str.upper() == str(symbol).upper()]
+    if match.empty:
+        st.warning(f"{symbol} is not in the current ranking.")
+        if on_back:
+            on_back()
+        return
+    row = match.iloc[0]
+    total_stocks = len(rank_df)
+    sym = str(row["Symbol"])
+
+    _render_actions(sym, on_back, row.to_dict())
+    _render_identity(row, total_stocks)
+    _render_verdict(row)
+    _render_exit_status(sym, rank_df)
+    _render_corporate_actions(sym)
+
+    _html_block('<div class="sp-sec"><h2>Price and relative strength</h2>'
+                '<span>Drag to pan.</span></div>')
+    render_stock_chart(
+        sym,
+        rank_df,
+        adj_close,
+        high_prices=high_prices,
+        low_prices=low_prices,
+        volume_data=volume_data,
+        open_prices=open_prices,
+    )
+
+    _render_price_ladder(row, _year_low(sym, adj_close, low_prices))
+    _render_gain_vs_pain(row, rank_df)
+    _render_peers(row, rank_df, adj_close)
+    _render_data_health(row)
+
+    render_data_quality_footer(
+        total_stocks=total_stocks,
+        gap_count=gap_count(rank_df),
+        short_count=int((rank_df.get("Short History", pd.Series(dtype=str)) == "Yes").sum()),
+    )

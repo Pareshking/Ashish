@@ -1,0 +1,33 @@
+name: Nasdaq cross-check (weekly sample)
+
+# Saturday 14:17 UTC: a rotating sample of 150 members against Nasdaq.com's
+# official closes (scripts/audit_nasdaq.py). Fails when fewer than 99.5% of the
+# last 400 sessions' closes agree within 0.5%, net of reviewed exceptions.
+on:
+  schedule:
+    - cron: '17 14 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python scripts/audit_nasdaq.py --sample 150
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nasdaq-audit
+          path: reports/
+          if-no-files-found: ignore

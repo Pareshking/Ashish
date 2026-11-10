@@ -1,0 +1,46 @@
+name: Monthly track record
+
+# Freezes the month just closed into data/track_record.json. Runs on the 1st to
+# 5th of each month at 23:30 UTC (after the nightly price job's first slot);
+# the script writes only CLOSED months and only once, so the later days are
+# safety nets for a late or failed run. It refuses to freeze while today's
+# replay disagrees with a month already frozen (the failure alert opens an issue).
+on:
+  schedule:
+    - cron: '30 23 1-5 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: monthly-track-record
+  cancel-in-progress: false
+
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python scripts/update_track_record.py
+      # Momentum health and the qualified share, with Kenneth French's US
+      # momentum factor (the Dashboard's reading) refreshed and re-checked.
+      - name: Momentum health
+        run: python scripts/build_momentum_health.py --check-french || echo "::warning::momentum health not rebuilt; the committed files stand."
+      - name: Commit the ledger
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/track_record.json data/momentum_health.csv data/momentum_health_latest.json data/momentum_health_check.json data/french_umd.csv
+          if git diff --staged --quiet; then echo "No new month."; exit 0; fi
+          git commit -m "chore(data): freeze the closed month into the track record [skip ci]"
+          for attempt in 1 2 3; do git push && exit 0; git pull --rebase origin "${GITHUB_REF_NAME}"; sleep 5; done
+          exit 1
