@@ -6,6 +6,8 @@ from src.ui.tokens import C
 from src.ui import page_kit as _kit
 
 import html
+
+from src.core.config import SITE_NAME
 import re
 from datetime import timedelta
 
@@ -382,9 +384,9 @@ def render_header_kpi_bar(
         # exactly "Paresh Patel", as the owner asked.
         if nav_pages:
             with st.container(key="app_brand", width="content"):
-                st.page_link(nav_pages[0], label="Paresh Patel")
+                st.page_link(nav_pages[0], label=SITE_NAME)
         else:
-            st.html('<span class="hdr-title">Paresh Patel</span>', width="content")
+            st.html(f'<span class="hdr-title">{html.escape(SITE_NAME)}</span>', width="content")
         if nav_pages:
             # Owner, 7 Nov 2026 (audit decision 6): on a desktop the four pages
             # read most often sit beside the menu; the menu keeps all eleven.
@@ -804,19 +806,12 @@ def render_data_quality_footer(
     # copyright; the header's price chip still carries the closes' date.
     if not details:
         st.html('<div style="display: flex; padding: 6px 0 24px; font-family: var(--font-ui); font-size: var(--fs-12);">'
-                '<span style="margin-left: auto; color: var(--c-text_2);">© Paresh Patel</span></div>')
+                f'<span style="margin-left: auto; color: var(--c-text_2);">© {html.escape(SITE_NAME)}</span></div>')
         return
     render_freshness_ribbon()
 
-    # Where this process loaded its published data from: R2 first, the
-    # release files when R2 was unavailable (src/loaders/app_source.py).
-    from src.loaders import app_source as _src
-
-    _where = _src.summary()
-    # Screener is an internal implementation detail. Never expose the
-    # storage/provider name in the public UI; the user-facing source label is
-    # the established "Personal" name whenever Screener contributes.
-    _public_where = "Personal" if "screener" in _where.lower() else _where
+    # One source here: Yahoo's daily bars, committed to the repository nightly.
+    _public_where = "Yahoo Finance"
     source_note = (
         f'<span style="color: var(--c-faint);">·</span><span>Data from: '
         f'<strong style="color: var(--c-ink);">{html.escape(_public_where)}</strong></span>'
@@ -828,7 +823,7 @@ def render_data_quality_footer(
         <span style="color: var(--c-faint);">·</span>
         <span>Short history (under 126 sessions): <strong style="color: var(--c-ink);">{short_count}</strong></span>
         {source_note}
-        <span style="margin-left: auto; color: var(--c-text_2);">© Paresh Patel</span>
+        <span style="margin-left: auto; color: var(--c-text_2);">© {html.escape(SITE_NAME)}</span>
     </div>
     """
     st.html(footer_html)

@@ -42,6 +42,9 @@ INDICES_URLS: Final[dict[str, str]] = {
 INDICES_LOCAL: Final[dict[str, str]] = {k: UNIVERSE_FILE for k in INDICES_URLS}
 SHORT_FORMS: Final[dict[str, str]] = {"S&P 500": "SP500", "S&P 400": "SP400", "S&P 600": "SP600", "S&P 1500": ""}
 UNIVERSE_NAME: Final[str] = "S&P 1500"
+# The site's name in the header, the tab title and the footer. Paresh's site
+# carried its owner's name; this one's owner has not chosen yet (TODO B13).
+SITE_NAME: Final[str] = os.getenv("SITE_NAME", "US Momentum Terminal")
 
 HTTP_HEADERS: Final[dict[str, str]] = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",

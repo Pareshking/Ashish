@@ -22,7 +22,7 @@ from src.ui.components import gap_count, render_data_quality_footer
 # portfolio's benchmark). Value: the Yahoo symbol of the index.
 BENCHMARK_N500: str = "S&P 1500"
 BENCHMARK_N50: str = "S&P 500"
-BENCHMARK_SYMBOLS: dict[str, str] = {BENCHMARK_N500: "^CRSLDX", BENCHMARK_N50: "^NSEI"}
+BENCHMARK_SYMBOLS: dict[str, str] = {BENCHMARK_N500: "SPTM_TR", BENCHMARK_N50: "^GSPC"}
 BENCHMARK_OPTIONS: list[str] = list(BENCHMARK_SYMBOLS)
 
 

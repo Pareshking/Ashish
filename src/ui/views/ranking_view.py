@@ -12,7 +12,7 @@ import streamlit as st
 from src.ui.widget_state import mirror_key, remember
 from src.ui.system_param import keep_system_only, stock_href
 
-from src.core.config import SHORT_FORMS
+from src.core.config import SHORT_FORMS, SITE_NAME
 from src.core.market_time import ny_now
 from src.ui.components import (
     compute_signals,
@@ -265,7 +265,7 @@ def render_ranking_view(
                 st.rerun()
 
         # The tab names the stock, not "Screener" (pre-launch audit, WCAG 2.4.2).
-        st.set_page_config(page_title=f"{requested} · Paresh Patel")
+        st.set_page_config(page_title=f"{requested} · {SITE_NAME}")
         render_stock_view(
             requested,
             rank_df,

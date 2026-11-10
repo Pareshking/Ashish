@@ -65,6 +65,7 @@ with app_import_guard():
         PRICES_FILE,
         REPO_MCAP_FILE,
         REPO_ATH_FILE,
+        SITE_NAME,
     )
     from src.core.logger import logger
     
@@ -111,7 +112,7 @@ with app_import_guard():
     
     # Page Config: 100% Widescreen, Sidebar Collapsed
     st.set_page_config(
-        page_title="US Momentum Terminal",
+        page_title=SITE_NAME,
         page_icon="📈",
         layout="wide",
         initial_sidebar_state="collapsed",

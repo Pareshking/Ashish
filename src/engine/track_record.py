@@ -103,7 +103,7 @@ TRACK_RECORD_CONFIG: dict[str, Any] = {
     "sector_cap": 0.40,
     "caps": "hard_at_rebalance",
     "sector_labels": "nse_index_industry_tv_fallback",
-    "benchmark": "^CRSLDX",
+    "benchmark": "SPTM_TR",
     # Not a run_backtest argument: it names the ACCOUNTING, so the fingerprint
     # changes with it. From 2026-09-25 the backtest holds each book between
     # fills (buy and hold) instead of re-weighting it to target every session;
@@ -149,7 +149,7 @@ def empty_ledger(inception: pd.Period = INCEPTION) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
         "inception": str(inception),
-        "benchmark": "^CRSLDX",
+        "benchmark": "SPTM_TR",
         "months": {},
     }
 

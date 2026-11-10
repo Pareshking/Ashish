@@ -180,7 +180,7 @@ def _history_inputs(rank_df: pd.DataFrame, choice: dict, bounds: dict) -> dict |
         "months": (end - start).n + 1, "floor": floor,
         # The S&P 500 against its own index; the others against the S&P 1500,
         # the broadest index on file (data/benchmarks.csv holds the two).
-        "benchmark": ("^NSEI", "S&P 500") if key == "nifty_50" else ("^CRSLDX", "S&P 1500"),
+        "benchmark": ("SPTM_TR", "S&P 1500"),
         "traded_value": traded,
         "sector_map": sec, "unlabelled": len(unlabelled), "name": iu.INDICES[key],
         "built": report.get("built"), "last_session": report.get("last_session"),
@@ -423,7 +423,7 @@ def _backtest_tab(
                     + ("." if history else " (Configuration)."))
         if traded_value is not None:
             ph += f"_{price_fingerprint(traded_value)}"
-    bench_symbol, bench_name = history["benchmark"] if history else ("^CRSLDX", "S&P 1500")
+    bench_symbol, bench_name = history["benchmark"] if history else ("SPTM_TR", "S&P 1500")
     benchmark_close = fetch_benchmark_history(period="max" if history else "2y", symbol=bench_symbol)
     if benchmark_close.empty:
         st.error(f"{bench_name} benchmark ({bench_symbol}) data is unavailable. Backtest stopped to "
