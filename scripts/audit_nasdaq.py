@@ -114,6 +114,14 @@ def main(argv=None) -> int:
     s = requests.Session()
     ex = exceptions()
     rows = []
+    # A checkpoint, so a long --all run that is stopped resumes where it was.
+    os.makedirs(os.path.join(ROOT, "reports"), exist_ok=True)
+    ckpt = os.path.join(ROOT, "reports", f"nasdaq_audit_{today}{'_all' if args.all else ''}.partial.csv")
+    if os.path.exists(ckpt):
+        done = pd.read_csv(ckpt)
+        rows = done.to_dict("records")
+        syms = [x for x in syms if x not in set(done["symbol"])]
+        print(f"  resuming: {len(rows)} done, {len(syms)} to go", flush=True)
     for i, sym in enumerate(syms):
         try:
             off = nasdaq_history(sym, start, str(today), s)
@@ -125,6 +133,7 @@ def main(argv=None) -> int:
         rows.append(res)
         if (i + 1) % 25 == 0:
             print(f"  {i + 1}/{len(syms)}", flush=True)
+            pd.DataFrame(rows).to_csv(ckpt, index=False)
         time.sleep(DELAY_S)
 
     rep = pd.DataFrame(rows).set_index("symbol")
