@@ -144,8 +144,27 @@ def confirm_with_nasdaq(rep: pd.DataFrame, close: pd.DataFrame) -> pd.DataFrame:
     return rep
 
 
+FORMER_FILE = os.path.join(ROOT, "data", "former_members.csv")
+AFTER_LEAVING = pd.Timedelta(days=45)
+
+
+def former_cutoffs() -> dict[str, pd.Timestamp]:
+    """A former member's rows are judged only to shortly after it left the
+    index: nothing reads them later (EGRX left in May 2023; its 2025-26 Yahoo
+    rows, from over-the-counter trading, are junk and irrelevant)."""
+    if not os.path.exists(FORMER_FILE):
+        return {}
+    f = pd.read_csv(FORMER_FILE, parse_dates=["LastMember"])
+    return {s: d + AFTER_LEAVING for s, d in zip(f["Symbol"], f["LastMember"]) if pd.notna(d)}
+
+
 def main() -> int:
     long = ps.read_long()
+    current = set(pd.read_csv(os.path.join(ROOT, "data", "universe.csv"))["Yahoo"])
+    cut = {s: d for s, d in former_cutoffs().items() if s not in current}
+    if cut:
+        limit = long["Symbol"].map(cut)
+        long = long[limit.isna() | (long["Date"] <= limit)]
     rep = audit(long, ps.read_actions())
     if rep.empty:
         rep = pd.DataFrame(columns=["Symbol", "Date", "Check", "Detail"])
