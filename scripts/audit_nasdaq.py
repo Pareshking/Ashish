@@ -98,14 +98,16 @@ def main(argv=None) -> int:
     ap.add_argument("--sample", type=int, default=150)
     ap.add_argument("--symbols", nargs="*")
     ap.add_argument("--seed", type=int, default=None, help="default: today's date, so a daily run rotates")
+    ap.add_argument("--all", action="store_true", help="every symbol in the store (about 90 minutes)")
+    ap.add_argument("--from", dest="since", default=None, help="compare from this date (default: ten years)")
     args = ap.parse_args(argv)
 
     today = mt.ny_today()
-    start = str(today.replace(year=today.year - 10))
+    start = args.since or str(today.replace(year=today.year - 10))
     long = ps.read_long(start=start)
     close = ps.wide(long, "Close")
     syms = args.symbols or sorted(close.columns)
-    if not args.symbols:
+    if not args.symbols and not args.all:
         random.Random(args.seed if args.seed is not None else int(today.strftime("%Y%m%d"))).shuffle(syms)
         syms = syms[: args.sample]
 
@@ -127,7 +129,7 @@ def main(argv=None) -> int:
 
     rep = pd.DataFrame(rows).set_index("symbol")
     os.makedirs(os.path.join(ROOT, "reports"), exist_ok=True)
-    out = os.path.join(ROOT, "reports", f"nasdaq_audit_{today}.csv")
+    out = os.path.join(ROOT, "reports", f"nasdaq_audit_{today}{'_all' if args.all else ''}.csv")
     rep.to_csv(out)
     n, w = int(rep["compared"].sum()), int(rep["within"].sum())
     share = w / n if n else 0.0

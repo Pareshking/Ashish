@@ -67,7 +67,7 @@ def _tone(v) -> str:
 
 
 MODE_LIVE = "Live system"
-MODE_HISTORY = "History from 2010"
+MODE_HISTORY = "History from 2020"  # owner, 10 Nov 2026: "min. 2020 start"
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -105,7 +105,9 @@ def _history_bounds() -> dict | None:
         return None
     close, _value, report = loaded
     # A year of prices before the first month, for the 12-month lookback and the EMA.
-    first = pd.Period(close.index[0], freq="M") + 13
+    # Owner, 10 Nov 2026: the history test starts no earlier than January 2020,
+    # where the point-in-time membership (Wikipedia's month-end revisions) begins.
+    first = max(pd.Period(close.index[0], freq="M") + 13, pd.Period("2020-01", freq="M"))
     last = pd.Period(close.index[-1], freq="M") - 1
     if first > last:
         kit.note("The long price file has no completed month to test yet.")
@@ -333,7 +335,7 @@ def _backtest_body(
     history_mode = st.session_state.get("bt_mode", MODE_LIVE) == MODE_HISTORY
     actions = kit.page_head(
         "Backtest",
-        "Any months from 2010, on the committed Yahoo prices" if history_mode else
+        "Any months from 2020, on point-in-time S&P 1500 lists and the committed Yahoo prices" if history_mode else
         f"Last {months} completed month{'s' if months != 1 else ''}",
         actions=True,
     )

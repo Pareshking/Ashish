@@ -56,19 +56,38 @@ def to_yahoo(symbol: str) -> str:
     return symbol.strip().upper().replace(".", "-")
 
 
+def _col(cols: list[str], *needles: str, avoid: str | None = None) -> str | None:
+    for c in cols:
+        low = c.lower()
+        if any(n in low for n in needles) and not (avoid and avoid in low):
+            return c
+    return None
+
+
 def parse_list(html: str, index: str) -> pd.DataFrame:
+    """The constituent table, wherever its columns sit and whatever the page
+    called them in that revision ("GICS Sub-Industry", "GICS Sub Industry",
+    "Ticker symbol", "Company", "GICS Economic Sector", ...)."""
     for t in pd.read_html(io.StringIO(html)):
-        if {"Symbol", "GICS Sector", "GICS Sub-Industry"} <= set(map(str, t.columns)):
-            name_col = "Security" if "Security" in t.columns else "Company"
-            out = pd.DataFrame({
-                "Symbol": t["Symbol"].astype(str).str.strip().str.upper(),
-                "Company": t[name_col].astype(str).str.strip(),
-                "Sector": t["GICS Sector"].astype(str).str.strip(),
-                "Industry": t["GICS Sub-Industry"].astype(str).str.strip(),
-            })
-            out["Yahoo"] = out["Symbol"].map(to_yahoo)
-            out["Index"] = index
-            return out[COLUMNS]
+        if isinstance(t.columns, pd.MultiIndex):
+            continue
+        cols = [str(c) for c in t.columns]
+        sym = _col(cols, "symbol", "ticker")
+        sector = _col(cols, "sector", avoid="sub")
+        sub = _col(cols, "sub-industry", "sub industry", "subindustry", "industry")
+        name = _col(cols, "security", "company", "name")
+        if not (sym and sector and sub) or len(t) < 100:
+            continue
+        out = pd.DataFrame({
+            "Symbol": t[sym].astype(str).str.strip().str.upper(),
+            "Company": t[name].astype(str).str.strip() if name else t[sym].astype(str),
+            "Sector": t[sector].astype(str).str.strip(),
+            "Industry": t[sub].astype(str).str.strip(),
+        })
+        out = out[out["Symbol"].str.match(r"^[A-Z][A-Z0-9.\-]*$")]
+        out["Yahoo"] = out["Symbol"].map(to_yahoo)
+        out["Index"] = index
+        return out[COLUMNS]
     raise ValueError(f"{index}: no constituent table found on the page")
 
 
