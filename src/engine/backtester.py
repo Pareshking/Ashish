@@ -401,6 +401,7 @@ def _build_rebalance_schedule(
     *,
     stateful_history: bool = False,
     history_start: pd.Timestamp | None = None,
+    signal_offset: int = 0,
 ) -> tuple[list[int], list[int], int, pd.Timestamp] | None:
     """Which sessions the book is rebalanced on, and where the simulation stops.
 
@@ -420,6 +421,12 @@ def _build_rebalance_schedule(
         month_keys = eligible.to_period("M")
         idx_values = np.arange(start_offset, len(prices))
         last_by_month = pd.Series(idx_values, index=eligible).groupby(month_keys).last()
+        if signal_offset:
+            # Research (docs/MOMENTUM_PREREG.md 3.1): the signal ``signal_offset``
+            # sessions before each month's last session, filled at the next close.
+            month_last = pd.Series(np.arange(len(dates)), index=dates).groupby(dates.to_period("M")).last()
+            last_by_month = month_last - int(signal_offset)
+            last_by_month = last_by_month[last_by_month >= start_offset]
         rebal_dates = [int(i) for i in last_by_month.to_numpy() if int(i) < len(prices) - 2]
         # The same calendar WITHOUT the "needs two sessions after it" guard and
         # without the reported-window filter below. The guard exists so a
@@ -1047,6 +1054,8 @@ def run_backtest(
     _research_values: pd.DataFrame | None = None,
     research_drop: float | None = None,
     research_pool: int | None = None,
+    signal_offset: int = 0,
+    _research_score: Any = None,
 ) -> dict[str, Any] | None:
     """
     Executes a walk-forward momentum backtest with zero look-ahead bias and friction modeling.
@@ -1098,7 +1107,19 @@ def run_backtest(
     ``research_label`` names the filter in the Streamlit cache key, which
     ignores the underscored frames: a caller passing a frame must pass a
     label that changes with it.
+
+    Pre-registered study (docs/MOMENTUM_PREREG.md, scripts/research_prereg.py),
+    both off by default and then byte-identical (tests/test_backtest_prereg_hooks.py):
+    ``signal_offset`` (monthly only): the signal that many sessions before each
+    month's last session, the fill at the next close (0 = the month end).
+    ``_research_score``: a callable ``(signal_date, score, members)`` returning
+    the score to rank on instead of the composite (``members``: the day's
+    point-in-time mask, or None). Needs a ``research_label``.
     """
+    if int(signal_offset) < 0 or (int(signal_offset) and rebal_freq != 21):
+        raise ValueError(f"signal_offset must be >= 0 and needs monthly rebalancing, not {signal_offset!r}")
+    if _research_score is not None and not research_label:
+        raise ValueError("a research score needs a research_label (the cache key)")
     _research_on = any(v is not None for v in (_research_gate, research_drop, research_pool))
     if _research_on:
         if research_gate_on not in ("buy", "keep", "both"):
@@ -1300,6 +1321,7 @@ def run_backtest(
         prices, start_offset, rebal_freq, backtest_months,
         stateful_history=stateful_history,
         history_start=history_start,
+        **({"signal_offset": int(signal_offset)} if signal_offset else {}),
     )
     if _schedule is None:
         return None
@@ -1407,6 +1429,8 @@ def run_backtest(
             anchor=prices_anchor, metric=score_method, members=idx_mask,
             on=dates[start_idx], members_from=members_only_scoring_from,
         )
+        if _research_score is not None:
+            composite_score = _research_score(dates[start_idx], composite_score, idx_mask)
         valid = _research_valid(valid & composite_score.notna(), start_idx, prev_holdings) \
             if _research_on else valid
         score = composite_score[valid & composite_score.notna()]
@@ -1845,6 +1869,8 @@ def run_backtest(
             anchor=prices_anchor, metric=score_method, members=p_idx_mask,
             on=prices.index[rebal_idx], members_from=members_only_scoring_from,
         )
+        if _research_score is not None:
+            p_score = _research_score(prices.index[rebal_idx], p_score, p_idx_mask)
         if _research_on:
             p_valid = _research_valid(p_valid & p_score.notna(), rebal_idx, prev_holdings)
         p_ranked = _research_order(

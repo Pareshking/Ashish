@@ -819,3 +819,33 @@ month m−1 only (section 2).
   frozen 1927-2007 parameters (S3); no leverage and SPY instead of a short leg (S2, S3); turnover
   proxy from today's shares (S4); a 20% drop instead of deciles (S7); median splits on S&P 500
   members instead of the paper's 500 largest (S4).
+
+
+---
+
+## Results (10 Nov 2026)
+
+### Fixed before the first run
+
+Written here before any backtest of this study was run (scripts/research_prereg.py).
+
+- **S3 parameters** (French data, vintage 202609, downloaded 10 Nov 2026; regression on months
+  k = Jun 1928 to Nov 2007, 954 months, the first k with 24 months of market returns and 126 daily
+  sessions of UMD): **γ0 = 0.008863, γ1 = −35.207, κ = 0.054452** (κ = 1/median(raw_k) over 955
+  months; by construction w < 1 in half of the months of 1927-2007).
+- **Interpretation choices** (the spec left these open; each is the reading closest to the paper
+  that the book's mechanics allow):
+  - Base keywords: live_kwargs() (TRACK_RECORD_CONFIG) with members_only_scoring_from, ema_warmup_from, hold_cap, hold_cap_from, buy_size and weight_reset_months set to None (all forward-dated to the 30 Nov 2026 signal, so off in the sample either way). The composite is therefore z-scored over every column with a price (all ever-members loaded), as the record does before 30 Nov 2026; membership restricts who may be held.
+  - Offsets: the signal is the session 0/5/10/15 sessions before each calendar month's last session (run_backtest signal_offset). 'Month m' is the calendar month holding the signal.
+  - Common start: m0 = the first month at which S1 has 36 monthly returns ending m-1 (and the membership covers the signal). Every run starts with its own offset's signal in m0; all are evaluated on the sessions after the offset-0 fill of m0 (the latest first fill) to the last session of the last complete month.
+  - Secondary sample: the same runs, sessions from 1 Jan 2020 (state carried from 2011, not a fresh start).
+  - S1: monthly returns are calendar month-end to month-end at every offset (they must line up with French's months); RES is computed over every stock, then z-scored over the day's members; RES of a member without 36 returns is 0 after standardisation. z(base) is the winsorised z of the composite over the day's members with a score.
+  - S4 and S6 under an offset: 'the end of month k' is the session the offset shifts it to (offset o: o sessions before month k's last session), so each offset is a pure time shift. S4's month-m return is the close at the signal over the close at the previous shifted month end; its volume is summed over the sessions after that to the signal. S6's 12-7 window runs from the shifted end of m-12 to the shifted end of m-6; its opening and closing prices use the 5-session stale-anchor rule.
+  - S4: shares = market cap in data/market_caps.csv / the store's adjusted close on that file's AsOf date; a member with no market cap (most former members) has no turnover, is left out of the sort and passes. Median splits: low return = below the members' median, high turnover = above it.
+  - S7 and the S1-fallback wording: the engine keywords named by the spec are used (research_drop over all the qualified, held names exempt), not a recount over the not-held names only. A name with fewer than 200 closes passes (MAD set to +inf).
+  - S2: sigma over the 126 French daily UMD sessions ending at the last session of month m-1, sqrt(252 * mean(u^2)). Downside robustness: mean over the same 126 of u^2 for u<0 only, times 2.
+  - S3: I_B from compounded monthly Mkt-RF+RF over k-23..k; sigma^2_mkt = sample variance (ddof 1) of daily Mkt-RF over the 126 sessions to the end of month k; sigma^2_UMD = 21 * mean(u^2) over the same window; regression on k = Jan 1927 .. Nov 2007 (UMD_{k+1} up to Dec 2007), kappa = 1/median(raw_k) over k in 1927-2007 with all inputs.
+  - Overlays: at each fill the split is reset to w; cost = cost_bps x |w_m - w_{m-1}| on the first session after the fill, plus the book's own (full-size) costs scaled by w; the first fill pays cost_bps/2 on the SPY sleeve's (1-w_0), as the engine charges half a round trip to establish a book. Turnover: w x book turnover + |dw| (one way).
+  - S5: sub-book j is the base run at offset 5j, each worth a quarter at the common start, never rebalanced. Its own four-offset dispersion is zero by construction (it holds all four schedules), so the 'dispersion falls by a third' test is met mechanically and the verdict rests on the CAGR test; dispersion = sample standard deviation (ddof 1) of the four base CAGRs. Hoffstein's RTL (tracking error of each single schedule against the tranched book) is reported beside it. S5 not passing is 'reject' if its CAGR shortfall exceeds 0.5 pt in both halves, else 'inconclusive'.
+  - Statistics: CAGR = compound daily growth to the power 252/sessions; Sharpe = mean(r - RF)/sd(r - RF) * sqrt(252) with French daily RF (sessions after French's last day use its last RF); TE and IR against SPY_TR (data/benchmarks.csv); turnover a year = one-way turnover % of the fills in the sample / years. Variant-minus-base gaps are means over the four offsets; the bootstrap applies one set of block indices to every series and RF.
+  - Verdict (3.3) on each sample: pass = primary gap > 0 in both halves of that sample, ahead in >= 90% of draws, gap > 0 at all four offsets and > 0 at 20 bps, mean max-drawdown gap >= -2 pts, mean turnover gap <= +15 pts a year. Reject = behind in both halves or ahead in <= 20% of draws. Else inconclusive.
