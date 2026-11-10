@@ -41,7 +41,7 @@ ANGI,2025-04-30,2026-02-27,ANGI,priced,,,already in the store,yahoo
 ANGO,2019-12-31,2023-08-31,ANGO,priced,,,already in the store,yahoo
 ANIK,2019-12-31,2023-08-31,ANIK,priced,,,already in the store,yahoo
 ANRZQ,2011-06-30,2012-09-30,ANRZQ,priced,2008-01-02,2012-11-14,dataset ticker ANRZQ-201607,github:Johnbrick123/sp500-data (tiingo 100%)
-ANSS,2017-06-30,2025-06-30,ANSS,short,1996-06-21,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+ANSS,2017-06-30,2025-06-30,ANSS,priced,1996-06-21,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 ANTM,2009-12-31,2022-05-31,ELV,renamed_member,,,in today's list,yahoo (today's ticker)
 APC,2009-12-31,2019-07-31,APC,priced,2008-01-02,2019-08-08,dataset ticker APC-201908,github:Johnbrick123/sp500-data (tiingo 100% archive-patch 0%)
 APEI,2019-12-31,2022-08-31,APEI,priced,,,already in the store,yahoo
@@ -58,7 +58,7 @@ ASIX,2019-12-31,2025-11-28,ASIX,priced,,,already in the store,yahoo
 ATGE,2009-12-31,2026-03-31,CVSA,renamed_member,,,in today's list,yahoo (today's ticker)
 ATNI,2019-12-31,2024-06-28,ATNI,priced,,,already in the store,yahoo
 ATVI,2015-08-31,2023-09-30,ATVI,priced,1993-10-25,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-AVB,2009-12-31,2026-07-31,AVB,short,1994-03-11,2023-10-10,"covered to 2023-10-10, member to 2026-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+AVB,2009-12-31,2026-07-31,AVB,priced,1994-03-11,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 AVD,2019-12-31,2023-09-29,AVD,priced,,,already in the store,yahoo
 AVID,2022-09-30,2023-10-31,AVID,short,2014-12-08,2023-10-10,"covered to 2023-10-10, member to 2023-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 AVNS,2019-12-31,2026-06-30,AVNS,short,2018-05-22,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -151,7 +151,7 @@ CLFD,2022-08-31,2023-11-30,CLFD,priced,,,already in the store,yahoo
 CLGX,2019-12-31,2021-05-28,CLGX,priced,1990-03-23,2021-06-03,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CLI,2019-12-31,2021-11-30,CLI,priced,1994-08-25,2021-12-09,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CLW,2019-12-31,2024-10-31,CLW,priced,,,already in the store,yahoo
-CMA,2009-12-31,2026-01-30,CMA,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CMA,2009-12-31,2026-01-30,CMA,priced,1990-03-26,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 CMCSK,2015-09-30,2015-11-30,CMCSK,priced,2008-01-02,2015-12-11,dataset ticker CMCSK-201512,github:Johnbrick123/sp500-data (tiingo 100%)
 CMD,2019-12-31,2021-05-28,CMD,priced,1993-02-19,2021-06-01,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CMO,2019-12-31,2021-10-29,CMO,short,1987-11-05,2021-10-18,"covered to 2021-10-18, member to 2021-10-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -184,8 +184,8 @@ CSWI,2024-09-30,2025-07-31,CSW,renamed_member,,,in today's list,yahoo (today's t
 CTB,2019-12-31,2021-05-28,CTB,priced,1987-11-05,2021-06-04,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CTKB,2023-05-31,2026-06-30,CTKB,priced,,,already in the store,yahoo
 CTL,2009-12-31,2020-08-31,LUMN,renamed_member,,,in today's list,yahoo (today's ticker)
-CTLT,2019-12-31,2024-11-30,CTLT,short,2014-07-31,2023-10-10,"covered to 2023-10-10, member to 2024-11-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-CTRA,2021-10-29,2026-04-30,CTRA,short,1990-02-08,2023-10-10,"covered to 2023-10-10, member to 2026-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+CTLT,2019-12-31,2024-11-30,CTLT,priced,2014-07-31,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
+CTRA,2021-10-29,2026-04-30,CTRA,priced,1990-02-08,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 CTXS,2009-12-31,2022-09-30,CTXS,priced,1995-12-08,2022-09-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CUB,2019-12-31,2021-04-30,CUB,priced,1989-02-21,2021-05-24,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 CUTR,2019-12-31,2023-05-31,CUTR,priced,2004-03-31,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -202,7 +202,7 @@ DBI,2019-12-31,2024-08-30,DBI,priced,,,already in the store,yahoo
 DDD,2019-12-31,2024-08-30,DDD,priced,,,already in the store,yahoo
 DDS,2019-12-31,2020-11-30,DDS,priced,,,already in the store,yahoo
 DF,2009-12-31,2013-02-28,DF,priced,2008-01-02,2013-04-12,dataset ticker DF,github:Johnbrick123/sp500-data (wiki 100% archive-patch 0%)
-DFS,2009-12-31,2025-04-30,DFS,short,2007-06-14,2023-10-10,"covered to 2023-10-10, member to 2025-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+DFS,2009-12-31,2025-04-30,DFS,priced,2007-06-14,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 DHC,2020-06-30,2022-11-30,DHC,priced,,,already in the store,yahoo
 DIN,2019-12-31,2024-08-30,DIN,priced,,,already in the store,yahoo
 DISCA,2010-03-31,2022-03-31,DISCA,priced,2005-07-08,2022-04-08,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -221,7 +221,7 @@ DSPG,2019-12-31,2021-11-30,DSPG,priced,1994-02-14,2021-12-02,,"github:Stonks/tic
 DTV,2009-12-31,2015-06-30,DTV,priced,2008-01-02,2015-07-24,dataset ticker DTV-201507,github:Johnbrick123/sp500-data (wiki 100% crsp-patch 0%)
 DVAX,2022-05-31,2026-01-30,DVAX,short,2004-02-19,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 DWDP,2017-09-30,2019-04-30,DD,renamed_member,,,in today's list,yahoo (today's ticker)
-EA,2009-12-31,2026-07-31,EA,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2026-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+EA,2009-12-31,2026-07-31,EA,priced,1990-03-26,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 EBIX,2019-12-31,2023-09-29,EBIX,priced,1990-03-26,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 EBS,2019-12-31,2023-07-31,EBS,priced,,,already in the store,yahoo
 ECOL,2019-12-31,2022-04-29,ECOL,priced,1990-03-26,2022-04-29,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -316,7 +316,7 @@ HBI,2015-03-31,2025-11-28,HBI,short,2006-09-06,2023-10-10,"covered to 2023-10-10
 HCBK,2009-12-31,2015-10-31,HCBK,priced,2008-01-02,2015-10-30,dataset ticker HCBK-201510,github:Johnbrick123/sp500-data (tiingo 100%)
 HCP,2009-12-31,2019-10-31,DOC,renamed_member,,,in today's list,yahoo (today's ticker)
 HELE,2019-12-31,2025-11-28,HELE,priced,,,already in the store,yahoo
-HES,2009-12-31,2025-06-30,HES,short,1983-04-06,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HES,2009-12-31,2025-06-30,HES,priced,1983-04-06,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 HFC,2018-06-30,2022-02-28,HFC,priced,1992-03-17,2022-03-14,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HI,2019-12-31,2026-01-30,HI,short,2008-03-28,2023-10-10,"covered to 2023-10-10, member to 2026-01-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HIBB,2019-12-31,2024-07-31,HIBB,short,1996-10-11,2023-10-10,"covered to 2023-10-10, member to 2024-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -324,7 +324,7 @@ HMST,2019-12-31,2023-05-31,HMST,priced,2012-02-10,2023-10-10,,"github:Stonks/tic
 HMSY,2019-12-31,2021-02-26,HMSY,no_data,,,neither Yahoo nor Stonks/tickers,
 HNGR,2019-12-31,2022-09-30,HNGR,priced,2018-09-12,2022-09-30,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HNZ,2009-12-31,2013-05-31,HNZ,priced,2008-01-02,2013-06-07,dataset ticker HNZ-201306,github:Johnbrick123/sp500-data (tiingo 100% crsp-patch 0%)
-HOLX,2016-03-31,2026-03-31,HOLX,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2026-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+HOLX,2016-03-31,2026-03-31,HOLX,priced,1990-03-26,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 HOT,2009-12-31,2016-07-31,HOT,priced,2008-01-02,2016-09-14,dataset ticker HOT-201609,github:Johnbrick123/sp500-data (wiki 100% crsp-patch 0%)
 HOUS,2022-07-29,2024-06-28,HOUS,short,2012-10-11,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 HPP,2020-12-31,2024-12-31,HPP,priced,,,already in the store,yahoo
@@ -352,7 +352,7 @@ INFO,2017-06-30,2022-02-28,INFO,priced,2014-06-19,2022-02-25,,"github:Stonks/tic
 INGN,2019-12-31,2023-05-31,INGN,priced,,,already in the store,yahoo
 INN,2019-12-31,2026-02-27,INN,priced,,,already in the store,yahoo
 INT,2019-12-31,2023-07-31,WKC,renamed_member,,,in today's list,yahoo (today's ticker)
-IPG,2009-12-31,2025-11-28,IPG,short,1987-11-05,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+IPG,2009-12-31,2025-11-28,IPG,priced,1987-11-05,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 IRBT,2019-12-31,2024-02-29,IRBT,short,2005-11-09,2023-10-10,"covered to 2023-10-10, member to 2024-02-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 IRWD,2022-06-30,2025-01-31,IRWD,priced,,,already in the store,yahoo
 ISBC,2021-02-26,2022-03-31,ISBC,priced,2005-10-12,2022-04-06,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -367,14 +367,14 @@ JCOM,2019-12-31,2021-09-30,JCOM,priced,1999-07-23,2021-10-07,,"github:Stonks/tic
 JCP,2009-12-31,2013-11-30,JCP,priced,2008-01-02,2014-01-14,dataset ticker JCP,github:Johnbrick123/sp500-data (wiki 100%)
 JEC,2009-12-31,2019-11-30,J,renamed_member,,,in today's list,yahoo (today's ticker)
 JHG,2019-12-31,2026-06-30,JHG,short,2017-05-30,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-JNPR,2009-12-31,2025-06-30,JNPR,short,1999-06-25,2023-10-10,"covered to 2023-10-10, member to 2025-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+JNPR,2009-12-31,2025-06-30,JNPR,priced,1999-06-25,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 JNS,2009-12-31,2011-10-31,JNS,priced,2008-01-02,2011-12-15,dataset ticker JNS-201705,github:Johnbrick123/sp500-data (tiingo 100% crsp-patch 0%)
 JOY,2011-02-28,2015-09-30,JOY,priced,2008-01-02,2015-11-13,dataset ticker JOY-201704,github:Johnbrick123/sp500-data (tiingo 100%)
 JRVR,2019-12-31,2023-11-30,JRVR,priced,,,already in the store,yahoo
 JW-A,2019-12-31,2022-12-30,WLY,renamed_member,,,in today's list,yahoo (today's ticker)
 JWN,2009-12-31,2025-04-30,JWN,short,1986-07-09,2023-10-10,"covered to 2023-10-10, member to 2025-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 JYNT,2021-05-28,2022-12-30,JYNT,priced,,,already in the store,yahoo
-K,2009-12-31,2025-11-30,K,short,1984-12-17,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+K,2009-12-31,2025-11-30,K,priced,1984-12-17,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 KAMN,2019-12-31,2024-03-28,KAMN,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2024-03-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 KAR,2019-12-31,2025-12-31,OPLN,renamed_member,,,in today's list,yahoo (today's ticker)
 KELYA,2019-12-31,2024-12-31,KELYA,priced,,,already in the store,yahoo
@@ -385,7 +385,7 @@ KRA,2019-12-31,2022-02-28,KRA,priced,2009-12-17,2022-03-14,,"github:Stonks/ticke
 KREF,2019-12-31,2026-02-27,KREF,priced,,,already in the store,yahoo
 KRFT,2012-10-31,2015-06-30,KRFT,priced,2012-09-17,2015-07-02,dataset ticker KRFT-201507,github:Johnbrick123/sp500-data (tiingo 100%)
 KSU,2013-05-31,2021-11-30,KSU,priced,1987-11-05,2021-12-13,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-KVUE,2023-08-31,2026-10-31,KVUE,short,2023-05-04,2023-10-10,"covered to 2023-10-10, member to 2026-10-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+KVUE,2023-08-31,2026-10-31,KVUE,priced,2023-05-04,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 KW,2023-03-31,2026-05-29,KW,short,2007-12-03,2023-10-10,"covered to 2023-10-10, member to 2026-05-29","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LANC,2019-12-31,2025-07-31,LANC,short,1990-03-26,2023-10-10,"covered to 2023-10-10, member to 2025-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 LB,2009-12-31,2021-07-31,LB,priced,1985-07-01,2021-08-02,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -451,7 +451,7 @@ MON,2009-12-31,2018-05-31,MON,priced,2008-01-02,2018-06-06,dataset ticker MON-20
 MOV,2019-12-31,2024-09-30,MOV,priced,,,already in the store,yahoo
 MPAA,2019-12-31,2023-02-28,MPAA,priced,,,already in the store,yahoo
 MPW,2019-12-31,2026-01-30,MPT,renamed_member,,,in today's list,yahoo (today's ticker)
-MRO,2009-12-31,2024-10-31,MRO,short,1970-01-02,2023-10-10,"covered to 2023-10-10, member to 2024-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+MRO,2009-12-31,2024-10-31,MRO,priced,1970-01-02,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 MSGS,2023-08-31,2026-10-30,MSGS,short,2015-10-01,2023-10-10,"covered to 2023-10-10, member to 2026-10-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 MSTR,2019-12-31,2021-08-31,MSTR,priced,,,already in the store,yahoo
 MTOR,2019-12-31,2022-07-29,MTOR,priced,2000-07-10,2022-08-02,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
@@ -547,7 +547,7 @@ PTV,2009-12-31,2010-08-31,PTV,priced,2008-01-02,2010-10-15,dataset ticker PTV-20
 PUMP,2019-12-31,2025-08-29,PUMP,priced,,,already in the store,yahoo
 PVAC,2019-12-31,2022-01-31,PVAC,short,2016-12-29,2021-10-15,"covered to 2021-10-15, member to 2022-01-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 PX,2009-12-31,2018-09-30,LIN,renamed_member,,,in today's list,yahoo (today's ticker)
-PXD,2009-12-31,2024-04-30,PXD,short,1997-08-08,2023-10-10,"covered to 2023-10-10, member to 2024-04-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+PXD,2009-12-31,2024-04-30,PXD,priced,1997-08-08,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 QEP,2010-07-31,2015-06-30,QEP,priced,2010-06-16,2015-08-14,dataset ticker QEP,github:Johnbrick123/sp500-data (tiingo 100% archive-patch 0%)
 QLGC,2009-12-31,2010-12-31,QLGC,priced,2008-01-02,2011-02-14,dataset ticker QLGC-201608,github:Johnbrick123/sp500-data (wiki 100%)
 QRVO,2015-06-30,2024-11-30,QRVO,priced,2015-01-02,2025-01-14,dataset ticker QRVO,github:Johnbrick123/sp500-data (yahoo 100%)
@@ -591,7 +591,7 @@ SBNY,2019-12-31,2023-02-28,SBNY,priced,2004-03-23,2023-03-24,,"github:Stonks/tic
 SCG,2009-12-31,2018-12-31,SCG,priced,2008-01-02,2018-12-31,dataset ticker SCG-201812,github:Johnbrick123/sp500-data (tiingo 100% archive-patch 0%)
 SCVL,2019-12-31,2025-11-28,SCVL,short,1993-03-16,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SE,2009-12-31,2017-01-31,SE,priced,2008-01-02,2017-02-24,dataset ticker SE-201702,github:Johnbrick123/sp500-data (wiki 100%)
-SEE,2009-12-31,2026-03-31,SEE,short,1987-12-30,2023-10-10,"covered to 2023-10-10, member to 2026-03-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+SEE,2009-12-31,2026-03-31,SEE,priced,1987-12-30,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 SEM,2019-12-31,2026-06-30,SEM,short,2009-09-25,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 SENEA,2019-12-31,2023-06-30,SENEA,priced,,,already in the store,yahoo
 SGH,2019-12-31,2025-07-31,PENG,renamed_member,,,in today's list,yahoo (today's ticker)
@@ -719,8 +719,8 @@ VSM,2020-10-30,2020-11-30,VSM,no_data,,,neither Yahoo nor Stonks/tickers,
 VSTO,2019-12-31,2024-12-31,VSTO,short,2015-02-10,2023-10-10,"covered to 2023-10-10, member to 2024-12-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 VTLE,2023-08-31,2025-11-28,VTLE,short,2011-12-15,2023-10-10,"covered to 2023-10-10, member to 2025-11-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 VVI,2019-12-31,2025-06-30,PRSU,renamed_member,,,in today's list,yahoo (today's ticker)
-WBA,2009-12-31,2025-07-31,WBA,short,1985-07-01,2023-10-10,"covered to 2023-10-10, member to 2025-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-WBD,2022-04-29,2026-09-30,WBD,short,2005-07-08,2023-10-10,"covered to 2023-10-10, member to 2026-09-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+WBA,2009-12-31,2025-07-31,WBA,priced,1985-07-01,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
+WBD,2022-04-29,2026-09-30,WBD,priced,2005-07-08,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 WBS,2019-12-31,2026-07-31,WBS,short,1986-12-12,2023-10-10,"covered to 2023-10-10, member to 2026-07-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WCG,2018-09-30,2019-12-31,WCG,priced,2008-01-02,2020-01-23,dataset ticker WCG,github:Johnbrick123/sp500-data (tiingo 100%)
 WDR,2019-12-31,2021-04-30,WDR,no_data,,,neither Yahoo nor Stonks/tickers,
@@ -736,7 +736,7 @@ WPG,2019-12-31,2020-10-30,WPG,priced,2014-05-14,2021-09-29,,"github:Stonks/ticke
 WPX,2012-01-31,2014-01-31,WPX,priced,2011-12-12,2014-03-17,dataset ticker WPX,github:Johnbrick123/sp500-data (tiingo 100%)
 WRE,2019-12-31,2023-10-31,WRE,short,1992-03-17,2022-10-19,"covered to 2022-10-19, member to 2023-10-31","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WRI,2019-12-31,2021-07-30,WRI,priced,1988-01-05,2021-08-03,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
-WRK,2015-07-31,2024-06-30,WRK,short,2015-06-24,2023-10-10,"covered to 2023-10-10, member to 2024-06-28","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
+WRK,2015-07-31,2024-06-30,WRK,priced,2015-06-24,2023-10-10,"after the snapshot: github:Johnbrick123/sp500-data, scaled to the stored close","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10); extended from github:Johnbrick123/sp500-data"
 WSR,2019-12-31,2026-06-30,WSR,short,2010-08-26,2023-10-10,"covered to 2023-10-10, member to 2026-06-30","github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"
 WTR,2019-12-31,2020-02-28,WTR,no_data,,,neither Yahoo nor Stonks/tickers,
 WW,2019-12-31,2023-02-28,WW,priced,2001-11-15,2023-10-10,,"github:Stonks/tickers (Yahoo adjusted, snapshot 2023-10-10)"

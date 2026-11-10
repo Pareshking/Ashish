@@ -849,3 +849,182 @@ Written here before any backtest of this study was run (scripts/research_prereg.
   - S5: sub-book j is the base run at offset 5j, each worth a quarter at the common start, never rebalanced. Its own four-offset dispersion is zero by construction (it holds all four schedules), so the 'dispersion falls by a third' test is met mechanically and the verdict rests on the CAGR test; dispersion = sample standard deviation (ddof 1) of the four base CAGRs. Hoffstein's RTL (tracking error of each single schedule against the tranched book) is reported beside it. S5 not passing is 'reject' if its CAGR shortfall exceeds 0.5 pt in both halves, else 'inconclusive'.
   - Statistics: CAGR = compound daily growth to the power 252/sessions; Sharpe = mean(r - RF)/sd(r - RF) * sqrt(252) with French daily RF (sessions after French's last day use its last RF); TE and IR against SPY_TR (data/benchmarks.csv); turnover a year = one-way turnover % of the fills in the sample / years. Variant-minus-base gaps are means over the four offsets; the bootstrap applies one set of block indices to every series and RF.
   - Verdict (3.3) on each sample: pass = primary gap > 0 in both halves of that sample, ahead in >= 90% of draws, gap > 0 at all four offsets and > 0 at 20 bps, mean max-drawdown gap >= -2 pts, mean turnover gap <= +15 pts a year. Reject = behind in both halves or ahead in <= 20% of draws. Else inconclusive.
+
+### Data basis (section 2 checks, run 10 Nov 2026 before the backtests)
+
+- **Final basis: the price store alone** (`data/prices` after the owner's import of the
+  Johnbrick123 former-member rows, commit a4ef295), no `--extra-prices`. 825 symbols loaded.
+- **Volume is split-adjusted** (store): median volume over the 20 sessions after / before the split
+  was 0.57 for AAPL 9 Jun 2014 (7:1), 1.01 for AAPL 31 Aug 2020 (4:1) and 0.69 for NVDA 10 Jun 2024
+  (10:1); an unadjusted series would jump by the split ratio. AAPL's pre-2014 volume (about 300M a
+  day) is in post-split shares.
+- **Prices start 2 Jan 2008**, so the first monthly return is February 2008 (confirmed); S1 is first
+  computable at the end of February 2011 (m0 = 2011-02). m0's signal fills on 1 Mar 2011 at offset 0
+  and in February at offsets 5/10/15. **Primary sample: the sessions after 1 Mar 2011 to 30 Oct 2026**
+  (3,941 sessions; 30 Oct 2026 is the last session of October, the last complete month on the day of
+  the run; fixed). **Secondary: 2 Jan 2020 to 30 Oct 2026** (1,717 sessions).
+- **Membership:** `index_history('sp500')`, **baseline 31 Dec 2009**, 165 changes after it, so every
+  signal in the sample is point in time. 856 ever-members, 353 of them former members.
+- **Coverage:** of the 94,912 point-in-time member-months at the offset-0 signals (Feb 2011 to Oct 2026),
+  **93,971 = 99.0% have a price** (a close in the month's last 6 sessions); 98.5-99.9% every year
+  except 2024 (96.7%) and 2025 (97.9%). The 941 without are mostly reused or later tickers in the store
+  (FOXA 97 member-months: the 2013-2019 Twenty-First Century Fox; DOW 80: Dow Chemical before 2017; IR,
+  HWM, SNDK, FOX, WBD, KVUE) and EA and AVB, which have store prices only to 10 Oct 2023 although the
+  timeline lists them as members after that (a lead for the data work; not checked further). The 31
+  ever-member symbols with no price at all are almost all old tickers of renamed companies (FB, ANTM,
+  UTX, ...) that the timeline maps to today's symbol.
+- **Sectors:** the record's map (`record_sector_map`): today's labels, so a past sector is today's
+  sector. 135 symbols (mostly the imported former members) have none and are capped together as
+  "Other" under the 40% sector cap.
+- **French data:** `F-F_Research_Data_Factors`, its daily file, `F-F_Momentum_Factor` and its daily
+  file, all **CRSP vintage 202609** (files dated 26 Oct 2026), downloaded 10 Nov 2026 from Kenneth
+  French's site and frozen in the session's scratchpad (`french/`); data through 30 Sep 2026. The m-1
+  lag rule is applied in S1-S3 and C1. `data/french_umd.csv` was not used.
+- **S4 proxy check:** shares = market cap / adjusted close of 9 Nov 2026. If one member's shares had
+  been 30% higher in 2011, its cell would change in 7.7% of 2011 member-months (318 of 4,109). On
+  average 342 of about 500 members a month were sortable in 2011 (former members have no market cap,
+  so they are left out of the sort and pass the gate). **Not checked:** dated share counts for two
+  buyback and two issuance names; the store has no share history, so the proxy is unverified.
+
+### Results
+
+Every figure is the mean over the four offsets (0, 5, 10, 15 sessions before the month end) of the
+variant minus the base on the same sessions, at 10 bps unless marked. The bootstrap is 2,000 paired
+63-session block draws, seed 20261110. CAGR gaps are in points and Sharpe gaps in Sharpe units. The
+run outputs (the daily returns of all 48 backtests, report.md and results.json) are in the session
+scratchpad under `prereg_runs/store_v2`.
+
+#### Primary sample, store (99.0% coverage) (2011-03-02 to 2026-10-30, halves split 2018-12-28)
+
+Base (mean of 4 offsets, 10 bps): CAGR 13.52%, max DD -33.8%, Sharpe 0.70, vol 18.3%, turnover 499%/yr, TE 12.8%, IR -0.01; by offset 0/5/10/15 CAGR 14.0% / 14.0% / 12.6% / 13.4%, max DD -27.8% / -33.6% / -40.9% / -32.9%, Sharpe 0.73 / 0.73 / 0.65 / 0.69.
+
+| | Metric | CAGR | Max DD | Sharpe | Turn./yr | Primary gap (90% range) | Ahead in | H1 / H2 | By offset 0/5/10/15 | Gap at 20 bps | ΔMDD | ΔTurn. | Verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S1 | CAGR | 14.13% | -35.0% | 0.71 | 444 | +0.61 (-0.65 to +1.95) | 77.7% | +0.11 / +1.14 | +0.85 / -0.79 / +1.52 / +0.88 | +0.67 | -1.20 | -56 | **inconclusive** |
+| S2 | Sharpe | 14.22% | -33.2% | 0.77 | 454 | +0.068 (+0.002 to +0.146) | 95.4% | +0.010 / +0.104 | +0.057 / +0.046 / +0.095 / +0.076 | +0.069 | +0.57 | -46 | **pass** |
+| S3 | Sharpe | 14.61% | -33.5% | 0.81 | 276 | +0.106 (-0.069 to +0.294) | 83.5% | +0.036 / +0.148 | +0.084 / +0.079 / +0.150 / +0.111 | +0.117 | +0.30 | -223 | **inconclusive** |
+| S4 | CAGR | 13.52% | -33.8% | 0.70 | 497 | -0.00 (-0.18 to +0.16) | 46.9% | -0.01 / +0.00 | +0.12 / -0.09 / +0.07 / -0.11 | +0.00 | +0.02 | -2 | **inconclusive** |
+| S5 | CAGR dispersion | 13.54% | -33.7% | 0.71 | 499 | base sd 0.66 pt vs 0 (by construction); CAGR vs mean base +0.02 | — | +0.02 / +0.00 | RTL 3.76 pt | +0.02 | +0.11 | +0 | pass |
+| S6 | CAGR | 12.12% | -33.6% | 0.63 | 531 | -1.40 (-3.38 to -0.04) | 4.8% | -2.00 / -0.77 | -0.75 / -2.85 / -0.19 / -1.82 | -1.43 | +0.17 | +31 | **reject** |
+| S7 | CAGR | 13.53% | -33.1% | 0.70 | 498 | +0.01 (-0.11 to +0.09) | 42.7% | -0.04 / +0.06 | +0.15 / -0.18 / -0.13 / +0.20 | +0.01 | +0.66 | -1 | **inconclusive** |
+| C1 | Sharpe | 14.72% | -34.6% | 0.78 | 405 | +0.077 (-0.015 to +0.176) | 92.0% | +0.009 / +0.123 | +0.076 / -0.003 / +0.135 / +0.099 | +0.081 | -0.79 | -95 | **inconclusive** |
+| C2 | CAGR | 12.84% | -34.2% | 0.64 | 425 | -0.68 (-2.44 to +1.05) | 23.7% | -1.09 / -0.26 | -0.75 / -1.65 / -0.34 / +0.01 | -0.59 | -0.37 | -74 | **reject** |
+
+C1 against S1 alone: Sharpe gap +0.066 (+0.002 to +0.145), ahead in 95.2%, halves +0.007 / +0.099. S2 downside-variance robustness: Sharpe gap +0.069, ahead in 94.2%.
+
+#### Secondary sample, store (99.0% coverage) (2020-01-02 to 2026-10-30, halves split 2023-05-31)
+
+Base (mean of 4 offsets, 10 bps): CAGR 15.21%, max DD -33.1%, Sharpe 0.62, vol 21.9%, turnover 516%/yr, TE 16.6%, IR 0.04; by offset 0/5/10/15 CAGR 17.5% / 16.6% / 11.4% / 15.4%, max DD -26.5% / -33.1% / -40.9% / -31.9%, Sharpe 0.72 / 0.68 / 0.47 / 0.62.
+
+| | Metric | CAGR | Max DD | Sharpe | Turn./yr | Primary gap (90% range) | Ahead in | H1 / H2 | By offset 0/5/10/15 | Gap at 20 bps | ΔMDD | ΔTurn. | Verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S1 | CAGR | 16.59% | -34.7% | 0.66 | 464 | +1.38 (-1.16 to +3.46) | 77.2% | -0.75 / +3.93 | +1.93 / -1.55 / +3.63 / +1.53 | +1.44 | -1.58 | -53 | **inconclusive** |
+| S2 | Sharpe | 16.42% | -33.1% | 0.72 | 419 | +0.095 (-0.017 to +0.258) | 92.2% | +0.124 / +0.083 | +0.075 / +0.059 / +0.142 / +0.102 | +0.097 | -0.04 | -97 | **pass** |
+| S3 | Sharpe | 15.97% | -33.5% | 0.72 | 151 | +0.096 (-0.192 to +0.459) | 74.5% | +0.157 / +0.154 | +0.024 / +0.045 / +0.216 / +0.100 | +0.112 | -0.40 | -366 | **inconclusive** |
+| S4 | CAGR | 15.28% | -33.1% | 0.63 | 514 | +0.07 (-0.21 to +0.26) | 64.0% | +0.01 / +0.15 | +0.08 / -0.21 / -0.02 / +0.44 | +0.07 | +0.01 | -2 | **inconclusive** |
+| S5 | CAGR dispersion | 15.20% | -33.3% | 0.63 | 516 | base sd 2.67 pt vs 0 (by construction); CAGR vs mean base -0.01 | — | -0.04 / -0.05 | RTL 4.77 pt | -0.01 | -0.21 | -0 | pass |
+| S6 | CAGR | 14.35% | -33.6% | 0.58 | 541 | -0.86 (-5.08 to +1.26) | 17.1% | -1.97 / +0.46 | +1.26 / -4.40 / +1.17 / -1.47 | -0.88 | -0.53 | +24 | **reject** |
+| S7 | CAGR | 15.29% | -32.4% | 0.63 | 515 | +0.08 (-0.17 to +0.19) | 55.4% | -0.08 / +0.28 | +0.35 / -0.41 / -0.23 / +0.61 | +0.08 | +0.67 | -2 | **inconclusive** |
+| C1 | Sharpe | 17.59% | -34.5% | 0.75 | 379 | +0.122 (-0.024 to +0.283) | 91.4% | +0.104 / +0.158 | +0.124 / -0.013 / +0.240 / +0.137 | +0.127 | -1.39 | -137 | **inconclusive** |
+| C2 | CAGR | 15.00% | -33.9% | 0.59 | 451 | -0.21 (-3.78 to +2.68) | 33.4% | -2.98 / +3.10 | -0.03 / -3.73 / +1.54 / +1.36 | -0.14 | -0.84 | -65 | **inconclusive** |
+
+C1 against S1 alone: Sharpe gap +0.089 (-0.010 to +0.251), ahead in 92.7%, halves +0.133 / +0.063. S2 downside-variance robustness: Sharpe gap +0.097, ahead in 91.2%.
+
+### Verdicts (store, 99.0% coverage)
+
+| | Primary 2011-2026 | Secondary 2020-2026 |
+|---|---|---|
+| S1 residual blend | inconclusive | inconclusive |
+| S2 UMD-volatility scaling | **pass** | **pass** |
+| S3 Daniel-Moskowitz dynamic weight | inconclusive | inconclusive |
+| S4 short-term-momentum gate | inconclusive | inconclusive |
+| S5 four tranches | pass (mechanical: see below) | pass (mechanical) |
+| S6 12-7 horizon | **reject** | **reject** |
+| S7 MAD gate | inconclusive | inconclusive |
+| C1 = S1 + S2 | inconclusive (offset 5 at -0.003) | inconclusive (offset 5 at -0.013) |
+| C2 = S1 + sector gate | **reject** | inconclusive |
+
+What the verdicts mean:
+
+- **S2 passes every rule in both samples, but narrowly, and part of the gain is mechanical.**
+  - Primary: Sharpe +0.068 (90% range +0.002 to +0.146), ahead in 95.4% of draws, ahead at all four
+    offsets and at 20 bps. The first half is barely ahead (+0.010). Max drawdown is not lower
+    (+0.6 pt, within the 2-pt rule). The sleeve's mean weight is 0.84.
+  - Part of the gain comes simply from holding SPY beside the book. A **post-hoc diagnostic** (not a
+    pre-registered test, and not a verdict): a constant 84% book / 16% SPY split with the same costs
+    gains +0.032 Sharpe in the primary sample and +0.028 in 2020+. That is about half of S2's +0.068
+    and +0.095, so the timing part is about +0.04 Sharpe.
+  - Per 3.3, S2 is a candidate for a forward shadow; that is the owner's decision.
+- **C1** is ahead on Sharpe (+0.077, 92.0% of draws) but behind at offset 5 (-0.003), so it does not
+  pass. Against S1 alone it is ahead (+0.066, 95.2%). Its gain comes from S2's overlay, not from S1.
+- **S1:**
+  - Ahead on CAGR: +0.61 pt in the primary sample, +1.38 pt in 2020+.
+  - Turnover is lower by 56 pts a year, but max drawdown is 1.2 pts worse.
+  - Ahead in only 78% of draws and behind at offset 5, so inconclusive.
+- **S3** raises Sharpe (+0.106) mostly by holding SPY. Its weight averaged 0.44 (below 1 at 90% of
+  fills, and down to 0), not the "w = 1 most months" the spec expected. The reason: UMD's 2011-2026
+  volatility is above its 1927-2007 median, and κ sets that median to 1. Tracking error falls to 5%.
+  Ahead in 83.5% of draws: inconclusive.
+- **S5 meets both written tests, but the first is met by construction.** The tranched book holds all
+  four schedules, so its four-offset dispersion is zero.
+  - Its CAGR is within 0.5 pt of the base's mean (+0.02 pt; 2020+ -0.01).
+  - What it removes is timing luck. The four base schedules span 1.4 pts of CAGR in the primary sample
+    (sd 0.66 pt) and 6.1 pts in 2020+ (sd 2.67 pt). Offset 10 had a -40.9% drawdown against -27.8% at
+    offset 0.
+  - Hoffstein's RTL (one schedule's tracking error against the tranches) is 3.8 pts a year (4.8 in
+    2020+).
+  - The verdict says tranching costs nothing in return; it does not say it adds any.
+- **S6 is rejected in both samples:** -1.40 pt a year, both halves behind, ahead in 4.8% of draws,
+  turnover +31 pts.
+- **C2 is rejected on the primary sample** (-0.68 pt, both halves behind, 23.7% of draws) and is
+  inconclusive in 2020+. The sector gate that passed on today's S&P 1500 list does not add to S1 on
+  point-in-time S&P 500 data.
+- **S4 and S7** are within 0.1 pt of the base, with no consistent sign.
+
+### Sensitivity to the price basis (reported, not a verdict)
+
+The same 48 runs were also made on two earlier states of the data on 10 Nov 2026. Both ran before the
+import, with the same code and specifications:
+
+| Basis | Coverage | Base CAGR / MDD / Sharpe (primary) | Verdicts that differ from the final basis |
+|---|---|---|---|
+| Store before the import | 91.4% (76% in 2011, rising to 97% in 2019) | 14.07% / -33.2% / 0.72 | S4 **reject** primary (-0.15 pt, 5% of draws); C1 inconclusive (89.5%); others the same |
+| Store before the import + research-only file (146 symbols added) | 98.6% | 13.49% / -33.5% / 0.70 | C1 **pass** primary (92.0%, offset 5 +0.017); others the same |
+
+The research-file run and the final store run should be equivalent. Every CAGR differs by at most
+0.24 pt (C2, primary) and every Sharpe by at most 0.009. These differences are the store's versions of
+the imported rows plus 7 symbols that were already in the store, against the file's. They flip one
+borderline verdict: C1's offset-5 gap, +0.017 against -0.003. With 91% coverage the base looks
+0.5 pt a year better, which is the survivorship the import removed.
+
+### Bug fixes and deviations
+
+- **Spec:** no bug fix to the written spec was needed after a run. No specification was changed and
+  no neighbour was added.
+- **Harness changes made while the first runs were going.** Neither touched a reported number:
+  - S1's residual regression no longer requires three stocks in the cross-section. A two-stock
+    synthetic test failed; real runs have hundreds.
+  - The overlay's cost is now taken from the account pro rata. Overlays are computed only in
+    `report`, which ran after the change.
+- **S5's dispersion test is degenerate as written** (see above). Reported, not changed.
+- **Readings already listed under "Fixed before the first run":**
+  - S1's z(base) is taken over the members, while the composite is taken over every priced column.
+  - S4 and S6 use offset-shifted month ends; S1 uses calendar month ends.
+  - S7 uses the engine's drop over all the qualified names.
+- **Found in passing, not part of this study:** `scripts/research_filters.py` trims prices to the end
+  of the last complete month, and `completed_month_window` then treats that month as still in
+  progress. Its runs therefore end a month earlier than its report's label says. Not fixed here.
+
+### What was not checked
+
+- Share counts behind S4's turnover proxy: there is no share history, and turnover uses today's
+  shares.
+- The imported former-member prices against a second source in this study (the data session checked
+  them; docs/DATA_CORRECTNESS.md). They carry no GICS sector.
+- Why EA and AVB stop in the store in October 2023, and the other gaps above.
+- The 1.0% of member-months without a price (remaining survivorship).
+- French's later revisions: the 202609 files are frozen, and a later vintage may differ.
+- **Live use:** French published September 2026 on 26 Oct 2026. In real time, an end-of-October signal
+  could not always have used month m-1, so a live S2 needs the spec's "latest published month"
+  fallback. The backtest assumes m-1 was available.
+- **Scope:** this pre-registration had no walk-forward, and none was run.
