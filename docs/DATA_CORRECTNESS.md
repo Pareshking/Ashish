@@ -132,6 +132,21 @@ month-end (early months a little short: the 400 page then held 391-393 rows).
   UMD's +0.24 (corr 0.77)**. Most of the survivorship bias is gone; the 11% unpriced remains a lead to close
   (Tiingo's free tier serves delisted US tickers, 500 a month: needs the owner's key; Stooq from GitHub
   Actions, untested).
+- **Second source for delisted members** (owner's suggestion, 10 Nov 2026: public GitHub datasets).
+  `scripts/import_former_members_github.py` reads **Stonks/tickers** (per-ticker CSVs by exchange) through
+  raw.githubusercontent.com. What it is, checked on 30 current members against our Yahoo store: Yahoo's
+  ADJUSTED prices as of a 10 Oct 2023 snapshot (non-dividend payers equal ours exactly: META, LSCC, PENN,
+  IPGP, ACAD, ANIP, LRN, VCYT; dividend payers sit below by their dividend factor: IBM 0.81, GS 0.90). So
+  the closes are total-return closes, stored as Close with no dividend rows, and every file stops on
+  2023-10-10. Of the 385 former members Yahoo lacks: 156 covered for their whole spell, 159 to Oct 2023 only
+  (delisted later), 7 rejected (the file starts after the spell: another company), 63 in neither source.
+  Member-months priced: mean **97.0%** (Jan 2020 95.8%, lowest 90.5% at Oct 2023 when the snapshot ends).
+  Spread re-checked: +0.27%/month against UMD's +0.24 (corr 0.77, 1,442 stocks scored a month). Audit of the
+  imported rows since mid-2019: spikes on BBBY (Jan/Feb 2023 meme rallies, real) and four energy names on
+  2020-03-13 (plausible); RCM 2022-11-08 x0.502 with no split recorded, **unexplained, not verified** (no
+  second source serves delisted names). About a third of the files carry no volume (stored as 0; volume
+  feeds only the optional liquidity floor). Other GitHub datasets tried (teddykoker/survivorship-free-spy,
+  koa-fin/dva, hackingthemarkets/*, jcwill415/*) end in 2018-2022 or hold returns, not prices.
 - Not checked: the month-end lists against Wayback Machine snapshots (CDX unreachable from this session);
   the CIK renames individually.
 
