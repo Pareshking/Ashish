@@ -86,6 +86,13 @@ old unadjusted cases (EXPE 2011) predate that. Both are listed in
 earlier closes apart. Also: INTC's 2026-06-30 high 142.35 in
 `data/all_time_highs.csv` equals Nasdaq.com's high for that session.
 
+Rerun with the reviewed exceptions (same 150 symbols, 10 Nov 2026): **last 400
+sessions 58,131 closes, 100.0000% within 0.5%** (HON's and FTV's closes before
+their events left out and listed: 306 and 56 in the window). Whole ten years:
+97.93% within 0.5% (the old spin-off and merger cases, SIRI, ADEA, CBSH, HWM,
+O, ZWS..., reported, not failing). Not checked: the other ~1,350 symbols
+(a sample rotates daily once the workflow runs).
+
 ## Decisions
 
 - **Universe: S&P 1500, one system** (owner, 10 Nov 2026).

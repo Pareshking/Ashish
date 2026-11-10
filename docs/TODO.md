@@ -19,7 +19,7 @@ iterations from 16:01 IST.
 |---|---|---|---|
 | B1 | Probe sources; universe with GICS; storage plan | Findings in DATA_CORRECTNESS; `data/universe.csv` with 1,500±10 rows | [x] 10 Nov: 1,502 symbols; sizes measured |
 | B2 | Price store and nightly sync (yfinance, NYSE calendar, yearly/monthly/daily files) | Backfill committed; a rerun of the same night changes nothing; audit of jumps vs actions passes or lists each exception | [ ] |
-| B3 | Cross-check against Nasdaq.com official closes | Sample of ≥100 symbols × 10 years: share of closes within 0.5%, every exception named | [ ] 10 Nov first run FAILED: 96.6% within 0.5% (bar 99.5%); worst are spin-off/merger names (HON, FTV, O, HWM, JNJ, SIRI). Next: agreement inside the last 400 sessions, each recent event named, correction source decided |
+| B3 | Cross-check against Nasdaq.com official closes | Sample of ≥100 symbols × 10 years: share of closes within 0.5%, every exception named | [ ] 10 Nov first run FAILED: 96.6% within 0.5% (bar 99.5%); worst are spin-off/merger names (HON, FTV, O, HWM, JNJ, SIRI). Next: agreement inside the last 400 sessions, each recent event named, correction source decided. 10 Nov it.2: last 400 sessions 99.38%, only HON and FTV, both Yahoo-adjusted spin-offs Nasdaq.com treats differently (reviewed in `data/nasdaq_exceptions.csv`); rerun 100.00% of 58,131 closes. Left: the daily rotating sample in a workflow |
 | B4 | Engine and core ported, India modules removed | `pytest` green on the ported engine tests | [ ] 10 Nov it.2: every module imports; app wired to US loaders; Dashboard renders headless, 0 exceptions, cold 9.7 s, peak <600 MB (was 1,045). Left: port Paresh's engine tests; ₹/Cr → $ pass (86 sites); FII/DII, Kite, NSE text on the other pages |
 | B5 | Website ported (11 pages less India features), $1M book | Every page and a stock page render in headless Chromium with no exception; screenshots | [ ] |
 | B6 | Workflows in New York time | Each runs green once by hand; double-cron guard tested for EST and EDT | [ ] |
@@ -28,6 +28,9 @@ iterations from 16:01 IST.
 | B9 | Owner links Streamlit Cloud | Site loads on the owner's phone | [ ] after B1-B6 |
 | B11 | Owner decisions: US market facts. Transaction cost kept at Paresh's 30 bps a side (US costs are lower, a few bps on the S&P 1500); risk-free 4.0% (3-month T-bill, was India's 6.5%) | Owner confirms or names values | [ ] owner |
 | B12 | Members on the Wikipedia list with no Yahoo price for 5+ sessions (10 Nov: ACA, BLFS, HLX, LEG, QRVO, RAMP; CWEN-A never) are not ranked and the audit fails on them | Each confirmed as acquired/delisted from a dated source, or its price restored | [ ] |
+| B13 | Owner decision: the site's name (header, tab, footer). Paresh's shows its owner's name; set to "US Momentum Terminal" for now (`SITE_NAME`) | Owner names it | [ ] owner |
+| B14 | Localisation: ₹ and Indian digit grouping (Portfolio "₹9,36,523"), Cr units, Kite on Actions, NSE/Nifty/Zerodha in Guide, Sectors and Breadth captions, Paresh's Indian figures in the momentum-health captions | QA script finds none of: Nifty NSE ₹ crore lakh Kite Zerodha FII DII IST Cr, on every page | [ ] |
+| B15 | Portfolio: "Since inception −6.3%" equals MTD while the S&P 1500 reads +11.3% since inception | Both rows measured from the same start, matching an independent recomputation | [ ] |
 | B10 | Owner decision: track-record inception. Paresh's record starts Jan 2026 (replayed months). Here a month before Dec 2026 can only be replayed on today's list (survivorship). Proposal: live record from December 2026 (signal 30 Nov, the first after the build); Backtest page shows the last 6 completed months as Paresh's does | Owner says which month | [ ] owner |
 
 ## Iteration log
