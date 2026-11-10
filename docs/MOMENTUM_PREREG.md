@@ -1296,3 +1296,39 @@ tranching would have cost 0.4 pt a year (2.3 pts in 2020-2026) and 6 pts of
 drawdown; against the worst schedule it would have saved 1.1 pt and 7 pts.
 Not tested: weekly rebalancing of the four tranches back to equal weight, and
 the live rules after 30 Nov 2026 (hold cap, six-monthly reset) inside tranches.
+
+---
+
+## Stage 3: the framework itself (pre-registered 10 Nov 2026, before any run)
+
+Owner, 10 Nov 2026: "may be our framework is wrong ... there must be issue with
+my chosen universe". Moving down in size was tested and was worse (S&P 400 and
+600, 2020-2026). The gap found instead: the book is equal-weight, measured
+against a cap-weighted index; the cap-weighted S&P 500 beat the equal-weight
+one by 1.7 pts a year over 2011-2026 (3.2 since 2020). Three tests of the
+framework, each against the stage-1 base with everything else unchanged:
+
+- **F1 Raw momentum.** `score_method="return"`: the same five calendar windows
+  and weights (10/30/30/20/10), each window's plain return instead of its
+  volatility-adjusted return. Question: does the volatility adjustment keep the
+  book out of volatile leaders?
+- **F2 Size-weighted book.** The same 20 names, weighted by each holding's
+  63-session mean traded value (split-adjusted close x volume) to the signal
+  date, a size proxy known at the time for every stock (today's market caps
+  exist only for today's members, so weighting by them would drop former
+  members: survivorship). A holding with no traded value (some Stonks/tickers
+  files have no volume) gets the median weight of the others. Stock cap 15%
+  (the owner's hold cap), sector cap 40%; weights reset at each monthly fill,
+  as equal weight is. Question: does weighting like the index close the 1.7-pt
+  gap?
+- **F3 Fifty names.** `top_n=50`, `buffer_n=100` (the live 1:2 ratio), stock
+  cap 5%, sector cap 40%. Question: is 20 names too concentrated?
+
+Runs, statistics and verdicts as stage 1 (section 3): four offsets, 10 and 20
+bps, halves, 2,000-draw block bootstrap, pass/reject/inconclusive by section
+3.3 on the CAGR gap, on both the primary (Mar 2011 - Oct 2026) and the 2020+
+samples. There is nothing to tune, so no sample is held out; with three tests
+about 0.3 false passes are expected by luck. Reported beside each: CAGR
+against the cap-weighted S&P 500 with dividends and against the equal-weight
+point-in-time S&P 500, and the share of months ahead of each. No variant is
+added after a result is seen.
