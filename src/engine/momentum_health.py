@@ -161,7 +161,7 @@ def _leg(last12: pd.DataFrame, col: str, idx12: float) -> float | None:
 
 def long_only(spreads: pd.DataFrame | None) -> dict | None:
     """Momentum as a long-only book earns it (owner, 8 Nov 2026: "Lead with
-    winners vs index"): the top 100's 12-month return less the S&P 1500's,
+    winners vs index"): the top 100's 12-month return less the S&P 500's,
     split into momentum (top 100 less the average member) and breadth (the
     average member less the index) when `ew` is present.
 
@@ -173,28 +173,28 @@ def long_only(spreads: pd.DataFrame | None) -> dict | None:
 
     Research behind it (scripts/research/long_only_momentum_health.py, 201
     months to Oct 2026): this measure's trailing 12 months tracked our book's
-    12-month lead over the S&P 1500 with correlation 0.81 (same sign 86% of
+    12-month lead over the S&P 500 with correlation 0.81 (same sign 86% of
     the time); winners minus losers 0.44. The long leg earned 62% of winners
     minus losers, near Israel and Moskowitz's (JFE 2013) "half" for the US.
     The top 100 is equal-weighted and the index is not, so the total also
     carries the small-stock effect; the breadth line shows how much.
     """
-    if spreads is None or not {"top", "sp1500_tr", "month"} <= set(spreads.columns):
+    if spreads is None or not {"top", "bench_tr", "month"} <= set(spreads.columns):
         return None
     d = spreads.copy()
-    for c in ("top", "bottom", "sp1500_tr", "ew", "spread", "top50", "d2"):
+    for c in ("top", "bottom", "bench_tr", "ew", "spread", "top50", "d2"):
         if c in d:
             d[c] = pd.to_numeric(d[c], errors="coerce")
-    d = d.dropna(subset=["top", "sp1500_tr"])
+    d = d.dropna(subset=["top", "bench_tr"])
     if len(d) < 24:
         return None
-    lead = (d["top"] - d["sp1500_tr"]).set_axis(d["month"].astype(str))
+    lead = (d["top"] - d["bench_tr"]).set_axis(d["month"].astype(str))
     r12 = {c: (1.0 + d[c] / 100.0).rolling(12).apply(np.prod, raw=True).sub(1.0).mul(100.0)
-           for c in ("top", "sp1500_tr")}
-    t12 = (r12["top"] - r12["sp1500_tr"]).set_axis(d["month"].astype(str)).dropna()
+           for c in ("top", "bench_tr")}
+    t12 = (r12["top"] - r12["bench_tr"]).set_axis(d["month"].astype(str)).dropna()
     last12 = d.tail(12)
     has_ew = "ew" in d and last12["ew"].notna().all()
-    top12, idx12 = _compound(last12["top"]), _compound(last12["sp1500_tr"])
+    top12, idx12 = _compound(last12["top"]), _compound(last12["bench_tr"])
     ew12 = _compound(last12["ew"]) if has_ew else None
     return {
         "month": str(lead.index[-1]),
@@ -209,7 +209,7 @@ def long_only(spreads: pd.DataFrame | None) -> dict | None:
                    if "bottom" in last12 and last12["bottom"].notna().all() else None,
         "top50_12m": _leg(last12, "top50", idx12),
         "d2_12m": _leg(last12, "d2", idx12),
-        "recent": (d["top"] - d["sp1500_tr"]).tail(24).astype(float).tolist(),
+        "recent": (d["top"] - d["bench_tr"]).tail(24).astype(float).tolist(),
         "recent_months": d["month"].astype(str).tail(24).tolist(),
         "since": str(d["month"].iloc[0])[:4],
     }

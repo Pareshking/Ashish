@@ -8,7 +8,7 @@ def test_a_forward_dated_rule_keeps_earlier_months_fingerprint():
     assert cfg["members_only_scoring_from"] == "2026-11-30"
     assert config_fingerprint_for_month(cfg, "2026-10") == config_fingerprint_for_month(cfg, "2026-11")
     assert config_fingerprint_for_month(cfg, "2026-11") != config_fingerprint_for_month(cfg, "2026-12")
-    assert config_fingerprint_for_month(cfg, "2026-11") == "632835551a4e"  # the US ledger's Jan-Oct 2026 months
+    assert config_fingerprint_for_month(cfg, "2026-11") == "946ea8e650e9"  # the S&P 500 ledger (10 Nov 2026)
 
 
 def test_members_only_scoring_applies_from_its_date_only():

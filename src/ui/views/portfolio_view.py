@@ -86,7 +86,7 @@ def _benchmark_returns_from_daily(
     """Calculate benchmark day, MTD and inception returns from daily closes.
 
     These are presentation/accounting facts, not backtest outputs. Every value
-    is measured from the same canonical S&P 1500 daily series and the same
+    is measured from the same canonical S&P 500 daily series and the same
     portfolio as-of session.
     """
     if benchmark_close is None or benchmark_close.empty or pd.isna(as_of):
@@ -155,7 +155,7 @@ def build_portfolio_tracker(
     out["Company"] = mapped("Company Name", "").replace("", np.nan).fillna(
         mapped("Company", "").replace("", np.nan)
     ).fillna(out["Symbol"])
-    # For S&P 1500, Industry is the canonical NSE industry taxonomy.  The
+    # For S&P 500, Industry is the canonical NSE industry taxonomy.  The
     # app may also carry TradingView sector/industry fields for other systems,
     # but Portfolio exposure must not silently replace the NSE taxonomy here.
     out["Sector / Industry"] = mapped("Industry", "—").replace("", np.nan).fillna("—")
@@ -584,7 +584,7 @@ def render_portfolio_view(calc, rank_df: pd.DataFrame) -> None:
     mtd_state = history["mtd_state"]
     labels = _month_labels(mtd_period, mtd_state)
     strategy_mtd = history["strategy_mtd"]
-    # Benchmark return is calculated directly from the same daily S&P 1500
+    # Benchmark return is calculated directly from the same daily S&P 500
     # closes used by the benchmark loader, never from backtest compounding.
     benchmark_mtd = benchmark_mtd_daily
     trades = history["trades"]
@@ -610,7 +610,7 @@ def render_portfolio_view(calc, rank_df: pd.DataFrame) -> None:
         kit.Reading(
             "Since inception",
             kit.pct(history["strategy_total_return"]),
-            f"S&P 1500 {kit.pct(benchmark_total_daily)}",
+            f"S&P 500 {kit.pct(benchmark_total_daily)}",
             "up" if history["strategy_total_return"] >= 0 else "down",
             # The book's whole record beside its figure (S99, owner, 8 Nov).
             kit.spark_img(history.get("equity_daily"), 110, 26, last=None),
@@ -624,14 +624,14 @@ def render_portfolio_view(calc, rank_df: pd.DataFrame) -> None:
         kit.Reading(
             "Day P&L",
             "—" if not np.isfinite(day_pnl_pct) else f"{_fmt.pct(day_pnl_pct, fraction=False)}",
-            f"S&P 1500 {kit.pct(benchmark_day_pct)}",
+            f"S&P 500 {kit.pct(benchmark_day_pct)}",
             "up" if day_pnl_pct >= 0 else "down",
         ),
         kit.Reading("Cash / realised balance", _fmt.inr(cash)),
         kit.Reading(
             "MTD return",
             kit.pct(strategy_mtd),
-            f"S&P 1500 {kit.pct(benchmark_mtd)}",
+            f"S&P 500 {kit.pct(benchmark_mtd)}",
             "up" if strategy_mtd >= 0 else "down",
         ),
     ], "Portfolio snapshot")
@@ -709,7 +709,7 @@ def render_portfolio_view(calc, rank_df: pd.DataFrame) -> None:
             dd_d = eq_d / eq_d.cummax() - 1.0
             kit.metric_row([
                 kit.Metric(f"{month} strategy", kit.pct(strategy_mtd)),
-                kit.Metric(f"{month} S&P 1500", kit.pct(benchmark_mtd)),
+                kit.Metric(f"{month} S&P 500", kit.pct(benchmark_mtd)),
                 kit.Metric(f"{month} alpha", kit.pts(mtd_gap)),
                 # Daily closes, the drawdown line drawn below. The record's line
                 # under the calendar gives the month-end figure (-9.9% against
@@ -724,7 +724,7 @@ def render_portfolio_view(calc, rank_df: pd.DataFrame) -> None:
             )
 
 
-    with kit.card("Calendar returns", "portfolio_monthly", "Strategy, S&P 1500 and Alpha, per year"):
+    with kit.card("Calendar returns", "portfolio_monthly", "Strategy, S&P 500 and Alpha, per year"):
         grid = build_combined_grid(
             ledger,
             mtd_period=pd.Period(mtd_period, freq="M") if mtd_period else None,

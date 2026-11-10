@@ -58,7 +58,8 @@ def replay(as_of_cut: str | None = None):
     deep = deep.loc[deep.index >= (start - 24).start_time]
     as_of = pd.Timestamp(deep.index[-1])
     months = max(months_to_cover(as_of, start), 1)
-    bench = benchmark_store.history("max", "SPTM_TR").loc[:as_of]
+    from src.core.config import BENCHMARK_SYMBOL
+    bench = benchmark_store.history("max", BENCHMARK_SYMBOL).loc[:as_of]
     membership = systems.membership_for(SYSTEM_750)
     cfg = TRACK_RECORD_CONFIG
     result = run_backtest(
@@ -138,7 +139,7 @@ def main(argv=None) -> int:
         e = ledger["months"][key]
         b = e.get("benchmark")
         print(f"  + {key}  strategy {e['strategy']:+.2%}"
-              + (f"  S&P 1500 {b:+.2%}  alpha {e['alpha']:+.2%}" if b is not None else "")
+              + (f"  benchmark {b:+.2%}  alpha {e['alpha']:+.2%}" if b is not None else "")
               + ("  (replayed)" if e.get("replayed") else ""))
     if args.dry_run:
         print("→ dry run; nothing written")

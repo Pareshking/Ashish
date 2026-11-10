@@ -182,9 +182,9 @@ def _history_inputs(rank_df: pd.DataFrame, choice: dict, bounds: dict) -> dict |
     return {
         "close": frame, "membership": membership, "start": start, "end": end,
         "months": (end - start).n + 1, "floor": floor,
-        # The S&P 500 against its own index; the others against the S&P 1500,
+        # The S&P 500 against its own index; the others against the S&P 500,
         # the broadest index on file (data/benchmarks.csv holds the two).
-        "benchmark": ("SPTM_TR", "S&P 1500"),
+        "benchmark": ("SPY_TR", "S&P 500"),
         "traded_value": traded,
         "sector_map": sec, "unlabelled": len(unlabelled), "name": iu.INDICES[key],
         "built": report.get("built"), "last_session": report.get("last_session"),
@@ -335,7 +335,7 @@ def _backtest_body(
     history_mode = st.session_state.get("bt_mode", MODE_LIVE) == MODE_HISTORY
     actions = kit.page_head(
         "Backtest",
-        "Any months from 2020, on point-in-time S&P 1500 lists and the committed Yahoo prices" if history_mode else
+        "Any months from 2020, on point-in-time S&P lists and the committed Yahoo prices" if history_mode else
         f"Last {months} completed month{'s' if months != 1 else ''}",
         actions=True,
     )
@@ -424,7 +424,7 @@ def _backtest_tab(
                     + ("." if history else " (Configuration)."))
         if traded_value is not None:
             ph += f"_{price_fingerprint(traded_value)}"
-    bench_symbol, bench_name = history["benchmark"] if history else ("SPTM_TR", "S&P 1500")
+    bench_symbol, bench_name = history["benchmark"] if history else ("SPY_TR", "S&P 500")
     benchmark_close = fetch_benchmark_history(period="max" if history else "2y", symbol=bench_symbol)
     if benchmark_close.empty:
         st.error(f"{bench_name} benchmark ({bench_symbol}) data is unavailable. Backtest stopped to "
@@ -665,7 +665,7 @@ def _backtest_tab(
         if _grid.empty:
             kit.empty("No full month in this window yet.")
         else:
-            _grid["SERIES"] = _grid["SERIES"].replace({"S&P 1500": bench_name})
+            _grid["SERIES"] = _grid["SERIES"].replace({"S&P 500": bench_name})
             # Year by year first (owner, 9 Oct 2026): the CY column of each block below.
             _render_yearly_summary(_grid, bench_name)
             _render_calendar_returns(_grid)
@@ -680,7 +680,7 @@ def _backtest_tab(
     with kit.card("Download", "bt_export", "The rules this run used and every trade it made"):
         try:
             _trades = trades_table(bt_res.get("closed_trades"))
-            _universe = history["name"] if history else "S&P 1500 (the live system)"
+            _universe = history["name"] if history else "S&P 500 (the main book)"
             _rules = rules_table(RunSpec(
                 mode=MODE_HISTORY if history else MODE_LIVE,
                 universe=_universe, benchmark=bench_name,

@@ -66,7 +66,7 @@ class RunSpec:
     """What the run was, as the Backtest tab set it."""
 
     mode: str                    # "History from 2010" or "Live"
-    universe: str                # e.g. "S&P 1500", "Nifty Total Market"
+    universe: str                # e.g. "S&P 500", "Nifty Total Market"
     benchmark: str
     first_fill: pd.Timestamp | None
     last_session: pd.Timestamp | None

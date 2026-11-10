@@ -37,7 +37,7 @@ from src.core.tickers import is_tradeable_symbol
 # reintroducing exactly the survivorship bias this module exists to remove.
 HISTORY_PATH = Path(__file__).resolve().parents[2] / "data" / "membership_history.json"
 SCHEMA_VERSION = 1
-DEFAULT_INDEX = "S&P 1500"
+DEFAULT_INDEX = "S&P 500"
 
 
 def _as_date(value: Any) -> date:

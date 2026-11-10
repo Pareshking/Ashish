@@ -4,7 +4,8 @@ against the S&P 1500 benchmark, all from data/benchmarks.csv (Yahoo's ^GSPC,
 
 ``fetch_index_levels`` returns Paresh's long shape (date, index, close);
 ``benchmarks`` the wide daily frame with columns sp500, sp400, sp600, sp1500
-(SPTM price) and sp1500_tr (SPTM dividend-adjusted).
+(SPTM price), sp1500_total (SPTM dividend-adjusted) and bench_tr, the benchmark:
+the S&P 500 with dividends (SPY's adjusted close).
 """
 
 from __future__ import annotations
@@ -15,7 +16,8 @@ import streamlit as st
 from src.core.logger import logger
 from src.loaders import benchmark_store
 
-COLUMNS = {"^GSPC": "sp500", "^SP400": "sp400", "^SP600": "sp600", "SPTM": "sp1500", "SPTM_TR": "sp1500_tr"}
+COLUMNS = {"^GSPC": "sp500", "^SP400": "sp400", "^SP600": "sp600", "SPTM": "sp1500", "SPTM_TR": "sp1500_total",
+           "SPY_TR": "bench_tr"}
 SIZE_KEYS = ("sp500", "sp400", "sp600")
 
 

@@ -173,7 +173,7 @@ leave.</dd>
 <dd>The rank places it among all stocks in the universe; the qualified rank, among those passing both
 filters. The book and the buffer use the qualified rank.</dd>
 <dt>Does the market trend change the model?</dt>
-<dd>No. The header's "S&P 1500 ... % above its 200D EMA" (or below) compares the index with its 200-day EMA for context.
+<dd>No. The header's "S&P 500 ... % above its 200D EMA" (or below) compares the index with its 200-day EMA for context.
 The model holds {top_n} stocks in every market and keeps no cash target.</dd>
 <dt>What do the costs cover?</dt>
 <dd>{cost:.0f} basis points a round trip, an estimate of what a US trade costs: no commission at

@@ -170,9 +170,9 @@ def _section_data_sync(sync_meta: dict, tot_stk: int, engine_stocks: int) -> Non
         "Indices to rank",
         available_indices,
         default=curr_indices,
-        placeholder="All of the S&P 1500",
+        placeholder="All of the S&P 500",
         key="cfg_indices_multiselect",
-        help="Leave empty to rank the whole S&P 1500. The lists are synced nightly from "
+        help="Leave empty to rank the whole S&P 500. The lists are synced nightly from "
              "Wikipedia's S&P 500, 400 and 600 pages.",
     )
     if new_indices != curr_indices:

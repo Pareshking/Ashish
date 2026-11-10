@@ -1,8 +1,8 @@
 """Benchmark closes, from ``data/benchmarks.csv`` (written by scripts/sync_prices.py).
 
-Columns: SPTM (S&P 1500 ETF close), SPTM_TR (its dividend-adjusted close: the
-benchmark), ^GSPC, ^SP400, ^SP600 (S&P price indices, for size leadership).
-``"^SP1500"`` is accepted as a name for the benchmark.
+Columns: SPY_TR (the benchmark: the S&P 500 with dividends), SPY, SPTM and
+SPTM_TR (the S&P 1500 ETF, close and dividend-adjusted), ^GSPC, ^SP400, ^SP600
+(S&P price indices, for size leadership).
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from pathlib import Path
 import pandas as pd
 
 FILE = Path(__file__).resolve().parents[2] / "data" / "benchmarks.csv"
-ALIASES = {"^SP1500": "SPTM_TR", "SP1500": "SPTM_TR", "BENCHMARK": "SPTM_TR"}
+ALIASES = {"^SP1500": "SPTM_TR", "SP1500": "SPTM_TR", "BENCHMARK": "SPY_TR", "^SP500TR": "SPY_TR"}
 _CACHE: dict[str, tuple[float, pd.DataFrame]] = {}
 
 
@@ -43,7 +43,7 @@ def _period_start(last: pd.Timestamp, period: str | None) -> pd.Timestamp | None
     raise ValueError(f"unknown period {period!r}")
 
 
-def history(period: str = "2y", symbol: str = "SPTM_TR", path: Path = FILE) -> pd.Series:
+def history(period: str = "2y", symbol: str = "SPY_TR", path: Path = FILE) -> pd.Series:
     df = read(path)
     col = ALIASES.get(symbol, symbol)
     if df.empty or col not in df:

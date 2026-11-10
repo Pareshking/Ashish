@@ -7,11 +7,16 @@ import pandas as pd
 
 from src.loaders.indices_loader import fetch_indices_data
 
+
+def test_the_default_universe_is_the_main_book_sp500():
+    u = fetch_indices_data()
+    assert set(u["Indices"]) == {"SP500"} and 495 <= len(u) <= 510
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def test_universe_is_the_sp1500():
-    u = fetch_indices_data()
+    u = fetch_indices_data(["S&P 500", "S&P 400", "S&P 600"])
     assert 1490 <= len(u) <= 1515
     assert u["Symbol"].is_unique
     assert set(u["Indices"]) == {"SP500", "SP400", "SP600"}

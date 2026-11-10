@@ -131,9 +131,9 @@ def _leaders_html(ld: mq.Leaders, href: str) -> str:
         f'<section class="mq" aria-label="What is leading?"><h2 id="{DASH_ANCHORS["lead"]}">What is leading?</h2>'
         f'<p class="mq-v">{html.escape(verdict)}</p><p class="mq-s">{html.escape(ld.sentence)}</p>'
         # The size indices' figures are the Size leadership block's, below.
-        + ('<table><thead><tr><th scope="col">Industries, median stock against the S&P 1500</th>'
+        + ('<table><thead><tr><th scope="col">Industries, median stock against the S&P 500</th>'
            f'<th scope="col" style="text-align:left">6M and 1M</th></tr></thead><tbody>{"".join(groups)}</tbody></table>')
-        + f'<p class="mq-ch">Sectors are GICS\'s, at least five stocks each; points are the median stock\'s return less the S&P 1500\'s.</p>'
+        + f'<p class="mq-ch">Sectors are GICS\'s, at least five stocks each; points are the median stock\'s return less the S&P 500\'s.</p>'
         f'<a class="mq-more" href="{html.escape(href)}" target="_self">Sectors →</a></section>')
 
 
@@ -328,10 +328,10 @@ def sentence_case(text: str) -> str:
 
 
 def size_trend_html(bench: pd.Series, size: dict[str, pd.Series]) -> str:
-    """The S&P 1500 and each size index against its 10-month average and 200D
+    """The S&P 500 and each size index against its 10-month average and 200D
     EMA, and its distance from the 52W high: now and a month ago."""
-    series = {"S&P 1500": bench.dropna(), **{k: v.dropna() for k, v in size.items()}}
-    d = mq.anchor_dates(series["S&P 1500"].index)
+    series = {"S&P 500": bench.dropna(), **{k: v.dropna() for k, v in size.items()}}
+    d = mq.anchor_dates(series["S&P 500"].index)
     rows = []
     for name, s in series.items():
         if len(s) < 60:
@@ -406,13 +406,13 @@ def _breadth_charts(bench: pd.Series, share200: pd.Series, weekly: pd.Series,
     with left:
         if y0 is not None and b1 is not None and s0 is not None:
             ret = (float(bench.loc[b1]) / float(bench.loc[y0]) - 1) * 100
-            _chart_head(f"Over the year the S&P 1500 {_moved(ret)}; the share of stocks above their "
+            _chart_head(f"Over the year the S&P 500 {_moved(ret)}; the share of stocks above their "
                         f"200D EMA went from {share200.loc[s0]:.0f}% to {share200.iloc[-1]:.0f}%",
                         "The index above, the share of the ranked stocks above their own 200D EMA below, "
                         "on one time axis. When the index rises while the lower line falls, fewer stocks "
                         "are carrying it. Three years; Yahoo closes.")
         lw.render([
-            {"height": 170, "series": [{"name": "S&P 1500", "type": "line", "color": lw.INK, "fmt": "num",
+            {"height": 170, "series": [{"name": "S&P 500", "type": "line", "color": lw.INK, "fmt": "num",
                                         "data": _pts(bench, since)}]},
             {"height": 130, "series": [{"name": "Above 200D EMA", "type": "line", "color": "var(--c-up)",
                                         "fmt": "share", "range": [0, 100], "data": _pts(share200, since)}],
@@ -453,12 +453,12 @@ def _trend_charts(bench: pd.Series, size: dict[str, pd.Series]) -> None:
     left, right = st.columns(2, gap="large")
     with left:
         if gap is not None:
-            _chart_head(f"The S&P 1500's last month-end close is {abs(gap):.1f}% "
+            _chart_head(f"The S&P 500's last month-end close is {abs(gap):.1f}% "
                         f"{'above' if gap >= 0 else 'below'} its 10-month average",
                         "Month-end closes against the average of the last ten. Above the average the "
                         "10-month rule reads up. Three years; Yahoo closes, price only.")
         lw.render([{"height": 300, "series": [
-            {"name": "S&P 1500, month end", "type": "line", "color": lw.INK, "fmt": "num", "data": _pts(m, since)},
+            {"name": "S&P 500, month end", "type": "line", "color": lw.INK, "fmt": "num", "data": _pts(m, since)},
             {"name": "10-month average", "type": "line", "color": lw.GREY, "fmt": "num", "data": _pts(avg, since)},
         ]}], key="q_trend_10m")
     with right:
@@ -475,9 +475,9 @@ def _trend_charts(bench: pd.Series, size: dict[str, pd.Series]) -> None:
         if rel:
             last = {k: float(v.dropna().iloc[-1]) - 100 for k, v in rel.items() if len(v.dropna())}
             best, worst = max(last, key=last.get), min(last, key=last.get)
-            _chart_head(f"Over the year, {best} did best against the S&P 1500 ({_fmt.signed(last[best], 1)} pts) and "
+            _chart_head(f"Over the year, {best} did best against the S&P 500 ({_fmt.signed(last[best], 1)} pts) and "
                         f"{worst} worst ({_fmt.signed(last[worst], 1)} pts)",
-                        "Each size index divided by the S&P 1500, set to 100 a year ago; above 100 it has "
+                        "Each size index divided by the S&P 500, set to 100 a year ago; above 100 it has "
                         "done better. S&P index closes (Yahoo), price only.")
             colours = [lw.INK, "var(--c-up)", "var(--c-caution)", "var(--c-teal)", "var(--c-violet)"]
             lw.render([{"height": 300, "levels": [{"value": 100, "color": lw.GREY, "title": "100"}],
@@ -566,7 +566,7 @@ def _run_text(n: int) -> str:
 
 
 def _rel_bars_html(sec: pd.DataFrame) -> str:
-    """Each industry's six months against the S&P 1500 as a bar from zero,
+    """Each industry's six months against the S&P 500 as a bar from zero,
     with a dot for the last month: the quadrants as a picture."""
     if sec is None or sec.empty:
         return ""
@@ -581,9 +581,9 @@ def _rel_bars_html(sec: pd.DataFrame) -> str:
             f'<span class="rb-t"><i class="rb-z"></i><i class="rb-b {tone}" style="left:{left:.1f}%;width:{width:.1f}%"></i>'
             f'<i class="rb-d" style="left:{x(r.rel_1m):.1f}%" title="Last month {_num(r.rel_1m, "pts")}"></i></span>'
             f'<span class="rb-v">{_num(r.rel_6m, "pts")}<small> · {_num(r.rel_1m, "pts")}</small></span></div>')
-    return ('<h3 style="margin-top:6px">Six months against the S&P 1500, and the last month</h3>'
+    return ('<h3 style="margin-top:6px">Six months against the S&P 500, and the last month</h3>'
             '<p class="qp-note" style="margin:0 0 8px">Bars: the median stock\'s six-month return less the '
-            'S&P 1500\'s. Rings: the last month. Right of the line is ahead of the index.</p>'
+            'S&P 500\'s. Rings: the last month. Right of the line is ahead of the index.</p>'
             '<style>.rb-row{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr) 120px;gap:12px;'
             'align-items:center;padding:3px 0;font-size:13.5px}.rb-n{color:var(--c-text_2);white-space:nowrap;'
             'overflow:hidden;text-overflow:ellipsis}.rb-t{position:relative;height:14px}'
@@ -594,7 +594,7 @@ def _rel_bars_html(sec: pd.DataFrame) -> str:
             '.rb-v{text-align:right;font-variant-numeric:tabular-nums;color:var(--c-ink)}'
             '.rb-v small{color:var(--c-muted);font-size:12px}'
             '@media (max-width:700px){.rb-row{grid-template-columns:110px minmax(0,1fr) 84px}}</style>'
-            f'<div role="img" aria-label="Industries by six months against the S&P 1500, with the last month">'
+            f'<div role="img" aria-label="Industries by six months against the S&P 500, with the last month">'
             f'{"".join(rows)}</div>')
 
 
@@ -607,7 +607,7 @@ def leaders_section_html(ld: mq.Leaders, months: pd.DataFrame) -> str:
     size_rows = "".join(
         f'<tr><td>{html.escape(n)}</td><td class="{_t(r6)}">{_num(r6, "pts")}</td>'
         f'<td class="{_t(r1)}">{_num(r1, "pts")}</td></tr>' for n, r6, r1 in ld.size)
-    size_html = ('<h3>By size, against the S&P 1500</h3><table><thead><tr><th scope="col">Index</th>'
+    size_html = ('<h3>By size, against the S&P 500</h3><table><thead><tr><th scope="col">Index</th>'
                  '<th scope="col">6 months</th><th scope="col">1 month</th></tr></thead>'
                  f'<tbody>{size_rows}</tbody></table>') if size_rows else ""
 
@@ -622,7 +622,7 @@ def leaders_section_html(ld: mq.Leaders, months: pd.DataFrame) -> str:
     bars_html = _rel_bars_html(sec)
     quad_html = ('<h3>Industries by six months and one month</h3>'
                  '<p class="qp-note" style="margin:0 0 6px">Each figure is the median stock\'s return less '
-                 'the S&P 1500\'s, in points: over six months, then over one month.</p>'
+                 'the S&P 500\'s, in points: over six months, then over one month.</p>'
                  f'<div class="qp-quad">{"".join(quads)}</div>' + bars_html)
 
     heat_html = ""
@@ -634,7 +634,7 @@ def leaders_section_html(ld: mq.Leaders, months: pd.DataFrame) -> str:
         if longest and len(lead_run):
             n = int(lead_run["run"].iloc[0])
             run_line = (f'<p class="qp-s">{html.escape(lead_run.index[0])} has {"beaten" if n > 0 else "trailed"} '
-                        f'the S&P 1500 in each of the last {abs(n)} completed months, the longest current run.</p>')
+                        f'the S&P 500 in each of the last {abs(n)} completed months, the longest current run.</p>')
         head = "".join(f'<th scope="col">{html.escape(c.replace(" 20", " ’"))}</th>' for c in cols)
         body = []
         for name, r in months.iterrows():
@@ -643,12 +643,12 @@ def leaders_section_html(ld: mq.Leaders, months: pd.DataFrame) -> str:
                 f'{"—" if not pd.notna(r[c]) else _fmt.signed(r[c], 1)}</td>' for c in cols)
             body.append(f'<tr><td>{html.escape(name)}</td>{cells}<td class="run">{_run_text(int(r["run"]))}</td>'
                         f'<td class="tot {_t(r["total"])}">{_num(r["total"], "pts")}</td></tr>')
-        heat_html = ('<h3>Month by month against the S&P 1500</h3>' + run_line +
+        heat_html = ('<h3>Month by month against the S&P 500</h3>' + run_line +
                      '<div class="qp-heat"><table><thead><tr><th scope="col">Industry</th>' + head +
                      '<th scope="col">Run</th><th scope="col">12 months</th></tr></thead>'
                      f'<tbody>{"".join(body)}</tbody></table></div>'
                      '<p class="qp-note">Each cell is the median stock\'s return in that month less the '
-                     'S&P 1500\'s, in points; deeper shades are 4 points or more. The last column before Run '
+                     'S&P 500\'s, in points; deeper shades are 4 points or more. The last column before Run '
                      'is the month so far. Run counts completed months in a row on the same side.</p>')
 
     sw = mq.nearest_switches(sec)
@@ -667,7 +667,7 @@ def leaders_section_html(ld: mq.Leaders, months: pd.DataFrame) -> str:
             f'<p class="qp-s">{html.escape(ld.sentence)}</p>{size_html}</div>'
             f'<div>{would}</div></div>{quad_html}{heat_html}'
             '<p class="qp-note">Sectors are GICS sectors, at least five stocks each, counted over the stocks '
-            'ranked today; points are the median stock\'s return less the S&P 1500\'s.</p></section>')
+            'ranked today; points are the median stock\'s return less the S&P 500\'s.</p></section>')
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -701,7 +701,7 @@ def _spark(s: pd.Series, w: int = 120, h: int = 28) -> str:
 
 
 def market_strip_html(series: dict[str, pd.Series]) -> str:
-    """S&P 1500 and the size indices: the latest day's move, a three-month
+    """S&P 500 and the size indices: the latest day's move, a three-month
     line, the move over a calendar month. From the S&P index closes (Yahoo)."""
     cells = []
     for name, s in series.items():

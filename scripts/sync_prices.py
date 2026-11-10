@@ -42,8 +42,9 @@ OVERLAP_SESSIONS = 10
 RESTATE_TOLERANCE = 0.002      # 0.2% median disagreement on the overlap
 UNIVERSE_FILE = os.path.join(ROOT, "data", "universe.csv")
 BENCHMARK_FILE = os.path.join(ROOT, "data", "benchmarks.csv")
-# SPTM: SPDR Portfolio S&P 1500 Composite ETF (Yahoo's ^SP1500 has no history).
-BENCHMARKS = ["SPTM", "^GSPC", "^SP400", "^SP600"]
+# SPY: the S&P 500 benchmark (dividend-adjusted as SPY_TR); SPTM: the S&P 1500
+# ETF (Yahoo's ^SP1500 has no history); the three S&P price indices.
+BENCHMARKS = ["SPY", "SPTM", "^GSPC", "^SP400", "^SP600"]
 
 
 def log(msg: str) -> None:
@@ -167,11 +168,11 @@ def sync_benchmarks(target) -> None:
     p, _ = fetch(BENCHMARKS, START)
     p = settled_only(p, target)
     w = ps.wide(p, "Close")
-    import yfinance as yf  # adjusted (total return) close for SPTM
-    adj = yf.download(["SPTM"], start=START, auto_adjust=True, progress=False)["Close"]
-    adj = adj["SPTM"] if isinstance(adj, pd.DataFrame) else adj
+    import yfinance as yf  # adjusted (total return) closes for the two ETFs
+    adj = yf.download(["SPY", "SPTM"], start=START, auto_adjust=True, progress=False)["Close"]
     adj.index = pd.to_datetime(adj.index).tz_localize(None)
-    w["SPTM_TR"] = adj.reindex(w.index)
+    w["SPTM_TR"] = adj["SPTM"].reindex(w.index)
+    w["SPY_TR"] = adj["SPY"].reindex(w.index)
     w = w.round(4)
     text = w.to_csv(date_format="%Y-%m-%d")
     if not os.path.exists(BENCHMARK_FILE) or open(BENCHMARK_FILE).read() != text:

@@ -9,7 +9,7 @@ Order, top to bottom:
   5. LADDER     where the price sits: 52-week range, filter line, EMA, ATH,
                 stop levels when the source has intraday highs and lows
   6. RETURNS    gain vs pain: each window's return beside the fall it took,
-                with the S&P 1500 and the typical stock on the same bars
+                with the S&P 500 and the typical stock on the same bars
   7. PEERS      the industry's best-ranked stocks, in the Screener's table
   8. CHECKS     data caveats; opens itself when one needs reading
 """
@@ -430,7 +430,7 @@ def _render_price_ladder(row: pd.Series, year_low: float | None = None) -> None:
 # ── 6. RETURNS: GAIN VS PAIN ─────────────────────────────────────────────────
 
 def _benchmark_returns(day: pd.Timestamp | None) -> dict[int, float]:
-    """S&P 1500 price return over each calendar window ending on the price day."""
+    """S&P 500 price return over each calendar window ending on the price day."""
     try:
         from src.loaders.price_loader import fetch_benchmark_history
 
@@ -499,7 +499,7 @@ def _render_gain_vs_pain(row: pd.Series, rank_df: pd.DataFrame) -> None:
         else:
             top, good = f"Bottom {max(1, int(np.ceil(pct)))}%", "poor"
         dd_txt = f"−{abs(dd):.1f}%" if dd is not None else "—"
-        nb_txt = f"S&P 1500 {_signed_pct(nb)}" if nb is not None else ""
+        nb_txt = f"S&P 500 {_signed_pct(nb)}" if nb is not None else ""
         rows_html.append(
             '<div class="gp-row">'
             f'<span class="gp-w"><b>{m}M</b><i>{_LONG[m]}</i></span>'
@@ -531,7 +531,7 @@ def _render_gain_vs_pain(row: pd.Series, rank_df: pd.DataFrame) -> None:
         '<section class="sp-card sp-gp" aria-label="Returns and risk">'
         '<div class="gp-head"><h2>Returns and risk by window</h2>'
         '<span class="gp-legend"><span><i class="k-dd"></i>Max drawdown</span>'
-        '<span><i class="k-ret"></i>Return</span><span><i class="k-nb"></i>S&P 1500</span>'
+        '<span><i class="k-ret"></i>Return</span><span><i class="k-nb"></i>S&P 500</span>'
         '<span><i class="k-med"></i>Typical stock</span></span></div>'
         '<div class="gp-row gp-hdr"><span>Window</span><span class="r">Max drawdown</span><span></span>'
         '<span>Return</span><span class="r">Sharpe</span><span class="r">Among all</span></div>'

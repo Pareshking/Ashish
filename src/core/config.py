@@ -41,7 +41,11 @@ INDICES_URLS: Final[dict[str, str]] = {
 }
 INDICES_LOCAL: Final[dict[str, str]] = {k: UNIVERSE_FILE for k in INDICES_URLS}
 SHORT_FORMS: Final[dict[str, str]] = {"S&P 500": "SP500", "S&P 400": "SP400", "S&P 600": "SP600", "S&P 1500": ""}
-UNIVERSE_NAME: Final[str] = "S&P 1500"
+# The main book's universe (owner, 10 Nov 2026: "S&P 500 becomes main book",
+# after the 2020-26 point-in-time tests in docs/RESEARCH_FILTERS.md). The other
+# two indices stay synced and selectable in Configuration.
+MAIN_INDEX: Final[str] = "S&P 500"
+UNIVERSE_NAME: Final[str] = MAIN_INDEX
 # The site's name in the header, the tab title and the footer. Paresh's site
 # carried its owner's name; so does this one.
 SITE_NAME: Final[str] = os.getenv("SITE_NAME", "Ashish Patel")  # owner, 10 Nov 2026
@@ -51,10 +55,11 @@ HTTP_HEADERS: Final[dict[str, str]] = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-# Benchmark: SPDR Portfolio S&P 1500 Composite ETF, dividend-adjusted (Yahoo's
-# ^SP1500 has no history). The strategy's returns are dividend-adjusted too.
-BENCHMARK_SYMBOL: Final[str] = "SPTM_TR"
-BENCHMARK_NAME: Final[str] = "S&P 1500"
+# Benchmark: the S&P 500 with dividends reinvested (SPY's dividend-adjusted
+# close), the main book's own universe. Was the S&P 1500 (SPTM) until the main
+# book moved to the S&P 500 (10 Nov 2026).
+BENCHMARK_SYMBOL: Final[str] = "SPY_TR"
+BENCHMARK_NAME: Final[str] = "S&P 500"
 
 # ── Currency and units ───────────────────────────────────────────────────────
 CURRENCY: Final[str] = "$"

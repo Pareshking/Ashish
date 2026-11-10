@@ -79,7 +79,7 @@ def render_breadth_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     if levels is not None and bench is not None and "sp500" in bench:
         size_ok, _ = sl.cross_check(levels, bench["sp1500"])
     nifty500 = (benchmark_close if benchmark_close is not None and len(benchmark_close)
-                else _series_of(bench, "sp1500_tr"))
+                else _series_of(bench, "bench_tr"))
     render_breadth_questions(rank_df, history_prices if history_prices is not None else adj_close,
                              nifty500, size_closes(levels, size_ok))
 

@@ -33,7 +33,7 @@ DOWN = C.down
 INK = C.ink
 GRID = C.grid
 MUTED = C.muted
-MA_COLOURS = {"20 EMA": C.teal, "50 EMA": C.muted_2, "200 SMA": C.caution, "S&P 1500": C.violet}
+MA_COLOURS = {"20 EMA": C.teal, "50 EMA": C.muted_2, "200 SMA": C.caution, "S&P 500": C.violet}
 # Volume is context, not a signal: pale tints of the up and down colours.
 VOL_UP, VOL_DOWN = C.up_line, C.down_line_2
 
@@ -201,7 +201,7 @@ def build_panes(
     rs_rows = _tuples(idx, _align(rs).values) if rs is not None else []
     if rs_rows:
         panes.append({"height": 120, "series": [
-            {"name": "RS vs S&P 1500", "type": "line", "color": C.up, "width": 1.5,
+            {"name": "RS vs S&P 500", "type": "line", "color": C.up, "width": 1.5,
              "fmt": "num", "data": rs_rows}]})
     return panes, bool(vol_rows)
 

@@ -1,6 +1,6 @@
 """Per-system facts the strategy runs on: ledger, inception and membership.
 
-One system in the US terminal, the S&P 1500 (owner, 10 Nov 2026), whose
+One system in the US terminal, the S&P 500 (owner, 10 Nov 2026), whose
 point-in-time membership is ``data/membership_history.json`` (built from
 dated snapshots of the S&P 500, 400 and 600 lists by scripts/sync_universe.py).
 The functions keep Paresh's per-system signatures so the ported pages work.
@@ -14,7 +14,6 @@ from typing import Any
 import pandas as pd
 
 from src.engine.extra_universe import SYSTEM_750
-from src.engine.membership import load_history_or_none
 from src.engine.track_record import INCEPTION, LEDGER_PATH
 
 DATA = Path(__file__).resolve().parents[2] / "data"
@@ -31,8 +30,11 @@ def inception(system: str) -> pd.Period:
 
 
 def membership_for(system: str) -> dict[str, Any] | None:
-    """The point-in-time membership timeline the backtest scores on."""
-    return load_history_or_none()
+    """The point-in-time timeline the record and backtest score on: the main
+    book's index (config.MAIN_INDEX, the S&P 500)."""
+    from src.engine import index_universe as iu
+
+    return iu.index_history(iu.DEFAULT_INDEX)
 
 
 # Backtest reporting starts at each system's canonical live inception.

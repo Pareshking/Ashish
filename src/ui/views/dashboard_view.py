@@ -68,7 +68,7 @@ def answer_line(mtd, bench_mtd, n_watch: int, n_sell: int, check: pd.Timestamp) 
     parts = []
     if mtd is not None and pd.notna(mtd):
         parts.append(f"The book is {_pct(mtd)} this month"
-                     + (f" against {_pct(bench_mtd)} for the S&P 1500" if pd.notna(bench_mtd) else ""))
+                     + (f" against {_pct(bench_mtd)} for the S&P 500" if pd.notna(bench_mtd) else ""))
     risk = []
     if n_sell:
         risk.append(f"{n_sell} would be sold if the month ended today")
@@ -88,7 +88,7 @@ def headline_parts(mtd, bench_mtd, n_watch: int, n_sell: int, check: pd.Timestam
     if mtd is not None and pd.notna(mtd):
         title = f"The book {moved(mtd)} this month"
         if bench_mtd is not None and pd.notna(bench_mtd):
-            title += f"; the S&P 1500 {moved(bench_mtd)}"
+            title += f"; the S&P 500 {moved(bench_mtd)}"
     else:
         title = "The book this month"
     risk = []
@@ -140,9 +140,9 @@ def _size_html(res: sl.SizeLeadership) -> str:
             else:
                 rel, ab = r[f"{w}M vs 500"], r[f"{w}M"]
                 cells.append(f'<td><b class="{_tone(rel)}">{fmt.signed(rel * 100)} pts</b><small>{_pct(ab)}</small></td>')
-        cls = ' class="db-base"' if name == "S&P 1500" else ""
+        cls = ' class="db-base"' if name == "S&P 500" else ""
         body.append(f"<tr{cls}><th>{html.escape(name)}</th>{''.join(cells)}</tr>")
-    return (f'<table class="db-size"><thead><tr><th>Against the S&P 1500</th>{head}</tr></thead>'
+    return (f'<table class="db-size"><thead><tr><th>Against the S&P 500</th>{head}</tr></thead>'
             f'<tbody>{"".join(body)}</tbody></table>')
 
 
@@ -174,7 +174,7 @@ def book_risk_html(res, as_of_record: pd.Timestamp | None) -> str:
                     f'<td class="mid">{html.escape(against)}</td></tr>')
 
     if res.beta is not None:
-        lede = (f"The book as it stands moves about {res.beta:.2f} for each 1 of the S&P 1500 but swings "
+        lede = (f"The book as it stands moves about {res.beta:.2f} for each 1 of the S&P 500 but swings "
                 f"{'more' if res.vol > res.bench_vol else 'less'}: {res.vol * 100:.1f}% a year against "
                 f"{res.bench_vol * 100:.1f}%. {small * 100:.0f}% of it is in small caps (the S&P 600)"
                 + (f", and {res.cash * 100:.0f}% is in cash." if getattr(res, "cash", 0.0) > 0.0005 else "."))
@@ -197,10 +197,10 @@ def book_risk_html(res, as_of_record: pd.Timestamp | None) -> str:
         slow, days = res.exit_days.index[0], float(res.exit_days.iloc[0])
         row(f"Slowest exit, {slow}", f"{days:.2f} days" if days < 10 else f"{days:.0f} days")
     gaps = "".join(f'<p class="db-note">Left out: {html.escape(g)}.</p>' for g in res.gaps)
-    head = (f'<div class="db-big">{res.beta:.2f}<span>beta against the S&P 1500, {res.sessions} sessions</span></div>'
+    head = (f'<div class="db-big">{res.beta:.2f}<span>beta against the S&P 500, {res.sessions} sessions</span></div>'
             if res.beta is not None else "")
     table = ('<table class="db-fig"><thead><tr><th scope="col">The book</th><th scope="col">Now</th>'
-             f'<th scope="col">S&P 1500</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
+             f'<th scope="col">S&P 500</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
     return head + (f'<p class="db-lede">{html.escape(lede)}</p>' if lede else "") + table + gaps
 
 
@@ -244,8 +244,8 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     if levels is not None and bench is not None and "sp500" in bench:
         size_ok, _ = sl.cross_check(levels, bench["sp1500"])
     nifty500 = (benchmark_close if benchmark_close is not None and len(benchmark_close)
-                else _series_of(bench, "sp1500_tr"))
-    _strip = {"S&P 1500": nifty500} if nifty500 is not None else {}
+                else _series_of(bench, "bench_tr"))
+    _strip = {"S&P 500": nifty500} if nifty500 is not None else {}
     _strip.update(size_closes(levels, size_ok))
     if _strip:
         st.html(market_strip_html(_strip))
@@ -274,7 +274,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
         from src.engine import book_risk as br
 
         nse = nse_benchmarks()
-        n500 = nse["sp1500_tr"] if nse is not None and "sp1500_tr" in nse else benchmark_close
+        n500 = nse["bench_tr"] if nse is not None and "bench_tr" in nse else benchmark_close
         eq = (record or {}).get("equity_curve")
         res = br.book_risk(book.set_index("Symbol")["Weight %"], adj_close, n500, eq, volume,
                            MODEL_BOOK_CAPITAL)
@@ -282,7 +282,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
         eq_end = pd.Timestamp(eq_series.index[-1]) if len(eq_series) else None
         st.html(book_risk_html(res, eq_end))
         kit.caption(f"Beta and volatility: today's book at today's weights over the last {br.WINDOW} sessions, "
-                    "against the S&P 1500's daily returns. Size: today's S&P 500, 400 and 600 lists. Drawdown: the "
+                    "against the S&P 500's daily returns. Size: today's S&P 500, 400 and 600 lists. Drawdown: the "
                     "record's equity, to its last month-end. Exit: a position's value at the model book's "
                     f"capital over {br.PARTICIPATION:.0%} of its 20-day average traded value; that share is a "
                     "common rule of thumb, an assumption, not a measured figure.")
@@ -305,7 +305,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
     size_drawn = False
     with low_l, kit.card("Size leadership", "db_size", "price return, S&P index closes"):
         res = None
-        if levels is None or bench is None or "sp1500_tr" not in bench or "sp500" not in bench:
+        if levels is None or bench is None or "bench_tr" not in bench or "sp500" not in bench:
             kit.caption("Index levels are not available right now, so this table is left out.")
         else:
             ok, why = sl.cross_check(levels, bench["sp1500"])
@@ -323,7 +323,7 @@ def render_dashboard_view(rank_df: pd.DataFrame, adj_close: pd.DataFrame,
             stale = (as_of - res.end).days > 7
             kit.caption(f"To {res.end:%-d %b %Y}"
                         + (" (older than the latest prices)" if stale else "")
-                        + "; bold figures are against the S&P 1500, small ones the index's own move. "
+                        + "; bold figures are against the S&P 500, small ones the index's own move. "
                         + f"{why}. Source: " + ", ".join(res.sources) + ".")
 
     # S91 (owner, 7 Nov: "build it"): momentum health under the book's risk,

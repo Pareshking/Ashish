@@ -41,7 +41,7 @@ def test_alpha_is_the_months_difference_and_every_year_shows_three_rows():
     for entry in ledger["months"].values():
         assert abs(entry["alpha"] - (entry["strategy"] - entry["benchmark"])) < 1e-12
     grid = build_combined_grid(ledger)
-    assert grid.groupby("YEAR").SERIES.apply(list).iloc[0] == ["Strategy", "S&P 1500", "Alpha"]
+    assert grid.groupby("YEAR").SERIES.apply(list).iloc[0] == ["Strategy", "S&P 500", "Alpha"]
 
 
 def test_a_run_with_no_benchmark_still_gives_a_strategy_grid():
@@ -64,10 +64,10 @@ def test_alpha_aggregates_are_the_plain_difference_by_default_compounding_on_req
     plain = build_combined_grid(ledger).set_index("SERIES")
     compounded = build_combined_grid(ledger, alpha_as_difference=False).set_index("SERIES")
     for col in ("CY RETURN", "Q1", "Q2", "Q3", "Q4"):  # no Indian FY column in the US port
-        a, s, b = plain.loc["Alpha", col], plain.loc["Strategy", col], plain.loc["S&P 1500", col]
+        a, s, b = plain.loc["Alpha", col], plain.loc["Strategy", col], plain.loc["S&P 500", col]
         if pd.notna(s) and pd.notna(b):
             assert abs(a - (s - b)) < 1e-12
     # S40 (owner, 7 Oct): Portfolio uses the default, so every page shows the difference.
     # The monthly cells are differences either way.
     assert plain.loc["Alpha", "MAR"] == compounded.loc["Alpha", "MAR"]
-    assert abs(compounded.loc["Alpha", "CY RETURN"] - (plain.loc["Strategy", "CY RETURN"] - plain.loc["S&P 1500", "CY RETURN"])) > 1e-6
+    assert abs(compounded.loc["Alpha", "CY RETURN"] - (plain.loc["Strategy", "CY RETURN"] - plain.loc["S&P 500", "CY RETURN"])) > 1e-6

@@ -355,7 +355,7 @@ def run_parameter_sweep(
     The window, universe, floor and corporate actions must be the page's own
     (TODO S74, 9 Oct 2026). The Backtest page used to pass none of them, so a
     sweep on "History from 2010" scored the last 6 months against the Nifty
-    750's membership with no floor: on the S&P 1500 history the base run read
+    750's membership with no floor: on the S&P 500 history the base run read
     Sharpe 4.74 over Apr-Sep 2026 against the page's 0.68 over 2010-2026.
     `_membership` None keeps the old default (the 750 timeline) for scripts.
 

@@ -152,10 +152,23 @@ def main(argv=None) -> int:
 
     timeline = mem.load_history(TIMELINE_FILE) if os.path.exists(TIMELINE_FILE) else mem.empty_history("S&P 1500")
     first, last = mem.coverage(timeline)
+    changed_any = False
     if last is None or date.fromisoformat(as_of) > last:
-        timeline, changed = mem.record_snapshot(timeline, as_of, current["Yahoo"])
-        if changed:
-            mem.save_history(timeline, TIMELINE_FILE)
+        timeline, changed_any = mem.record_snapshot(timeline, as_of, current["Yahoo"])
+    # The per-index timelines (the main book reads "sp500").
+    for name, key in {"S&P 500": "sp500", "S&P 400": "sp400", "S&P 600": "sp600"}.items():
+        sub = (timeline.get("indices") or {}).get(key)
+        if not sub:
+            continue
+        subh = {"baseline": sub["baseline"], "changes": list(sub["changes"])}
+        _f, sub_last = mem.coverage(subh)
+        if sub_last is None or date.fromisoformat(as_of) > sub_last:
+            subh, ch = mem.record_snapshot(subh, as_of, current[current["Index"] == name]["Yahoo"])
+            if ch:
+                timeline["indices"][key] = {"baseline": subh["baseline"], "changes": subh["changes"]}
+                changed_any = True
+    if changed_any:
+        mem.save_history(timeline, TIMELINE_FILE)
 
     sh = pd.read_csv(SECTOR_HISTORY_FILE, dtype=str, keep_default_na=False) if os.path.exists(SECTOR_HISTORY_FILE) else pd.DataFrame(columns=["Symbol", "Sector", "LastSeen"])
     now = pd.DataFrame({"Symbol": current["Yahoo"], "Sector": current["Sector"], "LastSeen": as_of})

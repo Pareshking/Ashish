@@ -153,7 +153,7 @@ except Exception as _exc:
 
 # ── State Initialization ─────────────────────────────────────────────────────
 if "cfg_indices" not in st.session_state:
-    st.session_state["cfg_indices"] = []   # [] = the whole S&P 1500
+    st.session_state["cfg_indices"] = []   # [] = the whole S&P 500
 # Every cfg_* setting is read through one resolver: the widget's own value
 # while it exists, then a mirror key that Streamlit's widget-state garbage
 # collection cannot evict, then the documented default. Seeding session state
@@ -600,7 +600,7 @@ def run_momentum_pipeline(
 
 
 def _system_universe(system: str, indices: list[str]) -> pd.DataFrame:
-    """The stocks ranked: the S&P 1500, or the named S&P indices of it."""
+    """The stocks ranked: the S&P 500, or the named S&P indices of it."""
     return fetch_indices_data(indices)
 
 
@@ -830,7 +830,7 @@ with st.spinner("Loading market data…"):
             logger.warning("%s failed to load (%s).", system, type(exc).__name__)
         if system != SYSTEM_750 and (not data or data["rank_df"].empty):
             st.warning(f"{SYSTEM_NAMES[system]} could not be loaded just now, so the app shows "
-                       "S&P 1500.")
+                       "S&P 500.")
             system = SYSTEM_750
             data = load_all_data(selected_indices, system)
         # The chosen system, not a fallback, is what the address keeps.
@@ -963,7 +963,7 @@ def _system_line() -> None:
 
 
 def _before_inception() -> bool:
-    """Paresh's secondary systems had a later first book; the S&P 1500 does not."""
+    """Paresh's secondary systems had a later first book; the S&P 500 does not."""
     return False
 
 

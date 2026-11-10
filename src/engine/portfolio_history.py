@@ -3,9 +3,9 @@
 Owner, 8 Nov 2026: a signal goes on the Dashboard only if it shows in the
 portfolio's own results, not only in the momentum factor's. This runs the
 record's configuration (track_record.TRACK_RECORD_CONFIG) on NSE's long
-adjusted closes over the S&P 1500 as it stood (index_universe), the same
+adjusted closes over the S&P 500 as it stood (index_universe), the same
 run as the Backtest page's "History from 2010", and returns each month's
-return beside the S&P 1500's.
+return beside the S&P 500's.
 
 Used by scripts/build_momentum_health.py (written into
 data/momentum_health.csv as `portfolio` and `nifty500`) and the research in
@@ -44,33 +44,33 @@ def portfolio_months(close: pd.DataFrame, bench: pd.Series, index_key: str = "ni
         weight_reset_months=tuple(cfg.get("weight_reset_months") or ()) or None)
     eq = pd.Series((res or {}).get("equity_curve")).dropna()
     if eq.empty:
-        return pd.DataFrame(columns=["month", "portfolio", "sp1500_tr"])
+        return pd.DataFrame(columns=["month", "portfolio", "bench_tr"])
     eq.index = pd.DatetimeIndex(eq.index)
     b = pd.to_numeric(bench, errors="coerce").dropna()
     b.index = pd.DatetimeIndex(b.index)
     me = eq.resample("ME").last()
     bm = b.resample("ME").last().reindex(me.index)
-    out = pd.DataFrame({"portfolio": me.pct_change() * 100, "sp1500_tr": bm.pct_change() * 100}).dropna()
+    out = pd.DataFrame({"portfolio": me.pct_change() * 100, "bench_tr": bm.pct_change() * 100}).dropna()
     out["month"] = out.index.to_period("M").astype(str)
-    return out.reset_index(drop=True)[["month", "portfolio", "sp1500_tr"]]
+    return out.reset_index(drop=True)[["month", "portfolio", "bench_tr"]]
 
 
 def excess_by_quarter(d: pd.DataFrame, col: str) -> dict | None:
-    """The portfolio's next-month lead over the S&P 1500 after the lowest
+    """The portfolio's next-month lead over the S&P 500 after the lowest
     quarter of `col` against the rest, overall and in 5-year blocks.
 
     `d`: data/momentum_health.csv (a row's `col` is read at its formation
     month-end; its `portfolio` and `nifty500` are the following month's)."""
-    need = {col, "portfolio", "sp1500_tr", "month"}
+    need = {col, "portfolio", "bench_tr", "month"}
     if not need <= set(d.columns):
         return None
-    x = d[["month", col, "portfolio", "sp1500_tr"]].copy()
-    for c in (col, "portfolio", "sp1500_tr"):
+    x = d[["month", col, "portfolio", "bench_tr"]].copy()
+    for c in (col, "portfolio", "bench_tr"):
         x[c] = pd.to_numeric(x[c], errors="coerce")
-    x = x.dropna(subset=[col, "portfolio", "sp1500_tr"])
+    x = x.dropna(subset=[col, "portfolio", "bench_tr"])
     if len(x) < 48:
         return None
-    x = x.assign(excess=x["portfolio"] - x["sp1500_tr"],
+    x = x.assign(excess=x["portfolio"] - x["bench_tr"],
                  year=x["month"].astype(str).str[:4].astype(int))
     cut = float(x[col].quantile(0.25))
     low, rest = x[x[col] <= cut], x[x[col] > cut]

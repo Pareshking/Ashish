@@ -73,12 +73,31 @@ def _restrict(frame: pd.DataFrame, symbols) -> pd.DataFrame:
     return frame[cols]
 
 
+def former_members_of_main_index() -> list[str]:
+    """Every symbol the main index's point-in-time timeline ever lists."""
+    try:
+        from src.engine import index_universe as iu
+        from src.engine import systems
+
+        h = systems.membership_for(systems.SYSTEM_750)
+        ever = iu.ever_members(h) if h else set()
+        al = (h or {}).get("aliases") or {}
+        return sorted(ever | {al[s]["new_symbol"] for s in ever if s in al})
+    except Exception:  # noqa: BLE001 - no timeline: today's members only
+        return []
+
+
 def load(symbols, *, start: str | None = None, prices_dir: str = ps.PRICES_DIR) -> tuple[PriceFrames | None, pd.DataFrame | None]:
     """(ranking frames, deep adjusted close) for ``symbols``; (None, None)
     when the store is empty or cannot reach the 12-month lookback."""
     symbols = list(symbols)
     actions = ps.read_actions()
-    deep_close = ps.read_wide(["Close"], prices_dir, start=DEEP_START, symbols=symbols)["Close"]
+    # The deep history also carries every stock that was in the main index at
+    # some month-end (under today's ticker where it was renamed): the record and
+    # the backtest score each month on the index as it stood, and a member that
+    # has since left must still have its prices, or the pool is the survivors.
+    deep_syms = list(dict.fromkeys(symbols + former_members_of_main_index()))
+    deep_close = ps.read_wide(["Close"], prices_dir, start=DEEP_START, symbols=deep_syms)["Close"]
     if deep_close.empty:
         return None, None
     deep_adj = ps.adjusted_close(deep_close, actions)
@@ -86,7 +105,7 @@ def load(symbols, *, start: str | None = None, prices_dir: str = ps.PRICES_DIR) 
     last = deep_close.index[-1]
     cut = pd.Timestamp(start) if start else last - pd.DateOffset(years=RANKING_YEARS)
     recent = ps.read_wide(["High", "Low", "Volume"], prices_dir, start=str(cut.date()), symbols=symbols)
-    close = deep_close.loc[deep_close.index >= cut]
+    close = deep_close.loc[deep_close.index >= cut, [c for c in symbols if c in deep_close.columns]]
     del deep_close
 
     def _w(col):

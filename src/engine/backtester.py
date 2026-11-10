@@ -1130,7 +1130,7 @@ def run_backtest(
     prices = _adj_close.dropna(axis=1, how="all").copy()
 
     # Benchmark and strategy must share exactly the same completed session.
-    # The benchmark is the canonical daily S&P 1500 series; never let a newer
+    # The benchmark is the canonical daily S&P 500 series; never let a newer
     # index close extend the benchmark beyond the strategy's available prices,
     # or let an older strategy frame be compared with a newer index close.
     benchmark_input = _benchmark_close
@@ -2074,7 +2074,7 @@ def run_backtest(
     # the old book earned on the fill day -- 30 Sep close to 1 Oct close, say --
     # sat in neither the frozen month before (which ends at its last close) nor
     # this one, for the strategy and the index alike, until the month froze:
-    # on 12 Oct 2026 the record's S&P 1500 read -7.6% against -8.5% measured
+    # on 12 Oct 2026 the record's S&P 500 read -7.6% against -8.5% measured
     # from the first fill. The frozen month comes off the daily curve, where
     # that session belongs to the old book. Mark the live month the same way:
     # the old book from the previous month's last close to the fill, then the

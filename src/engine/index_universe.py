@@ -25,8 +25,8 @@ from src.engine.membership import load_history_or_none, members_on  # noqa: F401
 # key -> display name. One point-in-time timeline is recorded here, the S&P
 # 1500's (data/membership_history.json, top level); per-index timelines can be
 # added under "indices" (docs/TODO.md B7).
-INDICES: dict[str, str] = {"sp1500": "S&P 1500"}
-DEFAULT_INDEX = "sp1500"
+INDICES: dict[str, str] = {"sp500": "S&P 500", "sp400": "S&P 400", "sp600": "S&P 600", "sp1500": "S&P 1500"}
+DEFAULT_INDEX = "sp500"
 
 
 def _stored(full: dict[str, Any], key: str) -> dict[str, Any] | None:
@@ -51,7 +51,7 @@ def index_history(key: str, full: dict[str, Any] | None = None) -> dict[str, Any
     full = full if full is not None else load_history_or_none()
     if not full:
         return None
-    if key == DEFAULT_INDEX and full.get("baseline"):
+    if key == "sp1500" and full.get("baseline"):
         return {**full, "index": key, "aliases": full.get("aliases") or {}}
     return _stored(full, key)
 

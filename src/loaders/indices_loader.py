@@ -43,9 +43,12 @@ def _read(path: str = UNIVERSE_FILE) -> pd.DataFrame:
 
 
 def fetch_indices_data(selected_indices: Sequence[str] | None = None) -> pd.DataFrame:
-    """The members, optionally only those of the named S&P indices."""
+    """The members of the named S&P indices; none named means the main book's
+    index (config.MAIN_INDEX, the S&P 500)."""
+    from src.core.config import MAIN_INDEX
+
     df = _read()
-    sel = [s for s in (selected_indices or []) if s in TAGS]
+    sel = [s for s in (selected_indices or []) if s in TAGS] or [MAIN_INDEX]
     if sel:
         df = df[df["Index"].isin(sel)]
     return df.drop(columns=["Index"]).reset_index(drop=True)

@@ -27,7 +27,7 @@ def test_each_year_reads_the_grids_cy_cells():
     for row in table.itertuples(index=False):
         block = grid[grid["YEAR"] == row.YEAR].set_index("SERIES")["CY RETURN"]
         assert row.STRATEGY == block["Strategy"]
-        assert row.BENCHMARK == block["S&P 1500"]
+        assert row.BENCHMARK == block["S&P 500"]
         assert row.ALPHA == block["Alpha"]
         assert np.isclose(row.ALPHA, row.STRATEGY - row.BENCHMARK)
 

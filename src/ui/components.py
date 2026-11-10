@@ -312,7 +312,7 @@ _MENU_GROUPS = (
 _QUICK_PAGES = ("Dashboard", "Actions", "Screener", "Portfolio")
 
 
-# The header says what it measures (owner, 8 Nov 2026): "S&P 1500 2.9% above its
+# The header says what it measures (owner, 8 Nov 2026): "S&P 500 2.9% above its
 # 200D EMA". "Trend: up" sat above the Dashboard's "No clear trend" (four
 # measures) and read as a contradiction (audit U-H1); "Bullish" before it read
 # as a market call.
@@ -337,7 +337,7 @@ def render_header_kpi_bar(
     dist = regime.distance_pct
     # An unknown regime must read as unknown. With no usable benchmark the
     # loader returns UNKNOWN with distance 0.0 and price 0.0, and the header
-    # printed "S&P 1500 0.0% above its 200D EMA" beside a level of "0" --
+    # printed "S&P 500 0.0% above its 200D EMA" beside a level of "0" --
     # a wrong number stated as fact, which is worse than an error page
     # (launch slot 5, 10 Nov 2026).
     unknown = regime.status == MarketRegime.UNKNOWN or not regime.current_price
@@ -351,10 +351,10 @@ def render_header_kpi_bar(
     market_html = f"""
     <div role="status" aria-label="Market status dashboard" class="mkt-snapshot">
         <div class="mkt-item mkt-regime-item">
-            <span class="{regime_cls} mkt-regime"><span class="mkt-dot" aria-hidden="true">●</span>S&P 1500 {html.escape(dist_text)}{"" if unknown else " its 200D EMA"}</span>
+            <span class="{regime_cls} mkt-regime"><span class="mkt-dot" aria-hidden="true">●</span>S&P 500 {html.escape(dist_text)}{"" if unknown else " its 200D EMA"}</span>
         </div>
         <div class="mkt-item mkt-index">
-            <span class="mkt-label">S&P 1500</span>
+            <span class="mkt-label">S&P 500</span>
             <strong>{level_text}</strong>
         </div>
         <div class="mkt-item">

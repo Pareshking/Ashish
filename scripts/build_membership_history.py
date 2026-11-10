@@ -245,6 +245,20 @@ def main(argv=None) -> int:
     if pd.Timestamp(as_of) > pd.Timestamp(m["Date"].max()):
         hist, _ = mem.record_snapshot(hist, as_of, current["Yahoo"])
     hist["aliases"] = aliases(m, current)
+    # One timeline per index as well (the main book is the S&P 500's; owner,
+    # 10 Nov 2026), under "indices" as Paresh's file keeps its sub-indices.
+    keys = {"S&P 500": "sp500", "S&P 400": "sp400", "S&P 600": "sp600"}
+    hist["indices"] = {}
+    for name, key in keys.items():
+        sub = mem.empty_history(name)
+        for d in sorted(m["Date"].unique()):
+            syms = m[(m["Date"] == d) & (m["Index"] == name)]["Yahoo"]
+            if len(syms):
+                sub, _ = mem.record_snapshot(sub, pd.Timestamp(d).date(), syms)
+        cur = current[current["Index"] == name]["Yahoo"]
+        if len(cur) and pd.Timestamp(as_of) > pd.Timestamp(m["Date"].max()):
+            sub, _ = mem.record_snapshot(sub, as_of, cur)
+        hist["indices"][key] = {"baseline": sub["baseline"], "changes": sub["changes"]}
     hist["source"] = ("Wikipedia revision history of the S&P 500/400/600 lists, the last revision "
                       "on or before each month-end close; today's snapshot from scripts/sync_universe.py")
     hist["caveats"] = notes

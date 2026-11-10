@@ -63,7 +63,7 @@ def size_leadership(levels: pd.DataFrame, nifty500: pd.Series) -> SizeLeadership
         return None
     n500 = pd.to_numeric(nifty500, errors="coerce").dropna()
     n500.index = pd.to_datetime(n500.index).normalize()
-    joined = wide[keys].join(n500.rename("sp1500_tr"), how="inner").dropna()
+    joined = wide[keys].join(n500.rename("bench_tr"), how="inner").dropna()
     if len(joined) < 2:
         return None
     idx = pd.DatetimeIndex(joined.index)
@@ -77,7 +77,7 @@ def size_leadership(levels: pd.DataFrame, nifty500: pd.Series) -> SizeLeadership
             continue
         start = idx[pos]
         starts[w] = start
-        r500 = joined.at[end, "sp1500_tr"] / joined.at[start, "sp1500_tr"] - 1
+        r500 = joined.at[end, "bench_tr"] / joined.at[start, "bench_tr"] - 1
         rows["S&P 1500"][f"{w}M"] = r500
         for key, name in INDICES:
             r = joined.at[end, key] / joined.at[start, key] - 1

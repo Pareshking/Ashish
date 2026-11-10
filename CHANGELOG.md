@@ -2,6 +2,8 @@
 
 ## Unreleased (PR #1): the US Momentum Terminal
 
+- The main book is the S&P 500 (owner, 10 Nov 2026), measured against the S&P 500 with dividends; the S&P 400 and 600 remain selectable in Configuration and synced nightly.
+
 - The strategy and website of the NSE Momentum Terminal (Pareshking/Paresh),
   ported to the S&P 1500 (S&P 500 + 400 + 600), one system.
 - Prices from Yahoo Finance, committed to the repository (yearly, monthly and

@@ -291,7 +291,7 @@ def render_ranking_view(
     # The Indices column stores SHORT FORMS -- "N50", "NN50", "MID150",
     # "SMALL250", "MICRO250" -- because indices_loader writes
     # SHORT_FORMS.get(name, name). The option list used to add the long names
-    # ("S&P 500", "NIFTY MIDCAP 150", and a "S&P 1500" the app does not even
+    # ("S&P 500", "NIFTY MIDCAP 150", and a "S&P 500" the app does not even
     # load as a constituent index) on top of the tags, and the filter matched
     # by substring. On the real 750-symbol universe that gave 11 options of
     # which 6 returned an empty screener.

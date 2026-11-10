@@ -3,10 +3,10 @@ already holds (owner, 7 Nov: tipsheet's question pages as the model, our own
 sources as the data).
 
 * Are most stocks taking part?  (breadth of the ranked universe)
-* Is the market in an uptrend?  (S&P 1500 and the size indices against their
+* Is the market in an uptrend?  (S&P 500 and the size indices against their
   averages and highs)
 * What is leading?               (size indices and NSE industries against the
-  S&P 1500)
+  S&P 500)
 
 Each answer is a set of measures that vote with stated cut-offs, read now, a
 month ago and a year ago, so the reader sees the evidence and what changed.
@@ -174,7 +174,7 @@ def _net_new_highs(prices: pd.DataFrame, days: int = 5) -> pd.Series:
 
 def _beat_series(prices: pd.DataFrame, bench: pd.Series) -> tuple[pd.Series, pd.Series]:
     """The two year-long measures at each month end: share of stocks ahead of
-    the S&P 1500 over the year, and the median stock less the index (pts)."""
+    the S&P 500 over the year, and the median stock less the index (pts)."""
     ends = prices.groupby(prices.index.to_period("M")).apply(lambda f: f.index[-1]).tolist()
     share, gap = {}, {}
     for t in ends:
@@ -185,7 +185,7 @@ def _beat_series(prices: pd.DataFrame, bench: pd.Series) -> tuple[pd.Series, pd.
 
 
 def _beat_index_12m(prices: pd.DataFrame, bench: pd.Series, when: pd.Timestamp | None) -> tuple[float | None, float | None]:
-    """Share of stocks ahead of the S&P 1500 over the year to `when`, and the
+    """Share of stocks ahead of the S&P 500 over the year to `when`, and the
     median stock's return less the index's (points)."""
     if when is None:
         return None, None
@@ -224,13 +224,13 @@ def breadth_answer(prices: pd.DataFrame, bench: pd.Series) -> Answer | None:
     ms = [
         _measure("Stocks above their 200D EMA", "pct", [at(a200, k) for k in d], 60, 40,
                  "60% or more is broad, 40% or less is narrow", primary=True, history=a200.iloc[200:]),
-        _measure("Stocks ahead of the S&P 1500 over a year", "pct", [beat[k][0] for k in d], 55, 45,
+        _measure("Stocks ahead of the S&P 500 over a year", "pct", [beat[k][0] for k in d], 55, 45,
                  "55% or more is broad, 45% or less is narrow", primary=True, history=beat_share),
         _measure("Stocks above their 50D EMA", "pct", [at(a50, k) for k in d], 60, 40,
                  "60% or more is broad, 40% or less is narrow", history=a50.iloc[50:]),
         _measure("Net new 52W highs this week, share of stocks", "pts", [at(nnh, k) for k in d], 5, -5,
                  "+5 or more is broad, −5 or less is narrow", history=nnh),
-        _measure("Median stock less the S&P 1500, a year", "pts", [beat[k][1] for k in d], 3, -3,
+        _measure("Median stock less the S&P 500, a year", "pts", [beat[k][1] for k in d], 3, -3,
                  "+3 pts or more is broad, −3 or less is narrow", history=beat_gap),
     ]
     return _answer("Are most stocks taking part?", ms,
@@ -244,7 +244,7 @@ def _breadth_sentence(word: str, ms: list[Measure]) -> str:
     if a200 is not None:
         parts.append(f"{a200:.0f}% of the ranked stocks are above their 200D EMA")
     if beat is not None:
-        parts.append(f"{beat:.0f}% beat the S&P 1500 over the year")
+        parts.append(f"{beat:.0f}% beat the S&P 500 over the year")
     text = " and ".join(parts) + "."
     return text[:1].upper() + text[1:] if parts else ""
 
@@ -317,11 +317,11 @@ def trend_answer(bench: pd.Series, size_closes: dict[str, pd.Series] | None,
     d = anchor_dates(b.index)
     keys = list(d)
     ms = [
-        _measure("S&P 1500 against its 10-month average", "pts", [ten_month_gap(b, d[k]) for k in keys],
+        _measure("S&P 500 against its 10-month average", "pts", [ten_month_gap(b, d[k]) for k in keys],
                  0.0001, -0.0001, "above is up, below is down", primary=True, history=_ten_month_series(b)),
-        _measure("S&P 1500 against its 200D EMA", "pts", [ema_gap(b, d[k]) for k in keys],
+        _measure("S&P 500 against its 200D EMA", "pts", [ema_gap(b, d[k]) for k in keys],
                  0.0001, -0.0001, "above is up, below is down", primary=True, history=_ema_gap_series(b)),
-        _measure("S&P 1500 from its 52W high", "pts", [from_high(b, d[k]) for k in keys],
+        _measure("S&P 500 from its 52W high", "pts", [from_high(b, d[k]) for k in keys],
                  -5, -15, "within 5% is up, 15% or more below is down", history=_from_high_series(b)),
     ]
     for name, s in (size_closes or {}).items():
@@ -359,10 +359,10 @@ class Leaders:
 
 
 def _rel(close: pd.Series, bench: pd.Series, when: pd.Timestamp, months: int) -> float | None:
-    """The index's return less the S&P 1500's over the SAME dates: both end on
+    """The index's return less the S&P 500's over the SAME dates: both end on
     the index's own last close on or before `when` and start on its close a
     calendar span earlier. On 7 Nov the R2 index file was still weekly and
-    ended on an earlier day than the S&P 1500; comparing each series to its
+    ended on an earlier day than the S&P 500; comparing each series to its
     own last close mixed two windows (Microcap 250 read +7.0 pts, +3.7 on
     the same dates)."""
     s, b = close.dropna(), bench.dropna()
@@ -380,7 +380,7 @@ def _rel(close: pd.Series, bench: pd.Series, when: pd.Timestamp, months: int) ->
 
 def leaders_answer(prices: pd.DataFrame, industry: pd.Series, bench: pd.Series,
                    size_closes: dict[str, pd.Series] | None, min_stocks: int = 5) -> Leaders | None:
-    """Industries by the median stock's return less the S&P 1500 over six
+    """Industries by the median stock's return less the S&P 500 over six
     months and one month: ahead on both, gaining (ahead over the month only),
     fading (ahead over six months only), behind on both. Size indices the same way."""
     if prices is None or prices.empty or bench is None or bench.dropna().empty:
@@ -422,7 +422,7 @@ def leaders_answer(prices: pd.DataFrame, industry: pd.Series, bench: pd.Series,
     bits = []
     if best_size is not None:
         bits.append(f"{best_size[0]} lead{'s' if not best_size[0].endswith('s') else ''} the sizes over six months "
-                    f"({best_size[1]:+.1f} pts against the S&P 1500)".replace("-", "−"))
+                    f"({best_size[1]:+.1f} pts against the S&P 500)".replace("-", "−"))
     if len(sectors):
         bits.append(f"{len(both)} of {len(sectors)} industries are ahead over both six months and one month"
                     + (f", led by {', '.join(lead_names)}" if lead_names else ""))
@@ -505,11 +505,11 @@ def what_would_change(a: Answer) -> dict[str, list[tuple[Measure, float]]]:
     return out
 
 
-# ── Industry runs: month by month against the S&P 1500 ────────────────────
+# ── Industry runs: month by month against the S&P 500 ────────────────────
 
 def industry_months(prices: pd.DataFrame, industry: pd.Series, bench: pd.Series,
                     months: int = 12, min_stocks: int = 5) -> pd.DataFrame:
-    """Each industry's median stock return less the S&P 1500's, per calendar
+    """Each industry's median stock return less the S&P 500's, per calendar
     month, for the last `months` completed months and the month to date
     (points). Columns are month labels ("Nov 2025" … "Nov 2026 MTD"), plus
     "run" (completed months in a row ahead, +n, or behind, -n, ending with the

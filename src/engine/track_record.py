@@ -38,7 +38,7 @@ from src.core.logger import logger
 # beside real ones.
 # US (owner, 10 Nov 2026: "2026 start"): January 2026, as Paresh's record.
 # January to October 2026 were struck on 10 Nov 2026 by replay, on today's
-# S&P 1500 list (membership history begins 10 Nov 2026), so they carry
+# S&P 500 list (membership history begins 10 Nov 2026), so they carry
 # survivorship bias; the ledger records this ("replayed").
 INCEPTION = pd.Period("2026-01", freq="M")
 
@@ -107,7 +107,7 @@ TRACK_RECORD_CONFIG: dict[str, Any] = {
     "sector_cap": 0.40,
     "caps": "hard_at_rebalance",
     "sector_labels": "gics_sector_wikipedia",
-    "benchmark": "SPTM_TR",
+    "benchmark": "SPY_TR",
     # Not a run_backtest argument: it names the ACCOUNTING, so the fingerprint
     # changes with it. From 2026-09-25 the backtest holds each book between
     # fills (buy and hold) instead of re-weighting it to target every session;
@@ -153,7 +153,7 @@ def empty_ledger(inception: pd.Period = INCEPTION) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
         "inception": str(inception),
-        "benchmark": "SPTM_TR",
+        "benchmark": "SPY_TR",
         "months": {},
     }
 
@@ -475,7 +475,7 @@ def build_grid(
 
 SERIES_LABELS: dict[str, str] = {
     "strategy": "Strategy",
-    "benchmark": "S&P 1500",
+    "benchmark": "S&P 500",
     "alpha": "Alpha",
 }
 
@@ -494,7 +494,7 @@ def build_combined_grid(
     being asked of this table is almost always "how did we do against the index
     in June", and that should be one glance down a column.
 
-    Rows are grouped by year, then Strategy / S&P 1500 / Alpha, so a year reads
+    Rows are grouped by year, then Strategy / S&P 500 / Alpha, so a year reads
     as a block. Each row is built by `build_grid`, so the CY/FY/quarter
     conventions cannot drift between the combined and per-series views.
 

@@ -135,7 +135,7 @@ def main() -> int:
         return 1
     out = sp.copy()
     out["date"] = pd.to_datetime(out["date"]).dt.strftime("%Y-%m-%d")
-    out.round({c: 4 for c in ("top", "bottom", "spread", "qualified", "portfolio", "sp1500_tr", "ew", "top50", "d2")}).to_csv(OUT, index=False)
+    out.round({c: 4 for c in ("top", "bottom", "spread", "qualified", "portfolio", "bench_tr", "ew", "top50", "d2")}).to_csv(OUT, index=False)
     print(f"{len(out)} months {out['month'].iloc[0]}..{out['month'].iloc[-1]} -> {OUT}")
     if args.check_french:
         try:

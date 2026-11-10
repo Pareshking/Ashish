@@ -1,4 +1,4 @@
-"""Track Record: the frozen monthly history, month by month, against S&P 1500.
+"""Track Record: the frozen monthly history, month by month, against S&P 500.
 
 Everything on this tab except the MTD cell is read from data/track_record.json
 and is never recomputed here. That is the point of the tab: the Backtest tab
@@ -32,7 +32,7 @@ def _comparison_price_frame(system: str, selected_system: str, _fallback: pd.Dat
     """Build the MTD price frame from the system's own canonical universe.
 
     The Portfolio page normally loads the selected system's prices. That frame
-    is valid for S&P 1500, but it cannot be reused for Nano Cap because Nano
+    is valid for S&P 500, but it cannot be reused for Nano Cap because Nano
     is deliberately disjoint from the 750; Combined may contain both. The
     comparison must therefore resolve each system independently.
 
@@ -162,13 +162,13 @@ def month_cards_html(months: dict, mtd_period, mtd_val, mtd_bench) -> str:
         cards.append(
             f'<div class="mo {_tone(s)}"><span class="mo-h">{pd.Period(key, freq="M").strftime("%b %Y")}'
             f'<em>{tag}</em></span><span class="mo-v {_tone(s)}">{_pct(s).replace("-", "−")}</span>'
-            f'<span class="mo-s">S&P 1500 {_pct(b).replace("-", "−")}{gap}</span></div>'
+            f'<span class="mo-s">S&P 500 {_pct(b).replace("-", "−")}{gap}</span></div>'
         )
     if mtd_period is not None and mtd_val is not None:
         cards.append(
             f'<div class="mo live"><span class="mo-h" style="color:var(--c-ink)">{mtd_period.strftime("%b %Y")} · so far</span>'
             f'<span class="mo-v {_tone(mtd_val)}">{_pct(mtd_val).replace("-", "−")}</span>'
-            f'<span class="mo-s">S&P 1500 {_pct(mtd_bench).replace("-", "−")} · moves every session until the month closes</span></div>'
+            f'<span class="mo-s">S&P 500 {_pct(mtd_bench).replace("-", "−")} · moves every session until the month closes</span></div>'
         )
     return f'<div class="mo-grid">{"".join(cards)}</div>'
 
@@ -294,7 +294,7 @@ def render_record_sections(
         kit.Reading("Since inception", _pct(stats["total_return"]),
                     f"after costs · since {start.strftime('%b %Y')}",
                     _tone(stats["total_return"])),
-        kit.Reading("S&P 1500", _pct(stats["bench_return"]), "price index", _tone(stats["bench_return"])),
+        kit.Reading("S&P 500", _pct(stats["bench_return"]), "price index", _tone(stats["bench_return"])),
         kit.Reading("Ahead of the index", _fmt.pts(stats["alpha"]),
                     (f"{n_beat} of {stats['months']} months beat it" if n_beat is not None else ""),
                     _tone(stats["alpha"])),
@@ -314,14 +314,14 @@ def render_record_sections(
     basis = ledger.get("price_basis")
     _ = basis
     parts.append("Yahoo Finance closes with dividends reinvested, as in the benchmark "
-                 "(SPTM, the S&P 1500 ETF, total return)")
+                 "(SPTM, the S&P 500 ETF, total return)")
     kit.caption(" · ".join(parts) + ".")
     replayed = sorted(k for k, m in (ledger.get("months") or {}).items() if m.get("replayed"))
     if replayed:
         first, last = pd.Period(replayed[0], freq="M"), pd.Period(replayed[-1], freq="M")
         struck = (ledger["months"][replayed[-1]].get("struck_on") or "")
         kit.caption(f"{first.strftime('%b %Y')} to {last.strftime('%b %Y')} were replayed{f' on {struck}' if struck else ''}, "
-                    "not recorded as they happened, and scored on today's S&P 1500 list (membership "
+                    "not recorded as they happened, and scored on today's S&P 500 list (membership "
                     "history begins 10 Nov 2026). Stocks added to an index tend to be recent winners, "
                     "so those months are likely flattered.")
 
@@ -456,6 +456,6 @@ def render_comparison(
         else:
             render_saas_table(grid_display(table))
             st.caption(f"{SHADOW_NAME}: 30 holdings · keep while in the top 90 · 200D EMA, "
-                       f"on the S&P 1500, from {SHADOW_INCEPTION.strftime('%b %Y')}; "
+                       f"on the S&P 500, from {SHADOW_INCEPTION.strftime('%b %Y')}; "
                        "not traded, frozen months only")
 

@@ -4,14 +4,14 @@ Owner, 8 Nov 2026 (TODO S110, item 3): the Dashboard's "Book at risk" lists
 the holdings nearest a rule; this describes the whole book's exposure.
 
 - Beta and volatility: the book as it stands, at today's weights, held over
-  the last 126 sessions, against the S&P 1500's daily returns. Standard
+  the last 126 sessions, against the S&P 500's daily returns. Standard
   definitions (beta = covariance / the index's variance), annualised with
   sqrt(252).
 - Size tilt: each holding's weight by its NSE index tier on the latest lists
   in data/indices (Nifty 100 = S&P 500 + Next 50, S&P 400, S&P 600,
   Microcap 250); a holding in none of them is "outside".
 - Drawdown: the live record's equity curve, now and worst since it began,
-  beside the S&P 1500's over the same dates.
+  beside the S&P 500's over the same dates.
 - Days to exit: a position's value at the model book's capital, divided by
   PARTICIPATION of its 20-day average traded value (close x volume, the
   ranking's own source). PARTICIPATION is an assumption -- a common rule of
@@ -51,7 +51,7 @@ class BookRisk:
     tiers: dict[str, float]                 # tier -> share of weight
     drawdown: float | None                  # now, from the record's peak
     max_drawdown: float | None
-    bench_drawdown: float | None            # the S&P 1500 now, from its peak since the record began
+    bench_drawdown: float | None            # the S&P 500 now, from its peak since the record began
     exit_days: pd.Series                    # symbol -> days to exit, slowest first
     gaps: list[str] = field(default_factory=list)
     sessions: int = 0
