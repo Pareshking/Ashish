@@ -2,6 +2,9 @@
 
 ## Unreleased (PR #3): S&P 500 history and data fixes
 
+- Research: nine published momentum improvements tested, pre-registered, on the point-in-time S&P 500 2011-2026 (docs/MOMENTUM_PREREG.md). One passed narrowly (S2, momentum-volatility scaling into SPY); it is recorded monthly as a shadow beside the book (data/shadow_s2.json), not traded.
+- Track record re-struck after the data corrections: Jan-Oct 2026 +27.57% (was +30.77% at first strike).
+
 - Prices for 153 former S&P 500 members Yahoo no longer serves, from the dataset Johnbrick123/sp500-data: 99% of 2010-2019 member-months now priced (85% before).
 
 - Dividends adjust prices by the total-return convention (close + dividend over the previous close); a spin-off Yahoo records as both a split and a dividend is counted once. Corrects, for example, Danaher's Fortive day in July 2016 (+61% before, +3.6% now).

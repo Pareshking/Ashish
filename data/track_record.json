@@ -4,9 +4,9 @@
   "benchmark": "SPTM_TR",
   "months": {
     "2026-01": {
-      "strategy": 0.165884,
+      "strategy": 0.15725,
       "benchmark": 0.012881,
-      "alpha": 0.153003,
+      "alpha": 0.144369,
       "origin": "backfill",
       "universe": "point_in_time",
       "finalized_on": "2026-11-10",
@@ -16,9 +16,9 @@
       "replayed": true
     },
     "2026-02": {
-      "strategy": 0.085444,
+      "strategy": 0.064508,
       "benchmark": -0.008642,
-      "alpha": 0.094086,
+      "alpha": 0.07315,
       "origin": "backfill",
       "universe": "point_in_time",
       "finalized_on": "2026-11-10",
@@ -28,9 +28,9 @@
       "replayed": true
     },
     "2026-03": {
-      "strategy": -0.064709,
+      "strategy": -0.067054,
       "benchmark": -0.04938,
-      "alpha": -0.01533,
+      "alpha": -0.017675,
       "origin": "backfill",
       "universe": "point_in_time",
       "finalized_on": "2026-11-10",
@@ -40,9 +40,9 @@
       "replayed": true
     },
     "2026-04": {
-      "strategy": 0.151402,
+      "strategy": 0.135547,
       "benchmark": 0.105053,
-      "alpha": 0.04635,
+      "alpha": 0.030494,
       "origin": "backfill",
       "universe": "point_in_time",
       "finalized_on": "2026-11-10",
@@ -52,9 +52,9 @@
       "replayed": true
     },
     "2026-05": {
-      "strategy": 0.040895,
+      "strategy": 0.039162,
       "benchmark": 0.052626,
-      "alpha": -0.011731,
+      "alpha": -0.013464,
       "origin": "backfill",
       "universe": "point_in_time",
       "finalized_on": "2026-11-10",
@@ -264,6 +264,34 @@
         "2026-08": 0.020334,
         "2026-09": 0.02131,
         "2026-10": -0.021849
+      }
+    },
+    {
+      "on": "2026-11-10",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ],
+      "note": "Re-struck 10 Nov 2026 (owner approved): 19 S&P 500 former members priced to their last month as members (EA, AVB, KVUE, WBD ...; TODO B33-B34); previously unpriced, so not ranked",
+      "previous_values": {
+        "2026-01": 0.165884,
+        "2026-02": 0.085444,
+        "2026-03": -0.064709,
+        "2026-04": 0.151402,
+        "2026-05": 0.040895,
+        "2026-06": 0.040406,
+        "2026-07": -0.11125,
+        "2026-08": 0.018332,
+        "2026-09": 0.021298,
+        "2026-10": -0.021851
       }
     }
   ]
