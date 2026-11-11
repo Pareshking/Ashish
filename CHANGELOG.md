@@ -2,6 +2,8 @@
 
 ## Unreleased: second shadow and the tranching test
 
+- The browser tab read "Dashboard · Paresh Patel": the title was carried over from the Indian site. It now reads the site's name ("Dashboard · Ashish Patel") on every page.
+
 - Portfolio: a "Shadow books" card shows each shadow (S2, S1 + S2, F2) month by month beside the live book and the S&P 500; replayed months are marked.
 - Backtest: a "Rebalance rule" choice, by default the live book's six-monthly rule (winners run to 15%, new buys 5%, reset in March and September) instead of resetting every holding every month; the old rule stays as an option. Over 2011-2026 both returned 13.5% a year.
 
