@@ -598,6 +598,10 @@ def variant_kwargs(name: str, offset: int) -> dict:
         return dict(top_n=50, buffer_n=100)
     if name == "L":                                    # stage 4: the live rules from the start
         return dict(hold_cap=0.15, hold_cap_from=None, buy_size=0.05, weight_reset_months=(3, 9))
+    if name == "IV":                                   # stage 5: inverse-volatility weights
+        return dict(weight_method="Inverse Volatility")
+    if name == "IVd":                                  # stage 5: the same under the live rules
+        return {**variant_kwargs("IV", offset), **variant_kwargs("L", offset)}
     if name == "F2d":                                  # stage 4: F2's targets under the live rules
         return {**variant_kwargs("F2", offset), **variant_kwargs("L", offset)}
     raise KeyError(name)

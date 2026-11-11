@@ -1500,3 +1500,24 @@ trading, a monthly tilt to the biggest names) or the owner's six-monthly rule
 (no gain from size weighting worth the name)". Neither passed. Not checked:
 F2 with a monthly re-weight of held names only (a new specification), taxes
 (no US tax model in this repository).
+
+---
+
+## Stage 5: inverse-volatility weights (pre-registered 11 Nov 2026, before any run)
+
+Owner, 11 Nov 2026: "Did we tested inverse volatility weight?" Not until now.
+The engine's existing option (`weight_method="Inverse Volatility"`: weights in
+proportion to 1 / the standard deviation of daily log returns over the 63
+sessions to the signal, then the 5% stock and 40% sector caps), unchanged:
+
+- **IV**, against the base (monthly reset), stock cap 5% as the base. With 20
+  names and a 5% cap, weights above 5% are cut, so IV can only move weight
+  from volatile names to calmer ones below 5%.
+- **IVd**, the same weights under the live rules (as L: winners run to 15%,
+  buys 5%, resets in March and September to the inverse-volatility targets),
+  against L.
+
+Verdicts by section 3.3 on the CAGR gap, primary and 2020+ samples, as stage 4.
+Expectation written before the run: lower return than equal weight, since
+inverse-volatility weights lean away from the volatile leaders that F2 leaned
+towards. No variant is added after a result is seen.

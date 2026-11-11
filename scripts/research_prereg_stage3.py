@@ -41,7 +41,9 @@ TEXT = {"F1": "Raw momentum (score_method 'return')",
         "F2": "Traded-value weights (63 sessions), stock cap 15%, sector 40%",
         "F3": "Fifty names, buffer 100",
         "L": "The live rules from the start: winners run to 15%, buys 5%, resets Mar/Sep",
-        "F2d": "F2's traded-value targets under the live rules (drift; resets Mar/Sep)"}
+        "F2d": "F2's traded-value targets under the live rules (drift; resets Mar/Sep)",
+        "IV": "Inverse-volatility weights (63 sessions), stock cap 5%",
+        "IVd": "Inverse-volatility targets under the live rules"}
 for _v in VARIANTS:
     R.KIND[_v] = "selection"
 
