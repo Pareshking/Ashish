@@ -1562,3 +1562,41 @@ Verdicts by section 3.3, both samples. Labelled a follow-up in every report.
 As expected before the run: weighting toward the calmer names moves money away
 from the volatile leaders that carried the book. No drawdown was saved (max
 drawdown unchanged within 0.6 pt).
+
+---
+
+## Stage 6: the S&P 500 Momentum index's method (pre-registered 11 Nov 2026, before any run)
+
+Owner, 11 Nov 2026: yes to rebuilding the S&P 500 Momentum index's method and
+judging it against the book, F2 and SPY. The index's rules as I recall them
+(not re-read from S&P DJI's methodology in this session):
+
+- **Score:** the 12-month price change to one month before the reference date
+  (12-1), divided by the standard deviation of daily returns over those 12
+  months; z-scored across the eligible S&P 500 members, winsorised at ±3.
+- **Selection:** 100 names: the top 80 by score, then current members ranked
+  81-120, then the next-highest until 100.
+- **Weights:** size × score factor, factor 1 + z for z > 0 and 1 / (1 − z) for
+  z < 0; each name capped at the lesser of 9% and 3 × its size weight in the
+  universe, excess spread pro rata.
+- **Rebalance:** reference dates the last session of February and August;
+  effective at the close of the third Friday of March and September; weights
+  drift in between.
+
+Our replication (`scripts/research_spmo.py`), written now:
+
+- **SPMO-R:** the rules above on the point-in-time S&P 500 from 2010, size =
+  63-session mean traded value (no dated market caps; F2's proxy), cost 10 bps
+  a round trip on turnover, total-return closes.
+- **Check of the replication, before judging it:** monthly returns against
+  the real Invesco S&P 500 Momentum ETF (SPMO, total return from Yahoo, from
+  its Oct 2015 launch): correlation and tracking difference. A correlation
+  below 0.90 means the replication is not the index and its verdict is not
+  reported as the index's.
+- **Judged against:** L (the live book under the owner's rules, offset mean),
+  F2 and SPY with dividends, on Mar 2011 - Oct 2026 and 2020+: CAGR, max
+  drawdown, Sharpe, halves and the 2,000-draw block bootstrap of the CAGR gap
+  (paired, seed 20261110). No offsets: the index has one schedule.
+- **Verdict vs L** by section 3.3 where it applies (both halves, ≥ 90% of
+  draws, max drawdown no more than 2 pts worse, ahead at 20 bps); turnover is
+  reported, not a pass rule, since the index trades twice a year.
