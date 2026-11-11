@@ -1600,3 +1600,32 @@ Our replication (`scripts/research_spmo.py`), written now:
 - **Verdict vs L** by section 3.3 where it applies (both halves, ≥ 90% of
   draws, max drawdown no more than 2 pts worse, ahead at 20 bps); turnover is
   reported, not a pass rule, since the index trades twice a year.
+
+### Stage 6 results (11 Nov 2026)
+
+**The replication is the index.** Monthly returns of SPMO-R against the real
+SPMO ETF (Yahoo, total return), Dec 2015 - Nov 2026, 132 months: correlation
+0.958 (bar 0.90), CAGR 16.35% vs 16.90%, tracking error 6.5% a year, mean
+difference +0.1 pt a year. Remaining gap: traded value instead of market cap,
+and our membership and prices.
+
+| 10 bps | Mar 2011 - Oct 2026: CAGR / max DD / Sharpe | 2020 - Oct 2026 |
+|---|---|---|
+| SPMO-R (index method) | 15.43% / −32.1% / 0.72 | 20.01% / −32.1% / 0.73 |
+| L (live book, live rules; offset mean) | 13.53% / −34.1% / 0.70 | 15.32% / −33.3% / 0.62 |
+| F2 (20 names, size-weighted monthly) | 17.32% / −31.5% / 0.83 | 22.38% / −31.5% / 0.84 |
+| SPY with dividends | 13.85% / −33.7% / 0.76 | 14.94% / −33.7% / 0.65 |
+
+- **SPMO-R vs L: inconclusive.** +1.90 pts a year (90% range −4.17 to
+  +9.71; ahead in 75.9% of draws); halves −1.64 / +5.68 (behind in 2011-2018);
+  max drawdown 2.0 pts better; +2.30 at 20 bps. 2020+: +4.69 (ahead in 77.8%).
+- **SPMO-R vs F2:** −1.89 pts a year (ahead in 37.8%); behind in both halves.
+- **SPMO-R vs SPY:** +1.58 pts a year (ahead in 78.5%); halves −1.21 / +4.60.
+
+Reading. The index method beats the live book and SPY, but only in the second
+half of the sample (2019-2026); in 2011-2018 it was behind both. Everything
+that has worked in the US in this sample (F2, the index, the index's own ETF)
+tilts momentum toward the largest stocks, and it worked when the largest stocks
+led. That is one regime, not yet a rule. F2 stays the strongest candidate on
+the evidence here; the index method is the version with a public, independent
+track record (SPMO, from Oct 2015) that matches ours.
