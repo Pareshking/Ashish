@@ -2,6 +2,7 @@
 
 ## Unreleased: second shadow and the tranching test
 
+- Portfolio: a "Shadow books" card shows each shadow (S2, S1 + S2, F2) month by month beside the live book and the S&P 500; replayed months are marked.
 - Backtest: a "Rebalance rule" choice, by default the live book's six-monthly rule (winners run to 15%, new buys 5%, reset in March and September) instead of resetting every holding every month; the old rule stays as an option. Over 2011-2026 both returned 13.5% a year.
 
 - A second forward shadow, residual momentum with volatility scaling (S1 + S2), recorded monthly beside the book (data/shadow_s1s2.json); not traded.

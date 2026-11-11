@@ -346,6 +346,7 @@ def render_record_sections(
     )
 
     render_comparison(adj_close, benchmark_close, system)
+    render_shadow_books()
 
 
 def comparison_frame(
@@ -459,3 +460,61 @@ def render_comparison(
                        f"on the S&P 500, from {SHADOW_INCEPTION.strftime('%b %Y')}; "
                        "not traded, frozen months only")
 
+
+
+# ── Shadow books (owner, 11 Nov 2026: "I should be able to see all these
+# shadows performance in site"). Recorded monthly by the track-record workflow,
+# never traded; docs/MOMENTUM_PREREG.md has each one's test. ─────────────────
+
+SHADOW_BOOKS = (
+    ("data/shadow_s2.json", "shadow", "S2: volatility-scaled into SPY"),
+    ("data/shadow_s1s2.json", "shadow", "S1 + S2: residual momentum, volatility-scaled"),
+    ("data/shadow_f2.json", "f2_book", "F2: size-weighted book"),
+)
+SHADOW_LIVE_FROM = "2026-11"
+
+
+def shadow_books_frame(root: str = ".") -> tuple[pd.DataFrame, dict]:
+    """One row a month: the live book, each shadow and the S&P 500, as fractions;
+    and each book's compounded total over the months shown."""
+    import json
+    import os
+
+    cols: dict[str, dict[str, float]] = {}
+    live, bench = {}, {}
+    for path, field, name in SHADOW_BOOKS:
+        full = os.path.join(root, path)
+        if not os.path.exists(full):
+            continue
+        with open(full, encoding="utf-8") as fh:
+            months = (json.load(fh).get("months") or {})
+        cols[name] = {k: float(v[field]) for k, v in months.items() if v.get(field) is not None}
+        for k, v in months.items():
+            live.setdefault(k, float(v.get("live_book", v.get("strategy", float("nan")))))
+            bench.setdefault(k, float(v.get("benchmark", float("nan"))))
+    if not cols:
+        return pd.DataFrame(), {}
+    df = pd.DataFrame({"Live book": pd.Series(live), **{n: pd.Series(c) for n, c in cols.items()},
+                       "S&P 500": pd.Series(bench)}).sort_index()
+    totals = {c: float((1 + df[c].dropna()).prod() - 1) for c in df.columns}
+    return df, totals
+
+
+def render_shadow_books() -> None:
+    df, totals = shadow_books_frame()
+    with kit.card("Shadow books", "tr_shadows", "recorded beside the live book · not traded"):
+        if df.empty:
+            kit.empty("No shadow book recorded yet.")
+            return
+        show = df.copy()
+        show.index = [pd.Period(k, freq='M').strftime('%b %Y') + (" (replayed)" if k < SHADOW_LIVE_FROM else "")
+                      for k in show.index]
+        show.loc["Total"] = pd.Series(totals)
+        render_saas_table(show.map(_pct).rename_axis("Month").reset_index())
+        st.caption(
+            "Each shadow is a rule that showed promise in the pre-registered tests "
+            "(docs/MOMENTUM_PREREG.md) but did not pass them, so it is recorded, not traded. "
+            f"Months before {pd.Period(SHADOW_LIVE_FROM, freq='M').strftime('%b %Y')} are replays of a "
+            "period the tests had already seen; only later months are evidence. S2 and "
+            "S1 + S2 hold part of the money in SPY when momentum is volatile; F2 weights "
+            "the same kind of book by each stock's traded value (up to 15% a name).")
