@@ -1461,3 +1461,42 @@ turnover no more than 15 pts a year higher), on the primary (Mar 2011 - Oct
 **F2d against L, the decisive one** (is size-weighting worth it under the rules
 the owner will actually run?). F2 from stage 3 is shown beside them, not
 re-judged. Benchmarks as stage 3. No variant is added after a result is seen.
+
+### Stage 4 results (11 Nov 2026)
+
+Store at f953a4f, no extra file; base and F2 reused (a fresh base_o0_c10 run
+matched store_v3 bit for bit); 16 new runs (L and F2d, four offsets, 10 and 20
+bps); outputs in the session scratchpad prereg_runs/stage4 and stage4_vsL.
+
+| 10 bps, offset mean | Mar 2011 - Oct 2026: CAGR / max DD / Sharpe / turnover a year | 2020 - Oct 2026 |
+|---|---|---|
+| Base (monthly reset) | 13.53% / −33.8% / 0.70 / 499% | 15.23% / −33.1% / 0.63 / 516% |
+| L (the live rules from the start) | 13.53% / −34.1% / 0.70 / 473% | 15.32% / −33.3% / 0.62 / 482% |
+| F2d (size targets under the live rules) | 14.54% / −32.8% / 0.74 / 491% | 17.34% / −32.4% / 0.69 / 498% |
+| F2 (size targets, monthly reset; stage 3) | 17.32% / −31.5% / 0.83 / 547% | 22.38% / −31.5% / 0.84 / 570% |
+| S&P 500 with dividends | 13.85% / −33.7% / 0.76 | 14.94% / −33.7% / 0.65 |
+
+Verdicts (section 3.3, CAGR gap):
+
+- **L vs base: inconclusive, no difference.** +0.00 pt a year (90% range −0.35
+  to +0.44; ahead in 52.9% of draws); 2020+: +0.08. Turnover only 26 pts a year
+  lower: most of the book's trading is names entering and leaving, not
+  re-weighting. Paresh found the same in India (monthly 18.95% vs six-monthly
+  18.67% a year, 2010-26, before tax).
+- **F2d vs L (decisive): inconclusive.** +1.01 pt a year (−0.43 to +2.84;
+  ahead in 87.8%, below the 90% bar; offsets +1.14 / +2.18 / +0.18 / +0.53;
+  halves +0.22 / +1.84; +0.98 at 20 bps; drawdown 1.3 pts better; turnover 18
+  pts a year higher, above the 15-pt limit). 2020+: +2.03 (ahead in 88.8%).
+- **F2 vs L** (for reference): +3.79 pt a year, ahead in 100%, every offset;
+  turnover +74 pts a year.
+
+Reading. F2's gain does not survive the live rules intact: under drift with
+six-monthly resets the size weighting adds about 1 pt a year (2 since 2020),
+not 3.8. Most of F2's advantage comes from re-weighting every month toward the
+names trading the most value, which in 2020-2026 were the mega-cap leaders;
+letting the weights drift between March and September loses most of it. So the
+choice is not "F2 or not" but "monthly size re-weighting (F2: +3.8 pts, more
+trading, a monthly tilt to the biggest names) or the owner's six-monthly rule
+(no gain from size weighting worth the name)". Neither passed. Not checked:
+F2 with a monthly re-weight of held names only (a new specification), taxes
+(no US tax model in this repository).
