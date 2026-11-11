@@ -2,6 +2,8 @@
 
 ## Unreleased: second shadow and the tranching test
 
+- Backtest: a "Rebalance rule" choice, by default the live book's six-monthly rule (winners run to 15%, new buys 5%, reset in March and September) instead of resetting every holding every month; the old rule stays as an option. Over 2011-2026 both returned 13.5% a year.
+
 - A second forward shadow, residual momentum with volatility scaling (S1 + S2), recorded monthly beside the book (data/shadow_s1s2.json); not traded.
 - A third forward shadow, the size-weighted book (F2), recorded monthly (data/shadow_f2.json); not traded.
 - Four weekly tranches for the live book tested (docs/MOMENTUM_PREREG.md); the live book is unchanged pending the owner's decision.
