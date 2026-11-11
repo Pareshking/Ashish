@@ -304,8 +304,13 @@ def _compute_weights(
     sector_map: dict[str, str] | None = None,
     stock_cap: float = 1.0,
     sector_cap: float = 1.0,
+    size_row: pd.Series | None = None,
 ) -> pd.Series:
     """Target weights for a selected book, projected onto the configured caps.
+
+    "Traded Value" (research, docs/MOMENTUM_PREREG.md stage 3 F2): weights in
+    proportion to ``size_row`` (each name's size proxy at the signal); a name
+    without one gets the median of the others.
 
     Equal weight unless inverse-vol, then the SAME cap projection the Portfolio
     tab applies. The caps were previously accepted by run_backtest and dropped:
@@ -321,6 +326,11 @@ def _compute_weights(
         inv = (1.0 / vol_w.replace(0, np.nan)).fillna(0)
         t_w = inv.sum()
         raw = inv / t_w if t_w > 0 else pd.Series(1.0 / len(holdings), index=list(holdings))
+    elif weight_method == "Traded Value":
+        size = size_row.reindex(list(holdings)).astype(float)
+        size = size.where(size > 0)
+        size = size.fillna(size.median()) if size.notna().any() else size.fillna(1.0)
+        raw = size / size.sum()
     else:
         raw = pd.Series(1.0 / len(holdings), index=list(holdings))
     # The caller reads `.attrs` off this Series directly; nothing is stashed on
@@ -1056,6 +1066,7 @@ def run_backtest(
     research_pool: int | None = None,
     signal_offset: int = 0,
     _research_score: Any = None,
+    _research_size: pd.DataFrame | None = None,
 ) -> dict[str, Any] | None:
     """
     Executes a walk-forward momentum backtest with zero look-ahead bias and friction modeling.
@@ -1115,7 +1126,14 @@ def run_backtest(
     ``_research_score``: a callable ``(signal_date, score, members)`` returning
     the score to rank on instead of the composite (``members``: the day's
     point-in-time mask, or None). Needs a ``research_label``.
+    ``_research_size`` with ``weight_method="Traded Value"`` (stage 3 F2): a
+    sessions x symbols frame of each name's size proxy, read at the signal row
+    (carried forward from the last row on or before it). Needs a ``research_label``.
     """
+    if (weight_method == "Traded Value") != (_research_size is not None):
+        raise ValueError('weight_method "Traded Value" and _research_size go together')
+    if _research_size is not None and not research_label:
+        raise ValueError("a research size frame needs a research_label (the cache key)")
     if int(signal_offset) < 0 or (int(signal_offset) and rebal_freq != 21):
         raise ValueError(f"signal_offset must be >= 0 and needs monthly rebalancing, not {signal_offset!r}")
     if _research_score is not None and not research_label:
@@ -1316,6 +1334,12 @@ def run_backtest(
         order = vals.sort_values(ascending=False, kind="mergesort").index
         return pd.concat([head.reindex(order), ranked.iloc[k:]])
 
+    _rsize = (None if _research_size is None else _research_size.reindex(
+        prices.index, method="ffill").reindex(columns=prices.columns))
+
+    def _size_at(idx: int) -> pd.Series | None:
+        return None if _rsize is None else _rsize.iloc[idx]
+
     start_offset = max_lb + ema_period
     _schedule = _build_rebalance_schedule(
         prices, start_offset, rebal_freq, backtest_months,
@@ -1453,6 +1477,7 @@ def run_backtest(
         wts = _compute_weights(
             holdings, log_ret, start_idx, weight_method,
             sector_map=sec_map, stock_cap=stock_cap, sector_cap=sector_cap,
+            **({"size_row": _size_at(start_idx)} if _rsize is not None else {}),
         )
         if wts.attrs.get("scheme_neutralised") and (
             (not stateful_history) or dates[start_idx + 1] >= window_start
@@ -1893,6 +1918,7 @@ def run_backtest(
             new_wts = _compute_weights(
                 new_holdings, log_ret, rebal_idx, weight_method,
                 sector_map=sec_map, stock_cap=stock_cap, sector_cap=sector_cap,
+                **({"size_row": _size_at(rebal_idx)} if _rsize is not None else {}),
             )
             # The pending rebalance follows the same rule as the loop above, so
             # Actions and Portfolio show the weights the record will strike.

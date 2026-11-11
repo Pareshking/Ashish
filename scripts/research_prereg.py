@@ -32,6 +32,7 @@ import inspect
 import json
 import logging
 import math
+import os
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -45,9 +46,9 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.research_filters import block_indices, live_kwargs, max_drawdown  # noqa: E402
 
-SCRATCH = Path("/tmp/claude-0/-home-user/98ffa510-1b54-5cd0-a724-31f84e65722d/scratchpad")
+SCRATCH = Path(os.environ.get("RESEARCH_SCRATCH", "/tmp/claude-0/-home-user/98ffa510-1b54-5cd0-a724-31f84e65722d/scratchpad"))
 DEFAULT_EXTRA = SCRATCH / "research_extra_prices.parquet"
-FRENCH_DIR = SCRATCH / "french"
+FRENCH_DIR = Path(os.environ.get("FRENCH_DIR", str(SCRATCH / "french")))
 FRENCH_FILES = {
     "ff3_m": "F-F_Research_Data_Factors", "ff3_d": "F-F_Research_Data_Factors_daily",
     "mom_m": "F-F_Momentum_Factor", "mom_d": "F-F_Momentum_Factor_daily",
@@ -275,12 +276,16 @@ def load_inputs(extra_path: str | None) -> dict:
     from src.loaders import benchmark_store
     from src.loaders import price_store as ps
 
-    hist = iu.index_history("sp500")
+    # RESEARCH_INDEX (default sp500) runs the same study on another point-in-time
+    # timeline (sp400, sp600: lists from Dec 2019 only).
+    key = os.environ.get("RESEARCH_INDEX", "sp500")
+    hist = iu.index_history(key)
     if not hist:
-        raise SystemExit("No point-in-time S&P 500 timeline (index_history('sp500')).")
+        raise SystemExit(f"No point-in-time timeline for {key} (index_history).")
     ever = sorted(iu.ever_members(hist))
     w = ps.read_wide(["Close", "Volume"], start=PRICE_START, symbols=ever)
     close = ps.adjusted_close(w["Close"], ps.read_actions())
+    split_close = w["Close"]
     volume = w["Volume"]
     store_cols = set(close.columns)
     extra_added: list[str] = []
@@ -296,13 +301,15 @@ def load_inputs(extra_path: str | None) -> dict:
         volume = pd.concat([volume, ev.reindex(columns=extra_added).reindex(idx)], axis=1)
     close = close.dropna(axis=1, how="all")
     volume = volume.reindex(columns=close.columns)
+    split_close = split_close.reindex(index=close.index, columns=close.columns)
     spy = pd.to_numeric(benchmark_store.history("max", "SPY_TR"), errors="coerce").dropna()
     as_of = min(close.index[-1], spy.index[-1])
     close, volume, spy = close.loc[:as_of], volume.loc[:as_of], spy.loc[:as_of]
     end_month = pd.Period(as_of, freq="M") - 1        # the last complete month
     end_date = close.index[close.index <= end_month.end_time][-1]
     sector_map = record_sector_map(close.columns)
-    return {"close": close, "volume": volume, "spy": spy, "membership": hist,
+    split_close = split_close.loc[:as_of]
+    return {"close": close, "split_close": split_close, "volume": volume, "spy": spy, "membership": hist,
             "sector_map": sector_map, "end_month": end_month, "end_date": end_date,
             "ever": ever, "store_cols": store_cols, "extra_added": extra_added,
             "extra_path": extra_path}
@@ -581,7 +588,34 @@ def variant_kwargs(name: str, offset: int) -> dict:
         cells = s4_cells(inp["close"], inp["volume"], inp["membership"], offset, _CACHE["shares"])
         gate = cells.fillna(0.0) < 0.5                # True = may buy
         return dict(_research_gate=gate, research_gate_on="buy")
+    if name == "F1":                                   # stage 3: raw momentum
+        return dict(score_method="return")
+    if name == "F2":                                   # stage 3: size-weighted book
+        if "tv" not in _CACHE:
+            _CACHE["tv"] = traded_value(inp["split_close"], inp["volume"])
+        return dict(weight_method="Traded Value", _research_size=_CACHE["tv"], stock_cap=0.15)
+    if name == "F3":                                   # stage 3: fifty names
+        return dict(top_n=50, buffer_n=100)
+    if name == "L":                                    # stage 4: the live rules from the start
+        return dict(hold_cap=0.15, hold_cap_from=None, buy_size=0.05, weight_reset_months=(3, 9))
+    if name == "IV":                                   # stage 5: inverse-volatility weights
+        return dict(weight_method="Inverse Volatility")
+    if name == "IV15":                                 # stage 5 follow-up: room to move
+        return dict(weight_method="Inverse Volatility", stock_cap=0.15)
+    if name == "IV15d":
+        return {**variant_kwargs("IV15", offset), **variant_kwargs("L", offset)}
+    if name == "IVd":                                  # stage 5: the same under the live rules
+        return {**variant_kwargs("IV", offset), **variant_kwargs("L", offset)}
+    if name == "F2d":                                  # stage 4: F2's targets under the live rules
+        return {**variant_kwargs("F2", offset), **variant_kwargs("L", offset)}
     raise KeyError(name)
+
+
+def traded_value(split_close: pd.DataFrame, volume: pd.DataFrame, window: int = 63) -> pd.DataFrame:
+    """Stage 3 F2: mean daily traded value (split-adjusted close x volume) over
+    the last ``window`` sessions with both, to each date; NaN where none."""
+    tv = (split_close * volume.reindex_like(split_close)).where(lambda x: x > 0)
+    return tv.rolling(int(window), min_periods=1).mean()
 
 
 def base_kwargs(cost: float) -> dict:
@@ -605,10 +639,12 @@ def _run_one(name: str, offset: int, cost: float, out: str) -> tuple[str, float]
     months = (inp["end_month"] - pd.Period(hs, freq="M")).n + 1
     extra = variant_kwargs(name, offset)
     raw = inspect.unwrap(run_backtest)
+    kw = base_kwargs(cost)
+    kw.update(extra)                     # a variant may replace a base keyword (stage 3)
     res = raw(f"prereg-{label}", inp["close"], _benchmark_close=inp["spy"], sector_map=inp["sector_map"],
               _membership=inp["membership"], backtest_months=months, stateful_history=True,
               history_start=hs, _actions=[], signal_offset=int(offset),
-              research_label=f"prereg-{label}", **base_kwargs(cost), **extra)
+              research_label=f"prereg-{label}", **kw)
     if not res or not res.get("stats"):
         raise RuntimeError(f"{label}: no result")
     runs = Path(out) / "runs"
@@ -704,7 +740,10 @@ def cmd_run(args) -> None:
             "choices": CHOICES, "run_date": pd.Timestamp.now().isoformat(timespec="seconds")}
     sh, sh_asof = shares_proxy(inp["close"])
     meta["s4_shares_asof"] = sh_asof
-    meta["s4_proxy_check"] = s4_proxy_check(inp, sh)
+    try:
+        meta["s4_proxy_check"] = s4_proxy_check(inp, sh)
+    except KeyError:          # a timeline without 2011 (RESEARCH_INDEX sp400/sp600)
+        meta["s4_proxy_check"] = "not applicable: no 2011 membership"
     (out / "meta.json").write_text(json.dumps(meta, indent=2, default=str))
     s2c = meta["section2"]
     print(f"m0 {s2c['m0']}, d0 {s2c['common_first_fill_d0']}, end {s2c['end_date']}; "
@@ -951,7 +990,7 @@ def sample_stats(series: dict, turn: dict, ex: dict, start: pd.Timestamp, end: p
                     g[f"{m}_h2"] = float(gap(mh[1][m], n, against))
                     b = gap(boot[m], n, against)
                     g[f"{m}_lo"], g[f"{m}_hi"] = float(np.percentile(b, 5)), float(np.percentile(b, 95))
-                    g[f"{m}_p"] = float((b > 0).mean())
+                    g[f"{m}_p"] = float((b > EPS).mean())
                     g[f"{m}_by_offset"] = {o: float(met[m][col[(n, o)]] - met[m][col[(against, o)]])
                                            for o in OFFSETS}
                 g["turnover"] = float(np.mean([tov[(n, o)] - tov[(against, o)] for o in OFFSETS]))
@@ -973,6 +1012,9 @@ def sample_stats(series: dict, turn: dict, ex: dict, start: pd.Timestamp, end: p
 
 
 PRIMARY = {"selection": "cagr", "overlay": "sharpe"}
+# "Ahead" means ahead by more than floating-point noise: stage 5's IV, identical
+# to the base, read as a pass on gaps of about 1e-17 (fixed 11 Nov 2026).
+EPS = 1e-9
 
 
 def verdict(n: str, st10: dict, st20: dict) -> tuple[str, list[str]]:
@@ -992,13 +1034,13 @@ def verdict(n: str, st10: dict, st20: dict) -> tuple[str, list[str]]:
     g, g20 = row["vs_base"], st20["rows"][n]["vs_base"]
     m = PRIMARY[KIND[n]]
     fails = []
-    if not (g[f"{m}_h1"] > 0 and g[f"{m}_h2"] > 0):
+    if not (g[f"{m}_h1"] > EPS and g[f"{m}_h2"] > EPS):
         fails.append("halves")
     if not g[f"{m}_p"] >= 0.90:
         fails.append(f"bootstrap {g[f'{m}_p']:.1%} < 90%")
-    if not all(v > 0 for v in g[f"{m}_by_offset"].values()):
+    if not all(v > EPS for v in g[f"{m}_by_offset"].values()):
         fails.append("not ahead at every offset")
-    if not g20[m] > 0:
+    if not g20[m] > EPS:
         fails.append("not ahead at 20 bps")
     if not g["mdd"] >= -0.02:
         fails.append("max drawdown > 2 pts worse")

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased: second shadow and the tranching test
+
+- The browser tab read "Dashboard · Paresh Patel": the title was carried over from the Indian site. It now reads the site's name ("Dashboard · Ashish Patel") on every page.
+
+- Portfolio: a "Shadow books" card shows each shadow (S2, S1 + S2, F2) month by month beside the live book and the S&P 500; replayed months are marked.
+- Backtest: a "Rebalance rule" choice, by default the live book's six-monthly rule (winners run to 15%, new buys 5%, reset in March and September) instead of resetting every holding every month; the old rule stays as an option. Over 2011-2026 both returned 13.5% a year.
+
+- A second forward shadow, residual momentum with volatility scaling (S1 + S2), recorded monthly beside the book (data/shadow_s1s2.json); not traded.
+- A third forward shadow, the size-weighted book (F2), recorded monthly (data/shadow_f2.json); not traded.
+- Four weekly tranches for the live book tested (docs/MOMENTUM_PREREG.md); the live book is unchanged pending the owner's decision.
+
 ## Unreleased (PR #3): S&P 500 history and data fixes
 
 - Research: nine published momentum improvements tested, pre-registered, on the point-in-time S&P 500 2011-2026 (docs/MOMENTUM_PREREG.md). One passed narrowly (S2, momentum-volatility scaling into SPY); it is recorded monthly as a shadow beside the book (data/shadow_s2.json), not traded.

@@ -356,7 +356,7 @@ def inject_custom_css() -> None:
             letter-spacing: -0.2px; color: var(--c-ink);
         }
 
-        /* Brand: "Paresh Patel", a link home to the Screener. */
+        /* Brand: SITE_NAME ("Ashish Patel"), a link home to the Screener. */
         .st-key-app_brand [data-testid="stPageLink"] a {
             padding: 4px 6px !important; background: transparent !important;
             text-decoration: none !important; border-radius: 4px !important;

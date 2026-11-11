@@ -1,0 +1,83 @@
+{
+ "description": "F2 forward shadow (docs/MOMENTUM_PREREG.md stage 3): recorded, not traded",
+ "rule": "the record's configuration with traded-value target weights (63 sessions), stock cap 15%",
+ "live_from": "2026-11",
+ "months": {
+  "2026-01": {
+   "f2_book": 0.208583,
+   "live_book": 0.15725,
+   "benchmark": 0.012881,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  },
+  "2026-02": {
+   "f2_book": 0.042878,
+   "live_book": 0.064508,
+   "benchmark": -0.008642,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  },
+  "2026-03": {
+   "f2_book": -0.055919,
+   "live_book": -0.067054,
+   "benchmark": -0.04938,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  },
+  "2026-04": {
+   "f2_book": 0.199277,
+   "live_book": 0.135547,
+   "benchmark": 0.105053,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  },
+  "2026-05": {
+   "f2_book": 0.074392,
+   "live_book": 0.039162,
+   "benchmark": 0.052626,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  },
+  "2026-06": {
+   "f2_book": 0.074923,
+   "live_book": 0.040406,
+   "benchmark": -0.010293,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  },
+  "2026-07": {
+   "f2_book": -0.139156,
+   "live_book": -0.11125,
+   "benchmark": 0.000348,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  },
+  "2026-08": {
+   "f2_book": 0.045316,
+   "live_book": 0.018332,
+   "benchmark": 0.026799,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  },
+  "2026-09": {
+   "f2_book": 0.042174,
+   "live_book": 0.021298,
+   "benchmark": -0.003293,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  },
+  "2026-10": {
+   "f2_book": -0.035017,
+   "live_book": -0.021851,
+   "benchmark": -0.009061,
+   "replayed": true,
+   "recorded_on": "2026-11-11"
+  }
+ },
+ "log": [],
+ "totals": {
+  "live_book": 0.275705,
+  "f2_book": 0.491457,
+  "benchmark": 0.114835
+ }
+}

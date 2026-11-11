@@ -61,3 +61,45 @@ def test_a_research_score_drives_the_ranking():
 def test_a_half_specified_hook_is_refused(kw):
     with pytest.raises(ValueError):
         _run(**kw)
+
+
+def test_traded_value_weights_with_equal_sizes_are_equal_weight():
+    p = _prices()
+    flat = pd.DataFrame(1.0e6, index=p.index, columns=p.columns)
+    base = _run()
+    tv = _run(research_label="tv-flat", weight_method="Traded Value", _research_size=flat)
+    assert np.allclose(tv["equity_curve"].to_numpy(), base["equity_curve"].to_numpy(), rtol=0, atol=1e-12)
+
+
+def test_traded_value_weights_follow_size_under_the_stock_cap():
+    p = _prices()
+    size = pd.DataFrame(1.0, index=p.index, columns=p.columns)
+    size.iloc[:, ::2] = 4.0                                  # even names four times the size
+    size.iloc[:, 1] = np.nan                                 # no traded value: the median
+    res = _RUN_TV(size)
+    tb = res["tradebook"]
+    first = tb[(tb["Period Start"] == tb["Period Start"].min()) & ~tb["Action"].str.contains("SELL")]
+    w = first.set_index("Symbol")["Weight %"]
+    big = [s for s in w.index if int(s[1:]) % 2 == 0]
+    small = [s for s in w.index if int(s[1:]) % 2 == 1 and s != "S01"]
+    assert big and small
+    assert w[big].min() > 2.0 * w[small].max()
+    assert w.max() <= 15.0 + 1e-9
+    assert abs(w.sum() - 100.0) < 1e-6
+
+
+def _RUN_TV(size):  # noqa: N802 - local helper
+    p = _prices()
+    sec = {c: c for c in p.columns}                          # no sector cap binds
+    from tests.test_research_filters_plumbing import _RUN as raw
+    return raw("tv", p, top_n=10, buffer_n=20, cost_bps=10.0, sector_map=sec, stock_cap=0.15,
+               _benchmark_close=p.mean(axis=1), backtest_months=14, stateful_history=True,
+               weight_method="Traded Value", _research_size=size, research_label="tv")
+
+
+def test_traded_value_needs_its_frame_and_a_label():
+    p = _prices()
+    with pytest.raises(ValueError):
+        _run(weight_method="Traded Value")
+    with pytest.raises(ValueError):
+        _run(_research_size=pd.DataFrame(1.0, index=p.index, columns=p.columns))

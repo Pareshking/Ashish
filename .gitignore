@@ -88,3 +88,4 @@ Thumbs.db
 
 # Audit reports: uploaded as workflow artifacts, summarised in docs
 reports/
+.cache/

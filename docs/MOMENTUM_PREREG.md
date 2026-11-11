@@ -1257,3 +1257,375 @@ Reading it:
   in-sample CAGR (12.41-12.54%) and would not have been chosen by the rule.
 - **Not checked:** a walk-forward with re-selection each year; bootstrap of the selection step
   itself; a second out-of-sample period.
+
+
+---
+
+## Tranching for the live book: test before any change (10 Nov 2026)
+
+Owner, 10 Nov 2026: "Split the live book into four weekly tranches ... Test it
+first." From the stage-1 base runs (store_v3; the live configuration, whose
+forward-dated rules are off before 30 Nov 2026), Mar 2011 to Oct 2026. The
+live book signals on the month's last session: offset 0.
+
+| 10 bps | CAGR | Max DD | Sharpe | Worst calendar year | Trade tickets a year |
+|---|---|---|---|---|---|
+| Offset 0 (live) | 14.0% | −27.8% | 0.82 | −7.0% | 196 |
+| Offset 5 | 14.1% | −33.6% | 0.82 | −15.3% | 199 |
+| Offset 10 | 12.5% | −40.9% | 0.73 | −15.3% | 198 |
+| Offset 15 | 13.5% | −32.9% | 0.78 | −10.7% | 197 |
+| Four tranches | 13.6% | −33.7% | 0.80 | −11.5% | 790 |
+
+2020-2026: offset 0 17.5% (max DD −26.5%), tranches 15.2% (−33.3%), offset 10
+11.2% (−40.9%). At 20 bps every figure is about 0.6 pt lower; the ranking is
+unchanged. Turnover as a share of the book is the same (about 500% a year), so
+costs are the same in percent; trade tickets are four times as many, each a
+quarter the size ($12,500 positions on the $1M book).
+
+The spread between the best and worst schedule in a single calendar year
+averaged 9.4 pts (2020: offset 0 +16.7%, offset 10 −7.0%; 2026 to October: 27%
+to 45%).
+
+Reading: tranching does not raise the expected return; it replaces one draw
+from the four schedules with their average. The live schedule (offset 0) was
+the best of the four over 2011-2026 and 2020-2026, but it was not chosen by
+backtest (it is the month-end convention carried from Paresh), so there is no
+evidence that it will stay the best: before the fact, the expected result of
+any one schedule is about the tranched one. Against offset 0's own history,
+tranching would have cost 0.4 pt a year (2.3 pts in 2020-2026) and 6 pts of
+drawdown; against the worst schedule it would have saved 1.1 pt and 7 pts.
+Not tested: weekly rebalancing of the four tranches back to equal weight, and
+the live rules after 30 Nov 2026 (hold cap, six-monthly reset) inside tranches.
+
+---
+
+## Stage 3: the framework itself (pre-registered 10 Nov 2026, before any run)
+
+Owner, 10 Nov 2026: "may be our framework is wrong ... there must be issue with
+my chosen universe". Moving down in size was tested and was worse (S&P 400 and
+600, 2020-2026). The gap found instead: the book is equal-weight, measured
+against a cap-weighted index; the cap-weighted S&P 500 beat the equal-weight
+one by 1.7 pts a year over 2011-2026 (3.2 since 2020). Three tests of the
+framework, each against the stage-1 base with everything else unchanged:
+
+- **F1 Raw momentum.** `score_method="return"`: the same five calendar windows
+  and weights (10/30/30/20/10), each window's plain return instead of its
+  volatility-adjusted return. Question: does the volatility adjustment keep the
+  book out of volatile leaders?
+- **F2 Size-weighted book.** The same 20 names, weighted by each holding's
+  63-session mean traded value (split-adjusted close x volume) to the signal
+  date, a size proxy known at the time for every stock (today's market caps
+  exist only for today's members, so weighting by them would drop former
+  members: survivorship). A holding with no traded value (some Stonks/tickers
+  files have no volume) gets the median weight of the others. Stock cap 15%
+  (the owner's hold cap), sector cap 40%; weights reset at each monthly fill,
+  as equal weight is. Question: does weighting like the index close the 1.7-pt
+  gap?
+- **F3 Fifty names.** `top_n=50`, `buffer_n=100` (the live 1:2 ratio), stock
+  cap 5%, sector cap 40%. Question: is 20 names too concentrated?
+
+Runs, statistics and verdicts as stage 1 (section 3): four offsets, 10 and 20
+bps, halves, 2,000-draw block bootstrap, pass/reject/inconclusive by section
+3.3 on the CAGR gap, on both the primary (Mar 2011 - Oct 2026) and the 2020+
+samples. There is nothing to tune, so no sample is held out; with three tests
+about 0.3 false passes are expected by luck. Reported beside each: CAGR
+against the cap-weighted S&P 500 with dividends and against the equal-weight
+point-in-time S&P 500, and the share of months ahead of each. No variant is
+added after a result is seen.
+
+
+### Stage 3 results (10 Nov 2026)
+
+How it was run:
+
+- **Script:** `scripts/research_prereg_stage3.py`, on the store at the current head with no extra
+  file.
+- **Base:** reused from store_v3 (`prereg_runs/store_v3`). A fresh `base_o0_c10` matched it bit for
+  bit.
+- **New runs:** 24 (F1, F2 and F3 at four offsets, at 10 and 20 bps). Outputs are in the session
+  scratchpad under `prereg_runs/stage3`.
+- **Statistics:** stage 1's section 3. Gaps are means over the four offsets at 10 bps. Verdicts are
+  by section 3.3 on the CAGR gap.
+
+Implementation readings, fixed before the run:
+
+- **F2 traded value.**
+  - The size proxy is split-adjusted close (the store's Close, before dividends) times volume. It is
+    averaged over the sessions in the last 63 that have both, up to and including the signal date.
+  - A holding with no traded value in that window gets the median of the other holdings.
+  - Weights are projected onto the 15% stock cap and the 40% sector cap by the engine's `apply_caps`,
+    which moves the excess into headroom. They are reset at each fill.
+  - The sector slot rule is unchanged: 8 names a sector. At equal targets min(1/20, 15%) = 5%, the
+    same as the base, so the 20 names are the base's.
+  - The engine hook is `weight_method="Traded Value"` with `_research_size`. It is off by default,
+    and the golden run is unchanged (tests/test_backtest_prereg_hooks.py).
+- **F1** is `score_method="return"`. **F3** is `top_n=50` and `buffer_n=100`, with the 5% stock cap
+  and 40% sector cap. At 2% targets the sector slot rule allows 20 names a sector.
+- **Equal-weight point-in-time S&P 500.** For month k it is the mean, over the members at the end of
+  month k-1, of their month-k total return. Returns come from `price_store.adjusted_close`
+  month-end closes, with the 5-session stale-anchor rule.
+  - A member with no close at either month end is left out. On average 499 of 502 members a month
+    were priced (503 of 504 from 2020).
+  - It is a monthly series, so its max drawdown and Sharpe are monthly; its Sharpe uses French
+    monthly RF.
+- **SPY_TR** comes from `data/benchmarks.csv`, on daily data, the same sessions as the book.
+- **"Months ahead"** is the share of calendar months in which the book's compounded daily return
+  beat the benchmark's month, averaged over the four offsets. The primary sample's months are Mar
+  2011 to Oct 2026; March 2011 starts at the 1 Mar fill.
+
+#### Primary sample (2011-03-02 to 2026-10-30, 3941 sessions, halves split 2018-12-28; benchmark months 2011-03 to 2026-10)
+
+| Book | CAGR | Max DD | Sharpe | Turn./yr | CAGR vs SPY_TR | CAGR vs EW S&P 500 | Months ahead of SPY_TR | Months ahead of EW | CAGR gap vs base (90% range) | Ahead in | H1 / H2 | By offset 0/5/10/15 | Gap at 20 bps | ΔMDD | ΔTurn. | Verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| base | 13.53% | -33.8% | 0.70 | 499 | -0.32 | +1.55 | 50% | 54% | — | — | — | 14.0% / 14.1% / 12.5% / 13.5% (CAGR) | — | — | — | — |
+| F1: Raw momentum (score_method 'return') | 14.06% | -35.8% | 0.64 | 457 | +0.21 | +2.08 | 51% | 53% | +0.53 (-2.77 to +4.14) | 60.8% | +0.17 / +0.89 | +0.45 / -0.18 / +0.50 / +1.34 | +0.57 | -2.05 | -42 | **inconclusive** |
+| F2: Traded-value weights (63 sessions), stock cap 15%, sector 40% | 17.32% | -31.5% | 0.83 | 547 | +3.47 | +5.34 | 55% | 57% | +3.79 (+1.81 to +6.54) | 100.0% | +1.29 / +6.46 | +4.50 / +3.99 / +3.44 / +3.24 | +3.72 | +2.26 | +48 | **inconclusive** |
+| F3: Fifty names, buffer 100 | 11.27% | -33.2% | 0.63 | 408 | -2.58 | -0.70 | 49% | 53% | -2.25 (-4.53 to -0.39) | 2.4% | +0.08 / -4.65 | -2.32 / -2.80 / -1.78 / -2.11 | -2.14 | +0.59 | -92 | **reject** |
+
+Benchmarks: SPY_TR 13.85% / -33.7% / 0.76 (CAGR / max DD / Sharpe, daily); equal-weight point-in-time S&P 500 11.98% / -27.6% / 0.71 (monthly; 499 of 502 members priced a month on average). Sharpe of SPY_TR on French daily RF, of the EW index on French monthly RF.
+
+Verdict reasons: F1 inconclusive (bootstrap 60.8% < 90%, not ahead at every offset, max drawdown > 2 pts worse); F2 inconclusive (turnover > 15 pts higher); F3 reject (halves, bootstrap 2.4% < 90%, not ahead at every offset, not ahead at 20 bps).
+
+#### Secondary sample (2020-01-02 to 2026-10-30, 1717 sessions, halves split 2023-05-31; benchmark months 2020-01 to 2026-10)
+
+| Book | CAGR | Max DD | Sharpe | Turn./yr | CAGR vs SPY_TR | CAGR vs EW S&P 500 | Months ahead of SPY_TR | Months ahead of EW | CAGR gap vs base (90% range) | Ahead in | H1 / H2 | By offset 0/5/10/15 | Gap at 20 bps | ΔMDD | ΔTurn. | Verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| base | 15.23% | -33.1% | 0.63 | 516 | +0.30 | +3.59 | 51% | 58% | — | — | — | 17.5% / 16.7% / 11.2% / 15.6% (CAGR) | — | — | — | — |
+| F1: Raw momentum (score_method 'return') | 16.65% | -34.7% | 0.60 | 484 | +1.71 | +5.00 | 50% | 55% | +1.42 (-4.91 to +8.25) | 61.5% | +0.03 / +3.10 | -1.02 / -0.00 / +3.61 / +3.08 | +1.45 | -1.63 | -32 | **inconclusive** |
+| F2: Traded-value weights (63 sessions), stock cap 15%, sector 40% | 22.38% | -31.5% | 0.84 | 570 | +7.44 | +10.73 | 55% | 60% | +7.14 (+2.83 to +12.77) | 99.9% | +5.73 / +8.72 | +8.60 / +8.58 / +6.67 / +4.73 | +7.04 | +1.56 | +53 | **inconclusive** |
+| F3: Fifty names, buffer 100 | 9.95% | -33.2% | 0.43 | 437 | -4.99 | -1.70 | 45% | 54% | -5.28 (-10.29 to -2.14) | 0.1% | -2.03 / -8.98 | -6.03 / -6.50 / -2.94 / -5.67 | -5.17 | -0.10 | -79 | **reject** |
+
+Benchmarks: SPY_TR 14.94% / -33.7% / 0.65 (CAGR / max DD / Sharpe, daily); equal-weight point-in-time S&P 500 11.65% / -27.6% / 0.54 (monthly; 503 of 504 members priced a month on average). Sharpe of SPY_TR on French daily RF, of the EW index on French monthly RF.
+
+Verdict reasons: F1 inconclusive (bootstrap 61.5% < 90%, not ahead at every offset); F2 inconclusive (turnover > 15 pts higher); F3 reject (halves, bootstrap 0.1% < 90%, not ahead at every offset, not ahead at 20 bps).
+
+Reading it:
+
+- **F2 is far ahead on every measure except turnover.**
+  - Primary sample: +3.79 pt a year (90% range +1.81 to +6.54), ahead in 100% of draws, both halves
+    ahead (+1.29 and +6.46), ahead at all four offsets and at 20 bps, and max drawdown 2.3 pts better.
+  - 2020+: +7.14 pt, ahead in 99.9% of draws.
+  - It fails only rule 4, on turnover: +48 pts a year (+53 in 2020+) against the 15-pt limit, because
+    resetting to traded-value weights each month trades more. Its verdict is therefore
+    **inconclusive** in both samples, by the rule as written. The rule is not relaxed after the
+    result.
+  - At 20 bps the gap is still +3.72 pt (+7.04 in 2020+), so the extra trading costs little at these
+    rates.
+  - F2 is a size bet. On average about one holding sits at the 15% cap; for example TSLA in January
+    2021 and NVDA in July 2024. Its gain since 2020 is largely the mega-cap leaders.
+  - F2 beat SPY_TR by 3.5 pts a year (7.4 since 2020). The base trailed SPY_TR by 0.3 pt in the
+    primary sample.
+- **F1** (raw momentum) is ahead by +0.53 pt (+1.42 pt in 2020+) but ahead in only 61% of draws.
+  Its max drawdown is 2.05 pts worse in the primary sample, just over the 2-pt limit, and it is
+  behind at one offset (two in 2020+). **Inconclusive.**
+- **F3** (fifty names) is **rejected** in both samples: −2.25 pt and −5.28 pt, ahead in 2.4% and
+  0.1% of draws.
+- **Benchmarks, primary sample:**
+  - The cap-weighted S&P 500 (SPY_TR) returned 13.85% a year, and the equal-weight point-in-time
+    S&P 500 11.98%, so cap weight led by 1.9 pts.
+  - Against these the base returned +1.55 pt a year over the equal-weight index and −0.32 over SPY_TR.
+    The base's 20-name equal-weight momentum beats its own equal-weight universe.
+- **Not checked:**
+  - Traded value as a size proxy against dated market caps (none in the store).
+  - F2's liquidity and market impact at the 15% cap.
+  - Whether F2's turnover can be lowered without new rules, for example by drifting weights between
+    fills. That would be a new specification and is not tested here.
+
+---
+
+## Stage 4: F2 with lower turnover, against the live book's own rules (pre-registered 11 Nov 2026, before any run)
+
+Owner, 10-11 Nov 2026: test a lower-turnover F2; track F2 as a shadow.
+
+Why the comparison changes. Every test so far was judged against the book
+that resets to equal weight each month. From the 30 Nov 2026 signal the live
+book follows the owner's own rules instead (TRACK_RECORD_CONFIG): holdings
+drift and winners run to 15%, a new buy is 5% of the account, and weights reset
+to their targets at the March and September signals. Letting winners run is
+itself a tilt toward the largest holdings, so part of F2's gain may already be
+in the live rules.
+
+- **L, the live rules over the whole sample.** The base with `hold_cap=0.15`
+  (from the start), `buy_size=0.05`, `weight_reset_months=(3, 9)`; equal-weight
+  targets.
+- **F2d, size weights under the live rules.** L with F2's targets: 63-session
+  mean traded value, stock cap 15%, sector cap 40%. Between resets weights
+  drift, so trading is only the names that enter and leave plus trims above
+  15%; at the March and September resets every holding goes to its traded-value
+  target.
+
+Verdicts by section 3.3 (CAGR gap, both halves, ≥ 90% of 2,000 block-bootstrap
+draws, all four offsets, at 20 bps, max drawdown no more than 2 pts worse,
+turnover no more than 15 pts a year higher), on the primary (Mar 2011 - Oct
+2026) and 2020+ samples, for: L against the base; F2d against the base; and
+**F2d against L, the decisive one** (is size-weighting worth it under the rules
+the owner will actually run?). F2 from stage 3 is shown beside them, not
+re-judged. Benchmarks as stage 3. No variant is added after a result is seen.
+
+### Stage 4 results (11 Nov 2026)
+
+Store at f953a4f, no extra file; base and F2 reused (a fresh base_o0_c10 run
+matched store_v3 bit for bit); 16 new runs (L and F2d, four offsets, 10 and 20
+bps); outputs in the session scratchpad prereg_runs/stage4 and stage4_vsL.
+
+| 10 bps, offset mean | Mar 2011 - Oct 2026: CAGR / max DD / Sharpe / turnover a year | 2020 - Oct 2026 |
+|---|---|---|
+| Base (monthly reset) | 13.53% / −33.8% / 0.70 / 499% | 15.23% / −33.1% / 0.63 / 516% |
+| L (the live rules from the start) | 13.53% / −34.1% / 0.70 / 473% | 15.32% / −33.3% / 0.62 / 482% |
+| F2d (size targets under the live rules) | 14.54% / −32.8% / 0.74 / 491% | 17.34% / −32.4% / 0.69 / 498% |
+| F2 (size targets, monthly reset; stage 3) | 17.32% / −31.5% / 0.83 / 547% | 22.38% / −31.5% / 0.84 / 570% |
+| S&P 500 with dividends | 13.85% / −33.7% / 0.76 | 14.94% / −33.7% / 0.65 |
+
+Verdicts (section 3.3, CAGR gap):
+
+- **L vs base: inconclusive, no difference.** +0.00 pt a year (90% range −0.35
+  to +0.44; ahead in 52.9% of draws); 2020+: +0.08. Turnover only 26 pts a year
+  lower: most of the book's trading is names entering and leaving, not
+  re-weighting. Paresh found the same in India (monthly 18.95% vs six-monthly
+  18.67% a year, 2010-26, before tax).
+- **F2d vs L (decisive): inconclusive.** +1.01 pt a year (−0.43 to +2.84;
+  ahead in 87.8%, below the 90% bar; offsets +1.14 / +2.18 / +0.18 / +0.53;
+  halves +0.22 / +1.84; +0.98 at 20 bps; drawdown 1.3 pts better; turnover 18
+  pts a year higher, above the 15-pt limit). 2020+: +2.03 (ahead in 88.8%).
+- **F2 vs L** (for reference): +3.79 pt a year, ahead in 100%, every offset;
+  turnover +74 pts a year.
+
+Reading. F2's gain does not survive the live rules intact: under drift with
+six-monthly resets the size weighting adds about 1 pt a year (2 since 2020),
+not 3.8. Most of F2's advantage comes from re-weighting every month toward the
+names trading the most value, which in 2020-2026 were the mega-cap leaders;
+letting the weights drift between March and September loses most of it. So the
+choice is not "F2 or not" but "monthly size re-weighting (F2: +3.8 pts, more
+trading, a monthly tilt to the biggest names) or the owner's six-monthly rule
+(no gain from size weighting worth the name)". Neither passed. Not checked:
+F2 with a monthly re-weight of held names only (a new specification), taxes
+(no US tax model in this repository).
+
+---
+
+## Stage 5: inverse-volatility weights (pre-registered 11 Nov 2026, before any run)
+
+Owner, 11 Nov 2026: "Did we tested inverse volatility weight?" Not until now.
+The engine's existing option (`weight_method="Inverse Volatility"`: weights in
+proportion to 1 / the standard deviation of daily log returns over the 63
+sessions to the signal, then the 5% stock and 40% sector caps), unchanged:
+
+- **IV**, against the base (monthly reset), stock cap 5% as the base. With 20
+  names and a 5% cap, weights above 5% are cut, so IV can only move weight
+  from volatile names to calmer ones below 5%.
+- **IVd**, the same weights under the live rules (as L: winners run to 15%,
+  buys 5%, resets in March and September to the inverse-volatility targets),
+  against L.
+
+Verdicts by section 3.3 on the CAGR gap, primary and 2020+ samples, as stage 4.
+Expectation written before the run: lower return than equal weight, since
+inverse-volatility weights lean away from the volatile leaders that F2 leaned
+towards. No variant is added after a result is seen.
+
+### Stage 5 result, and a follow-up written after it (11 Nov 2026)
+
+**IV and IVd are degenerate: identical to the base and to L.** The spec's
+reasoning was wrong: with 20 names the weights sum to 100%, so a 5% cap
+forces every name to exactly 5% whatever its volatility. IV equals the base
+to the last digit (CAGR 13.53%, 2020+ 15.23%); IVd equals L. The report's
+"pass" for IV was an artefact (gaps of about 1e-17 read as "ahead"); the
+verdict now requires a gap above 1e-9 (`research_prereg.EPS`). This makes no
+other verdict change: every earlier gap is far from zero. The same holds on
+the website: the Backtest page's "Inverse Volatility" weighting changes
+nothing at 20 holdings and a 5% cap.
+
+**Follow-up, specified after seeing that IV is degenerate (which says
+nothing about how inverse-volatility weights perform):**
+
+- **IV15**: inverse-volatility weights with the stock cap at 15% (F2's cap),
+  sector cap 40%, monthly reset, against the base.
+- **IV15d**: the same targets under the live rules, against L.
+
+Verdicts by section 3.3, both samples. Labelled a follow-up in every report.
+
+### Stage 5 follow-up results (11 Nov 2026)
+
+16 runs (IV15, IV15d; four offsets; 10 and 20 bps), store at dd5d09d.
+
+| 10 bps, offset mean | Mar 2011 - Oct 2026: CAGR / max DD / Sharpe | 2020 - Oct 2026 |
+|---|---|---|
+| Base (equal weight, monthly reset) | 13.53% / −33.8% / 0.70 | 15.23% / −33.1% / 0.63 |
+| L (equal weight, live rules) | 13.53% / −34.1% / 0.70 | 15.32% / −33.3% / 0.62 |
+| IV15 (inverse vol, cap 15%, monthly reset) | 12.13% / −33.8% / 0.68 | 12.25% / −33.0% / 0.55 |
+| IV15d (inverse vol, cap 15%, live rules) | 13.13% / −34.4% / 0.70 | 13.93% / −33.5% / 0.59 |
+
+- **IV15 vs base: reject** (−1.40 pts a year, 90% range −3.58 to +0.16; ahead in
+  6.5% of draws; behind at every offset; 2020+: −2.99, reject).
+- **IV15d vs L: inconclusive** (−0.40, −2.10 to +0.59; ahead in 26.6%;
+  2020+: −1.39, ahead in 20.3%).
+
+As expected before the run: weighting toward the calmer names moves money away
+from the volatile leaders that carried the book. No drawdown was saved (max
+drawdown unchanged within 0.6 pt).
+
+---
+
+## Stage 6: the S&P 500 Momentum index's method (pre-registered 11 Nov 2026, before any run)
+
+Owner, 11 Nov 2026: yes to rebuilding the S&P 500 Momentum index's method and
+judging it against the book, F2 and SPY. The index's rules as I recall them
+(not re-read from S&P DJI's methodology in this session):
+
+- **Score:** the 12-month price change to one month before the reference date
+  (12-1), divided by the standard deviation of daily returns over those 12
+  months; z-scored across the eligible S&P 500 members, winsorised at ±3.
+- **Selection:** 100 names: the top 80 by score, then current members ranked
+  81-120, then the next-highest until 100.
+- **Weights:** size × score factor, factor 1 + z for z > 0 and 1 / (1 − z) for
+  z < 0; each name capped at the lesser of 9% and 3 × its size weight in the
+  universe, excess spread pro rata.
+- **Rebalance:** reference dates the last session of February and August;
+  effective at the close of the third Friday of March and September; weights
+  drift in between.
+
+Our replication (`scripts/research_spmo.py`), written now:
+
+- **SPMO-R:** the rules above on the point-in-time S&P 500 from 2010, size =
+  63-session mean traded value (no dated market caps; F2's proxy), cost 10 bps
+  a round trip on turnover, total-return closes.
+- **Check of the replication, before judging it:** monthly returns against
+  the real Invesco S&P 500 Momentum ETF (SPMO, total return from Yahoo, from
+  its Oct 2015 launch): correlation and tracking difference. A correlation
+  below 0.90 means the replication is not the index and its verdict is not
+  reported as the index's.
+- **Judged against:** L (the live book under the owner's rules, offset mean),
+  F2 and SPY with dividends, on Mar 2011 - Oct 2026 and 2020+: CAGR, max
+  drawdown, Sharpe, halves and the 2,000-draw block bootstrap of the CAGR gap
+  (paired, seed 20261110). No offsets: the index has one schedule.
+- **Verdict vs L** by section 3.3 where it applies (both halves, ≥ 90% of
+  draws, max drawdown no more than 2 pts worse, ahead at 20 bps); turnover is
+  reported, not a pass rule, since the index trades twice a year.
+
+### Stage 6 results (11 Nov 2026)
+
+**The replication is the index.** Monthly returns of SPMO-R against the real
+SPMO ETF (Yahoo, total return), Dec 2015 - Nov 2026, 132 months: correlation
+0.958 (bar 0.90), CAGR 16.35% vs 16.90%, tracking error 6.5% a year, mean
+difference +0.1 pt a year. Remaining gap: traded value instead of market cap,
+and our membership and prices.
+
+| 10 bps | Mar 2011 - Oct 2026: CAGR / max DD / Sharpe | 2020 - Oct 2026 |
+|---|---|---|
+| SPMO-R (index method) | 15.43% / −32.1% / 0.72 | 20.01% / −32.1% / 0.73 |
+| L (live book, live rules; offset mean) | 13.53% / −34.1% / 0.70 | 15.32% / −33.3% / 0.62 |
+| F2 (20 names, size-weighted monthly) | 17.32% / −31.5% / 0.83 | 22.38% / −31.5% / 0.84 |
+| SPY with dividends | 13.85% / −33.7% / 0.76 | 14.94% / −33.7% / 0.65 |
+
+- **SPMO-R vs L: inconclusive.** +1.90 pts a year (90% range −4.17 to
+  +9.71; ahead in 75.9% of draws); halves −1.64 / +5.68 (behind in 2011-2018);
+  max drawdown 2.0 pts better; +2.30 at 20 bps. 2020+: +4.69 (ahead in 77.8%).
+- **SPMO-R vs F2:** −1.89 pts a year (ahead in 37.8%); behind in both halves.
+- **SPMO-R vs SPY:** +1.58 pts a year (ahead in 78.5%); halves −1.21 / +4.60.
+
+Reading. The index method beats the live book and SPY, but only in the second
+half of the sample (2019-2026); in 2011-2018 it was behind both. Everything
+that has worked in the US in this sample (F2, the index, the index's own ETF)
+tilts momentum toward the largest stocks, and it worked when the largest stocks
+led. That is one regime, not yet a rule. F2 stays the strongest candidate on
+the evidence here; the index method is the version with a public, independent
+track record (SPMO, from Oct 2015) that matches ours.
