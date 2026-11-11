@@ -600,6 +600,10 @@ def variant_kwargs(name: str, offset: int) -> dict:
         return dict(hold_cap=0.15, hold_cap_from=None, buy_size=0.05, weight_reset_months=(3, 9))
     if name == "IV":                                   # stage 5: inverse-volatility weights
         return dict(weight_method="Inverse Volatility")
+    if name == "IV15":                                 # stage 5 follow-up: room to move
+        return dict(weight_method="Inverse Volatility", stock_cap=0.15)
+    if name == "IV15d":
+        return {**variant_kwargs("IV15", offset), **variant_kwargs("L", offset)}
     if name == "IVd":                                  # stage 5: the same under the live rules
         return {**variant_kwargs("IV", offset), **variant_kwargs("L", offset)}
     if name == "F2d":                                  # stage 4: F2's targets under the live rules
@@ -986,7 +990,7 @@ def sample_stats(series: dict, turn: dict, ex: dict, start: pd.Timestamp, end: p
                     g[f"{m}_h2"] = float(gap(mh[1][m], n, against))
                     b = gap(boot[m], n, against)
                     g[f"{m}_lo"], g[f"{m}_hi"] = float(np.percentile(b, 5)), float(np.percentile(b, 95))
-                    g[f"{m}_p"] = float((b > 0).mean())
+                    g[f"{m}_p"] = float((b > EPS).mean())
                     g[f"{m}_by_offset"] = {o: float(met[m][col[(n, o)]] - met[m][col[(against, o)]])
                                            for o in OFFSETS}
                 g["turnover"] = float(np.mean([tov[(n, o)] - tov[(against, o)] for o in OFFSETS]))
@@ -1008,6 +1012,9 @@ def sample_stats(series: dict, turn: dict, ex: dict, start: pd.Timestamp, end: p
 
 
 PRIMARY = {"selection": "cagr", "overlay": "sharpe"}
+# "Ahead" means ahead by more than floating-point noise: stage 5's IV, identical
+# to the base, read as a pass on gaps of about 1e-17 (fixed 11 Nov 2026).
+EPS = 1e-9
 
 
 def verdict(n: str, st10: dict, st20: dict) -> tuple[str, list[str]]:
@@ -1027,13 +1034,13 @@ def verdict(n: str, st10: dict, st20: dict) -> tuple[str, list[str]]:
     g, g20 = row["vs_base"], st20["rows"][n]["vs_base"]
     m = PRIMARY[KIND[n]]
     fails = []
-    if not (g[f"{m}_h1"] > 0 and g[f"{m}_h2"] > 0):
+    if not (g[f"{m}_h1"] > EPS and g[f"{m}_h2"] > EPS):
         fails.append("halves")
     if not g[f"{m}_p"] >= 0.90:
         fails.append(f"bootstrap {g[f'{m}_p']:.1%} < 90%")
-    if not all(v > 0 for v in g[f"{m}_by_offset"].values()):
+    if not all(v > EPS for v in g[f"{m}_by_offset"].values()):
         fails.append("not ahead at every offset")
-    if not g20[m] > 0:
+    if not g20[m] > EPS:
         fails.append("not ahead at 20 bps")
     if not g["mdd"] >= -0.02:
         fails.append("max drawdown > 2 pts worse")

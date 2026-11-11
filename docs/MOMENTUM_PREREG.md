@@ -1521,3 +1521,24 @@ Verdicts by section 3.3 on the CAGR gap, primary and 2020+ samples, as stage 4.
 Expectation written before the run: lower return than equal weight, since
 inverse-volatility weights lean away from the volatile leaders that F2 leaned
 towards. No variant is added after a result is seen.
+
+### Stage 5 result, and a follow-up written after it (11 Nov 2026)
+
+**IV and IVd are degenerate: identical to the base and to L.** The spec's
+reasoning was wrong: with 20 names the weights sum to 100%, so a 5% cap
+forces every name to exactly 5% whatever its volatility. IV equals the base
+to the last digit (CAGR 13.53%, 2020+ 15.23%); IVd equals L. The report's
+"pass" for IV was an artefact (gaps of about 1e-17 read as "ahead"); the
+verdict now requires a gap above 1e-9 (`research_prereg.EPS`). This makes no
+other verdict change: every earlier gap is far from zero. The same holds on
+the website: the Backtest page's "Inverse Volatility" weighting changes
+nothing at 20 holdings and a 5% cap.
+
+**Follow-up, specified after seeing that IV is degenerate (which says
+nothing about how inverse-volatility weights perform):**
+
+- **IV15**: inverse-volatility weights with the stock cap at 15% (F2's cap),
+  sector cap 40%, monthly reset, against the base.
+- **IV15d**: the same targets under the live rules, against L.
+
+Verdicts by section 3.3, both samples. Labelled a follow-up in every report.

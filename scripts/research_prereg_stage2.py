@@ -244,7 +244,7 @@ def cmd_report(args) -> None:
     oc20, ob20 = res[("oos", 20.0)][0][chosen], res[("oos", 20.0)][0][base]
     checks = {
         "1_cagr_and_sharpe_gap_positive": bool(oc["cagr"] > ob["cagr"] and oc["sharpe"] > ob["sharpe"]),
-        "2_bootstrap_cagr_ahead_ge_90pct": bool((d_cagr > 0).mean() >= 0.90),
+        "2_bootstrap_cagr_ahead_ge_90pct": bool((d_cagr > R.EPS).mean() >= 0.90),
         "3_ahead_at_all_four_offsets": bool(all(oc["by_offset"][o]["cagr"] > ob["by_offset"][o]["cagr"]
                                                 for o in R.OFFSETS)),
         "4_ahead_at_20bps": bool(oc20["cagr"] > ob20["cagr"]),
@@ -275,8 +275,8 @@ def cmd_report(args) -> None:
         L.append(f"| {lab} | {a['cagr']:.2%} / {a['mdd']:.1%} / {a['sharpe']:.3f} | "
                  f"{b['cagr']:.2%} / {b['mdd']:.1%} / {b['sharpe']:.3f} | {res[('oos', 20.0)][0][k]['cagr']:.2%} |")
     L += ["", f"Out of sample, chosen minus base: CAGR {pct(oc['cagr'] - ob['cagr'])} pt (90% range "
-          f"{pct(np.percentile(d_cagr, 5))} to {pct(np.percentile(d_cagr, 95))}; ahead in {(d_cagr > 0).mean():.1%} "
-          f"of draws), Sharpe {oc['sharpe'] - ob['sharpe']:+.3f} (ahead in {(d_sh > 0).mean():.1%}), max drawdown "
+          f"{pct(np.percentile(d_cagr, 5))} to {pct(np.percentile(d_cagr, 95))}; ahead in {(d_cagr > R.EPS).mean():.1%} "
+          f"of draws), Sharpe {oc['sharpe'] - ob['sharpe']:+.3f} (ahead in {(d_sh > R.EPS).mean():.1%}), max drawdown "
           f"{pct(oc['mdd'] - ob['mdd'])} pt; by offset 0/5/10/15 CAGR "
           + " / ".join(pct(oc["by_offset"][o]["cagr"] - ob["by_offset"][o]["cagr"]) for o in R.OFFSETS)
           + f"; at 20 bps {pct(oc20['cagr'] - ob20['cagr'])} pt.", "",
@@ -301,7 +301,7 @@ def cmd_report(args) -> None:
     (out / "report.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     (out / "results.json").write_text(json.dumps({
         "chosen": name(chosen), "verdict": verdict, "checks": checks, "dsr": dsr, "oos_rank": rank,
-        "bootstrap": {"cagr_p": float((d_cagr > 0).mean()), "sharpe_p": float((d_sh > 0).mean())},
+        "bootstrap": {"cagr_p": float((d_cagr > R.EPS).mean()), "sharpe_p": float((d_sh > R.EPS).mean())},
         "is": {name(k): {kk: v for kk, v in st_is[k].items() if kk != "by_offset"} for k in keys},
         "oos": {name(k): {kk: v for kk, v in st_oos[k].items() if kk != "by_offset"} for k in keys},
         "top5_oos": [name(k) for k in oos_rank[:5]], "eligible": [name(k) for k in eligible]}, indent=1))

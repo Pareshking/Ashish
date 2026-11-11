@@ -43,7 +43,9 @@ TEXT = {"F1": "Raw momentum (score_method 'return')",
         "L": "The live rules from the start: winners run to 15%, buys 5%, resets Mar/Sep",
         "F2d": "F2's traded-value targets under the live rules (drift; resets Mar/Sep)",
         "IV": "Inverse-volatility weights (63 sessions), stock cap 5%",
-        "IVd": "Inverse-volatility targets under the live rules"}
+        "IVd": "Inverse-volatility targets under the live rules",
+        "IV15": "Inverse-volatility weights, stock cap 15% (follow-up)",
+        "IV15d": "Inverse-volatility weights, cap 15%, under the live rules (follow-up)"}
 for _v in VARIANTS:
     R.KIND[_v] = "selection"
 
@@ -193,7 +195,7 @@ def cmd_report(args) -> None:
                         g[f"{m}_h1"], g[f"{m}_h2"] = float(gap(mh[0][m])), float(gap(mh[1][m]))
                         b = gap(boot[m])
                         g[f"{m}_lo"], g[f"{m}_hi"] = float(np.percentile(b, 5)), float(np.percentile(b, 95))
-                        g[f"{m}_p"] = float((b > 0).mean())
+                        g[f"{m}_p"] = float((b > R.EPS).mean())
                         g[f"{m}_by_offset"] = {o: float(met[m][col[(n, o)]] - met[m][col[("base", o)]]) for o in R.OFFSETS}
                     g["turnover"] = float(np.mean(tov) - rows["base"]["turnover"])
                     row["vs_base"] = g
