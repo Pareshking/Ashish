@@ -1542,3 +1542,23 @@ nothing about how inverse-volatility weights perform):**
 - **IV15d**: the same targets under the live rules, against L.
 
 Verdicts by section 3.3, both samples. Labelled a follow-up in every report.
+
+### Stage 5 follow-up results (11 Nov 2026)
+
+16 runs (IV15, IV15d; four offsets; 10 and 20 bps), store at dd5d09d.
+
+| 10 bps, offset mean | Mar 2011 - Oct 2026: CAGR / max DD / Sharpe | 2020 - Oct 2026 |
+|---|---|---|
+| Base (equal weight, monthly reset) | 13.53% / −33.8% / 0.70 | 15.23% / −33.1% / 0.63 |
+| L (equal weight, live rules) | 13.53% / −34.1% / 0.70 | 15.32% / −33.3% / 0.62 |
+| IV15 (inverse vol, cap 15%, monthly reset) | 12.13% / −33.8% / 0.68 | 12.25% / −33.0% / 0.55 |
+| IV15d (inverse vol, cap 15%, live rules) | 13.13% / −34.4% / 0.70 | 13.93% / −33.5% / 0.59 |
+
+- **IV15 vs base: reject** (−1.40 pts a year, 90% range −3.58 to +0.16; ahead in
+  6.5% of draws; behind at every offset; 2020+: −2.99, reject).
+- **IV15d vs L: inconclusive** (−0.40, −2.10 to +0.59; ahead in 26.6%;
+  2020+: −1.39, ahead in 20.3%).
+
+As expected before the run: weighting toward the calmer names moves money away
+from the volatile leaders that carried the book. No drawdown was saved (max
+drawdown unchanged within 0.6 pt).
