@@ -33,10 +33,15 @@ sys.path.insert(0, str(ROOT))
 
 from scripts import research_prereg as R  # noqa: E402
 
-VARIANTS = ("F1", "F2", "F3")
+# STAGE_VARIANTS picks the variants (stage 4: "L,F2d,F2"); default stage 3's.
+import os  # noqa: E402
+
+VARIANTS = tuple(v for v in os.environ.get("STAGE_VARIANTS", "F1,F2,F3").split(",") if v)
 TEXT = {"F1": "Raw momentum (score_method 'return')",
         "F2": "Traded-value weights (63 sessions), stock cap 15%, sector 40%",
-        "F3": "Fifty names, buffer 100"}
+        "F3": "Fifty names, buffer 100",
+        "L": "The live rules from the start: winners run to 15%, buys 5%, resets Mar/Sep",
+        "F2d": "F2's traded-value targets under the live rules (drift; resets Mar/Sep)"}
 for _v in VARIANTS:
     R.KIND[_v] = "selection"
 

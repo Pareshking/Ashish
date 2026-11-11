@@ -1430,3 +1430,34 @@ Reading it:
   - F2's liquidity and market impact at the 15% cap.
   - Whether F2's turnover can be lowered without new rules, for example by drifting weights between
     fills. That would be a new specification and is not tested here.
+
+---
+
+## Stage 4: F2 with lower turnover, against the live book's own rules (pre-registered 11 Nov 2026, before any run)
+
+Owner, 10-11 Nov 2026: test a lower-turnover F2; track F2 as a shadow.
+
+Why the comparison changes. Every test so far was judged against the book
+that resets to equal weight each month. From the 30 Nov 2026 signal the live
+book follows the owner's own rules instead (TRACK_RECORD_CONFIG): holdings
+drift and winners run to 15%, a new buy is 5% of the account, and weights reset
+to their targets at the March and September signals. Letting winners run is
+itself a tilt toward the largest holdings, so part of F2's gain may already be
+in the live rules.
+
+- **L, the live rules over the whole sample.** The base with `hold_cap=0.15`
+  (from the start), `buy_size=0.05`, `weight_reset_months=(3, 9)`; equal-weight
+  targets.
+- **F2d, size weights under the live rules.** L with F2's targets: 63-session
+  mean traded value, stock cap 15%, sector cap 40%. Between resets weights
+  drift, so trading is only the names that enter and leave plus trims above
+  15%; at the March and September resets every holding goes to its traded-value
+  target.
+
+Verdicts by section 3.3 (CAGR gap, both halves, ≥ 90% of 2,000 block-bootstrap
+draws, all four offsets, at 20 bps, max drawdown no more than 2 pts worse,
+turnover no more than 15 pts a year higher), on the primary (Mar 2011 - Oct
+2026) and 2020+ samples, for: L against the base; F2d against the base; and
+**F2d against L, the decisive one** (is size-weighting worth it under the rules
+the owner will actually run?). F2 from stage 3 is shown beside them, not
+re-judged. Benchmarks as stage 3. No variant is added after a result is seen.
