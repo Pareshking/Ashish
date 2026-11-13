@@ -21,7 +21,12 @@ from src.loaders import price_store as ps  # noqa: E402
 
 def from_store() -> pd.DataFrame:
     long = ps.read_long()
-    i = long.groupby("Symbol")["High"].idxmax()
+    # Rows with no intraday high are skipped: the CRSP-derived rows of 25 former
+    # members imported from github:Johnbrick123/sp500-data carry closes only, and
+    # a symbol with no high at all made idxmax raise, which stopped every nightly
+    # run from 11 Nov 2026 before its commit step.
+    long = long[long["High"].notna()]
+    i = long.groupby("Symbol", observed=True)["High"].idxmax()
     best = long.loc[i, ["Symbol", "High", "Date"]].rename(columns={"High": "ATH", "Date": "ATHDate"})
     best["AsOf"] = long["Date"].max()
     return best.reset_index(drop=True)
