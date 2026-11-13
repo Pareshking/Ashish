@@ -3461,6 +3461,15 @@
         "KVUE",
         "MSGS"
       ]
+    },
+    {
+      "date": "2026-11-13",
+      "added": [
+        "JHX"
+      ],
+      "removed": [
+        "ROKU"
+      ]
     }
   ],
   "aliases": {
@@ -7763,6 +7772,15 @@
           ],
           "removed": [
             "OKTA"
+          ]
+        },
+        {
+          "date": "2026-11-13",
+          "added": [
+            "JHX"
+          ],
+          "removed": [
+            "ROKU"
           ]
         }
       ]
