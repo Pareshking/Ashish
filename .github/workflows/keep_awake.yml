@@ -1,0 +1,35 @@
+name: Keep the site awake
+
+# Streamlit Community Cloud puts an app to sleep after a stretch with no
+# visitors. Paresh's site stays awake because its production QA opens it in a
+# browser every six hours; this is the light version for Ashish (owner,
+# 14 Nov 2026): open https://ashishpatel.streamlit.app/ in headless Chromium,
+# press the wake button if the sleep page shows, wait for the app to render.
+# A visit that cannot get the app up fails, and the failure alert opens an issue.
+on:
+  schedule:
+    - cron: '41 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-awake
+  cancel-in-progress: false
+
+jobs:
+  visit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - name: Install Playwright and Chromium
+        run: |
+          pip install playwright==1.65.2   # the version tested locally, 14 Nov 2026
+          python -m playwright install --with-deps chromium
+      - name: Visit the site
+        run: python scripts/keep_awake.py

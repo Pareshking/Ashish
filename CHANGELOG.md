@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased: the site is kept awake
+
+- A browser visits the site every six hours and wakes it if Streamlit has put it to sleep, so a reader no longer meets the "This app has gone to sleep" page. A visit that cannot wake it opens an issue.
+
 ## Unreleased: nightly prices restored
 
 - The nightly price job had failed every night since 10 Nov 2026, so the site's prices stopped at 9 Nov. The all-time-high step crashed on 25 former members that have closing prices only; it now skips rows without a daily high. Two S&P 600 members that stopped trading on 3 Nov (INDV, LXP) are recorded as exceptions with their evidence so the audit passes.

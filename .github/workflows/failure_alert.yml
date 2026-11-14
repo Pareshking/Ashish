@@ -6,6 +6,7 @@ on:
       - Nightly prices (New York close)
       - Nasdaq cross-check (weekly sample)
       - Monthly track record
+      - Keep the site awake
     types: [completed]
 
 permissions:
