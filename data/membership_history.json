@@ -3470,6 +3470,15 @@
       "removed": [
         "ROKU"
       ]
+    },
+    {
+      "date": "2026-11-17",
+      "added": [
+        "HZN"
+      ],
+      "removed": [
+        "BKH"
+      ]
     }
   ],
   "aliases": {
@@ -7781,6 +7790,15 @@
           ],
           "removed": [
             "ROKU"
+          ]
+        },
+        {
+          "date": "2026-11-17",
+          "added": [
+            "HZN"
+          ],
+          "removed": [
+            "BKH"
           ]
         }
       ]
