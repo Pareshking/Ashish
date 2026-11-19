@@ -3479,6 +3479,15 @@
       "removed": [
         "BKH"
       ]
+    },
+    {
+      "date": "2026-11-18",
+      "added": [
+        "CHYM"
+      ],
+      "removed": [
+        "NWE"
+      ]
     }
   ],
   "aliases": {
@@ -7799,6 +7808,15 @@
           ],
           "removed": [
             "BKH"
+          ]
+        },
+        {
+          "date": "2026-11-18",
+          "added": [
+            "CHYM"
+          ],
+          "removed": [
+            "NWE"
           ]
         }
       ]
